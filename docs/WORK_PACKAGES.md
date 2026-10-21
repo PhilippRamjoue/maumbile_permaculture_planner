@@ -1,5 +1,9 @@
 # Work Packages
 
+> **Progress (2026-10-21):** ✅ done — WP0, WP1, WP2, WP3, WP3B, WP4, WP5, WP6, WP7, WP8.
+> ⬜ remaining — WP9 (design editor, next), WP10, WP11, WP12. See [`PROJECT_STATUS.md`](PROJECT_STATUS.md)
+> for the current state, how to run/test, and known deferrals.
+
 Self-contained units of work for implementing agents (Sonnet / Codex). Read
 [`ARCHITECTURE.md`](ARCHITECTURE.md) first — it defines the stack, module shapes,
 data model, API, and testing bar that every package must honor.

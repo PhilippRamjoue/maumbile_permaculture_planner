@@ -5,8 +5,11 @@ aerial imagery. Define your land by its coordinates, pull in satellite imagery a
 terrain, then design: trace **zones** and **sectors**, place **elements** (house,
 beds, trees, water, paths), and **measure** distances and areas accurately.
 
-> Status: **architecture / pre-implementation**. Start with [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md),
-> then [`docs/WORK_PACKAGES.md`](docs/WORK_PACKAGES.md).
+> Status: **in development** — backend (auth, sites, regions, imagery proxy, planning, terrain) and
+> frontend (shell, auth, dashboard, map, country-first site setup) are implemented and tested; the
+> design editor (WP9) and later packages are next. For the current state, how to run/test, and known
+> deferrals, see **[`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md)**. Design lives in
+> [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md); the task plan in [`docs/WORK_PACKAGES.md`](docs/WORK_PACKAGES.md).
 
 ## Vision
 
@@ -35,6 +38,7 @@ permaculture_planner/
 ├── README.md
 ├── docs/
 │   ├── ARCHITECTURE.md        # system design, modules, data model, geo strategy
+│   ├── PROJECT_STATUS.md      # what's built, how to run/test, known deferrals (review guide)
 │   ├── DATA_SOURCES.md        # every data source: license, attribution, rights
 │   └── WORK_PACKAGES.md       # sequenced, self-contained tasks for AI agents
 ├── backend/                   # FastAPI modular monolith

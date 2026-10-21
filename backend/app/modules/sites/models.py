@@ -18,8 +18,10 @@ class Site(Base):
     __tablename__ = "sites"
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
-    # TODO(integration): becomes a FK to users.id once WP2 (auth) lands. Deliberately a bare,
-    # nullable column for now so this module stays independent of the auth package.
+    # Owner is the authenticated user that created the site (set from auth's current_user in the
+    # router; see app/modules/sites/router.py). Kept a bare, nullable column — NOT yet a DB-level
+    # FK to users.id — a deliberate, documented deferral (see docs/PROJECT_STATUS.md "Known
+    # deferrals"). Integrity is enforced at the app layer; the FK + NOT NULL is a planned hardening.
     owner_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True, index=True)
     name: Mapped[str] = mapped_column(String(200), nullable=False)
     # ISO-3166-1 alpha-2. Nullable: derivation from the centroid is best-effort.
