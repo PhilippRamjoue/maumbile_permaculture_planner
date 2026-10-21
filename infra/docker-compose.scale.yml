@@ -1,0 +1,36 @@
+# Optional scale-up overlay — NOT needed for v1.
+# Adds Redis + an arq worker for when high-res terrain, heavy export rendering, or real
+# concurrency arrive (see docs/ARCHITECTURE.md §3 and §10). The worker command is a
+# placeholder until the arq worker lands in a later work package.
+#
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.scale.yml up --build
+
+name: permaculture-planner
+
+services:
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+
+  backend:
+    environment:
+      APP_REDIS_URL: redis://redis:6379/0
+    depends_on:
+      redis:
+        condition: service_started
+
+  worker:
+    build:
+      context: ../backend
+    restart: unless-stopped
+    environment:
+      APP_DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-permaculture}
+      APP_REDIS_URL: redis://redis:6379/0
+    depends_on:
+      - db
+      - redis
+    # Placeholder — replaced with the real arq worker entrypoint in a later package.
+    command: ["sh", "-c", "echo 'worker placeholder (see ARCHITECTURE.md §3)'; sleep infinity"]
