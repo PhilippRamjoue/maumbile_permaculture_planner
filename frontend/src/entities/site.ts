@@ -1,0 +1,36 @@
+/** GeoJSON geometries as served by the backend. */
+export interface GeoPolygon {
+  type: "Polygon";
+  coordinates: [number, number][][];
+}
+
+export interface GeoPoint {
+  type: "Point";
+  coordinates: [number, number];
+}
+
+/** [min_lng, min_lat, max_lng, max_lat] */
+export type BBox = [number, number, number, number];
+
+/** Mirrors `SiteRead` (backend/app/modules/sites/schemas.py). */
+export interface Site {
+  id: string;
+  owner_id: string | null;
+  name: string;
+  country_code: string | null;
+  boundary: GeoPolygon;
+  centroid: GeoPoint;
+  bbox: BBox;
+  area_m2: number;
+  utm_epsg: number;
+  created_at: string;
+  updated_at: string;
+}
+
+/** Mirrors `Page[T]` (backend/app/core/pagination.py). */
+export interface Page<T> {
+  items: T[];
+  total: number;
+  limit: number;
+  offset: number;
+}
