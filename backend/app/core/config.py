@@ -41,6 +41,11 @@ class Settings(BaseSettings):
     login_rate_limit_attempts: int = 10
     login_rate_limit_window_seconds: int = 60
 
+    # --- Terrain (modules/terrain) ---
+    # Default vertical spacing of derived contour lines, metres. 30 m DEMs carry metre-level
+    # vertical error, so intervals under ~2 m draw noise; callers may override per request.
+    terrain_contour_interval_m: float = 5.0
+
     @model_validator(mode="after")
     def _require_real_secret_in_production(self) -> Settings:
         if (

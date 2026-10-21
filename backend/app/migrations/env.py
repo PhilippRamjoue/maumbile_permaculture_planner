@@ -17,6 +17,7 @@ from app.modules.auth import models as _auth_models  # noqa: F401
 from app.modules.imagery import models as _imagery_models  # noqa: F401
 from app.modules.planning import models as _planning_models  # noqa: F401
 from app.modules.sites import models as _sites_models  # noqa: F401
+from app.modules.terrain import models as _terrain_models  # noqa: F401
 
 config = context.config
 if config.config_file_name is not None:
