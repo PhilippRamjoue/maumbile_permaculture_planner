@@ -1,5 +1,5 @@
-# Backend image. Lean v1 uses python:3.12-slim; WP5 (terrain) will switch the base to a
-# GDAL-provisioned image (e.g. ghcr.io/osgeo/gdal) so rasterio can build/run.
+# Backend image on python:3.12-slim. rasterio ships manylinux wheels with a bundled GDAL (and
+# certifi for HTTPS), so terrain (WP5) needs no system GDAL or extra apt packages.
 FROM python:3.12-slim
 
 ENV PYTHONUNBUFFERED=1 \

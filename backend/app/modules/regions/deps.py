@@ -9,6 +9,7 @@ from app.modules.regions.catalog import builtin_registry
 from app.modules.regions.providers import ProviderRegistry
 from app.modules.regions.resolver import RegionResolver
 from app.modules.regions.seed import seed_profile_store
+from app.modules.terrain.providers import register_terrain_providers
 
 
 @lru_cache(maxsize=1)
@@ -16,6 +17,7 @@ def get_resolver() -> RegionResolver:
     registry = builtin_registry()
     # Real adapters replace the metadata-only catalog entries (same keys).
     register_imagery_providers(registry)
+    register_terrain_providers(registry)
     return RegionResolver(registry, seed_profile_store())
 
 
