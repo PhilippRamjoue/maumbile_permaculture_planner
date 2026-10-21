@@ -6,6 +6,7 @@ from collections.abc import Mapping
 from typing import Any
 
 from fastapi import FastAPI, Request
+from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
@@ -44,7 +45,7 @@ async def _validation_exception_handler(
         status=422,
         title="Validation error",
         detail="The request did not pass validation.",
-        errors=exc.errors(),
+        errors=jsonable_encoder(exc.errors()),
     )
 
 

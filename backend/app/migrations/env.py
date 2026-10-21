@@ -12,10 +12,9 @@ from sqlalchemy.ext.asyncio import create_async_engine
 from app.core.config import get_settings
 from app.core.db import Base
 
-# Import models here so Alembic autogenerate sees them, e.g.:
+# Import models here so Alembic autogenerate sees them.
 from app.modules.auth import models as _auth_models  # noqa: F401
-
-# from app.modules.sites import models as _sites_models  # noqa: F401
+from app.modules.sites import models as _sites_models  # noqa: F401
 
 config = context.config
 if config.config_file_name is not None:

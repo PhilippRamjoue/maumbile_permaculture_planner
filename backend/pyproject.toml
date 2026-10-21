@@ -17,6 +17,7 @@ dependencies = [
     "argon2-cffi>=25.1.0",
     "pyjwt>=2.15.1",
     "email-validator>=2.3.0",
+    "reverse-geocoder>=1.5.1",
 ]
 
 [dependency-groups]
