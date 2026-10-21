@@ -34,3 +34,10 @@ export interface Page<T> {
   limit: number;
   offset: number;
 }
+
+/** Body of `POST /sites` (`SiteCreate`): `coordinates` is a ring of [lng, lat], closed or closable. */
+export interface SiteCreateRequest {
+  name: string;
+  country_code?: string;
+  coordinates: [number, number][];
+}

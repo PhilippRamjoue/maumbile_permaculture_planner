@@ -11,7 +11,8 @@ src/
 ├── shared/                  # API client, config, formatting, UI atoms, test helpers
 └── features/
     ├── auth/                # login / register pages, current-user + login/logout hooks
-    ├── sites-dashboard/     # "My sites" list
+    ├── sites-dashboard/     # "My sites" list (+ "New site" entry point)
+    ├── site-setup/          # country-first site creation flow (`/sites/new`)
     ├── map/                 # <MapView>, layer registry, always-on attribution, site map page
     └── credits/             # "Data sources & credits" page
 ```
@@ -25,7 +26,7 @@ src/
   redirects anonymous visitors to `/login` (and back afterwards); `GuestOnly` bounces signed-in users.
   The backend's `/register` does not start a session, so registering logs in right after.
 - **Routes** (`app/routes.tsx`): `/login`, `/register`, `/credits` (public), `/` (dashboard),
-  `/sites/:siteId` (map), `/sites/:siteId/credits` (that site's sources). The map page is
+  `/sites/new` (setup flow, code-split), `/sites/:siteId` (map), `/sites/:siteId/credits` (that site's sources). The map page is
   code-split so MapLibre only loads when a site is opened.
 - **Map layers** (`features/map/layers`): a layer is a `MapLayerDefinition` (`build(ctx) → sources +
 style layers`) registered in `defaultRegistry.ts`. Registration order is draw order. A
@@ -37,6 +38,16 @@ style layers`) registered in `defaultRegistry.ts`. Registration order is draw or
 - **Credits** (`features/credits`): `/credits` lists `GET /regions/attribution`; a site's page uses the
   imagery meta and completes license/terms from `/regions/attribution?keys=<provider>` if the meta
   only names the provider.
+
+- **Site setup** (`features/site-setup`, `/sites/new`): step 1 picks the ISO-3166 country (native select,
+  East Africa first; a pasted coordinate can suggest one), step 2 collects ≥3 corners by map click, pasted
+  list (lat,lng or lng,lat) or an editable table, validates the ring client-side (`geometry.ts`: closable,
+  no self-intersection, non-zero area) and `POST /sites {name, country_code, coordinates}`, then opens
+  `/sites/:id`. The draft lives in a Zustand store (`store.ts`). The live preview is a
+  `MapLayerDefinition` (`map/draftBoundaryLayer.ts`) in its own registry (`map/setupRegistry.ts`) passed to
+  the unchanged `<MapView>`; there is no per-site imagery before the site exists, so that map uses a plain
+  base map (OpenStreetMap by default; `VITE_SETUP_BASEMAP_URL` / `VITE_SETUP_BASEMAP_ATTRIBUTION`) with its
+  credit always visible. Country boxes in `countries.ts` only frame the map and drive suggestions.
 
 ## Commands
 

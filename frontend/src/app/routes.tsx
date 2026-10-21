@@ -7,7 +7,7 @@ import { AppLayout } from "./AppLayout";
 import { GuestOnly, RequireAuth } from "./guards";
 
 /**
- * The route tree. Later packages add their routes here (site setup WP8, editor WP9).
+ * The route tree. Later packages add their routes here (editor WP9).
  * The map page is code-split: MapLibre is large and only needed once a site is opened.
  */
 export const routes: RouteObject[] = [
@@ -26,6 +26,12 @@ export const routes: RouteObject[] = [
         element: <RequireAuth />,
         children: [
           { index: true, element: <SitesDashboardPage /> },
+          {
+            path: "sites/new",
+            lazy: async () => ({
+              Component: (await import("../features/site-setup/SiteSetupPage")).SiteSetupPage,
+            }),
+          },
           {
             path: "sites/:siteId",
             lazy: async () => ({

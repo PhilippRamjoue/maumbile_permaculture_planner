@@ -1,0 +1,197 @@
+import { useId, useState } from "react";
+
+import { parseCoordinateText, type CoordinateOrder, type LngLat } from "./geometry";
+import type { DraftRow } from "./store";
+
+interface PasteBoxProps {
+  order: CoordinateOrder;
+  onOrderChange(order: CoordinateOrder): void;
+  onAdd(points: LngLat[]): void;
+}
+
+/** Paste a list of coordinates (one corner per line). */
+export function PasteBox({ order, onOrderChange, onAdd }: PasteBoxProps) {
+  const id = useId();
+  const [text, setText] = useState("");
+  const [errors, setErrors] = useState<string[]>([]);
+
+  function add() {
+    const { points, errors: problems } = parseCoordinateText(text, order);
+    setErrors(problems.map((p) => p.message));
+    if (problems.length === 0 && points.length > 0) {
+      onAdd(points);
+      setText("");
+    }
+  }
+
+  return (
+    <div className="field">
+      <label htmlFor={id}>Paste coordinates</label>
+      <textarea
+        id={id}
+        rows={4}
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        placeholder={
+          order === "lat-lng" ? "-1.2921, 36.8219\n-1.2925, 36.8230" : "36.8219, -1.2921"
+        }
+        aria-describedby={`${id}-hint`}
+        spellCheck={false}
+      />
+      <p id={`${id}-hint`} className="field__hint">
+        One corner per line, in order around the edge of the land.
+      </p>
+      <fieldset className="order-choice">
+        <legend className="visually-hidden">Order of the numbers</legend>
+        <label>
+          <input
+            type="radio"
+            name={`${id}-order`}
+            checked={order === "lat-lng"}
+            onChange={() => onOrderChange("lat-lng")}
+          />{" "}
+          Latitude, longitude (as in Google Maps)
+        </label>
+        <label>
+          <input
+            type="radio"
+            name={`${id}-order`}
+            checked={order === "lng-lat"}
+            onChange={() => onOrderChange("lng-lat")}
+          />{" "}
+          Longitude, latitude
+        </label>
+      </fieldset>
+      {errors.length > 0 ? (
+        <ul role="alert" className="form__error form__error-list">
+          {errors.map((message) => (
+            <li key={message}>{message}</li>
+          ))}
+        </ul>
+      ) : null}
+      <button type="button" className="btn" onClick={add} disabled={text.trim() === ""}>
+        Add pasted points
+      </button>
+    </div>
+  );
+}
+
+interface PointsTableProps {
+  rows: DraftRow[];
+  rowErrors: Record<number, string>;
+  onChange(id: number, field: "lat" | "lng", value: string): void;
+  onRemove(id: number): void;
+  onAddEmpty(): void;
+}
+
+/** Editable list of corners. */
+export function PointsTable({ rows, rowErrors, onChange, onRemove, onAddEmpty }: PointsTableProps) {
+  return (
+    <div>
+      <table className="points-table">
+        <caption className="visually-hidden">Boundary points</caption>
+        <thead>
+          <tr>
+            <th scope="col">#</th>
+            <th scope="col">Latitude</th>
+            <th scope="col">Longitude</th>
+            <th scope="col">
+              <span className="visually-hidden">Remove</span>
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.length === 0 ? (
+            <tr>
+              <td colSpan={4} className="muted">
+                No points yet. Click the map, paste a list, or add a row.
+              </td>
+            </tr>
+          ) : null}
+          {rows.map((row, index) => {
+            const error = rowErrors[row.id];
+            const n = index + 1;
+            return (
+              <tr key={row.id}>
+                <th scope="row">{n}</th>
+                <td>
+                  <input
+                    aria-label={`Point ${n} latitude`}
+                    aria-invalid={error ? true : undefined}
+                    inputMode="decimal"
+                    value={row.lat}
+                    onChange={(e) => onChange(row.id, "lat", e.target.value)}
+                  />
+                </td>
+                <td>
+                  <input
+                    aria-label={`Point ${n} longitude`}
+                    aria-invalid={error ? true : undefined}
+                    inputMode="decimal"
+                    value={row.lng}
+                    onChange={(e) => onChange(row.id, "lng", e.target.value)}
+                  />
+                  {error ? (
+                    <p role="alert" className="form__error points-table__error">
+                      Point {n}: {error}
+                    </p>
+                  ) : null}
+                </td>
+                <td>
+                  <button
+                    type="button"
+                    className="btn"
+                    aria-label={`Remove point ${n}`}
+                    onClick={() => onRemove(row.id)}
+                  >
+                    ✕
+                  </button>
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+      <button type="button" className="btn" onClick={onAddEmpty}>
+        Add a row
+      </button>
+    </div>
+  );
+}
+
+interface CoordinateInputsProps extends PointsTableProps {
+  order: CoordinateOrder;
+  onOrderChange(order: CoordinateOrder): void;
+  onPaste(points: LngLat[]): void;
+  onUndo(): void;
+  onClear(): void;
+}
+
+/** All three ways to enter corners: click the map (handled by the map), paste, or edit the table. */
+export function CoordinateInputs({
+  order,
+  onOrderChange,
+  onPaste,
+  onUndo,
+  onClear,
+  ...table
+}: CoordinateInputsProps) {
+  return (
+    <div className="coordinate-inputs">
+      <p>
+        Zoom in on your land and click its corners on the map, or paste / type the coordinates. Go
+        around the edge in order.
+      </p>
+      <PasteBox order={order} onOrderChange={onOrderChange} onAdd={onPaste} />
+      <PointsTable {...table} />
+      <div className="form__actions">
+        <button type="button" className="btn" onClick={onUndo} disabled={table.rows.length === 0}>
+          Undo last point
+        </button>
+        <button type="button" className="btn" onClick={onClear} disabled={table.rows.length === 0}>
+          Clear all
+        </button>
+      </div>
+    </div>
+  );
+}

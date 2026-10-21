@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 
 import { apiFetch } from "../shared/api/client";
-import type { Page, Site } from "./site";
+import type { Page, Site, SiteCreateRequest } from "./site";
 
 export const siteKeys = {
   all: ["sites"] as const,
@@ -14,6 +14,7 @@ const LIST_LIMIT = 100;
 export const sitesApi = {
   list: () => apiFetch<Page<Site>>("/sites", { query: { limit: LIST_LIMIT } }),
   get: (id: string) => apiFetch<Site>(`/sites/${encodeURIComponent(id)}`),
+  create: (body: SiteCreateRequest) => apiFetch<Site>("/sites", { method: "POST", body }),
 };
 
 export function useSites() {
