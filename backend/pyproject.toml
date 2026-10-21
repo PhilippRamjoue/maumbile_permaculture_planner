@@ -57,4 +57,5 @@ asyncio_mode = "auto"
 testpaths = ["tests", "app"]
 markers = [
     "integration: tests that require a live PostGIS container (Docker)",
+    "live: tests that hit real external services (opt in with APP_LIVE_TESTS=1)",
 ]
