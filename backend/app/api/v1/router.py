@@ -8,7 +8,10 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
+from app.modules.regions.router import router as regions_router
+
 api_router = APIRouter()
+api_router.include_router(regions_router, prefix="/regions", tags=["regions"])
 
 
 @api_router.get("/ping", tags=["meta"])
