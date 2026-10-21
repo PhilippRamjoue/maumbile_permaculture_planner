@@ -3,7 +3,11 @@
  *
  *   vi.mock("maplibre-gl", async () => (await import("<path>/shared/testing/fakeMaplibre")).fakeMaplibreModule);
  */
-type Handler = () => void;
+/** Payload of simulated pointer events (see {@link FakeMap.trigger}). */
+export interface FakeMapEvent {
+  lngLat: { lng: number; lat: number };
+}
+type Handler = (event: FakeMapEvent) => void;
 
 export class FakeMap {
   static instances: FakeMap[] = [];
@@ -11,6 +15,9 @@ export class FakeMap {
   readonly sources = new Map<string, unknown>();
   readonly layers = new Map<string, { id: string; layout: Record<string, unknown> }>();
   removed = false;
+  /** Arguments of every `fitBounds` call. */
+  fits: { bounds: unknown; options: unknown }[] = [];
+  readonly canvas = { style: {} as Record<string, string> };
   private handlers: Record<string, Handler[]> = {};
 
   constructor(readonly options: Record<string, unknown>) {
@@ -26,8 +33,18 @@ export class FakeMap {
     (this.handlers[event] ??= []).push(handler);
     return this;
   }
-  private emit(event: string) {
-    (this.handlers[event] ?? []).forEach((h) => h());
+  private emit(event: string, payload?: FakeMapEvent) {
+    (this.handlers[event] ?? []).forEach((h) => h(payload as FakeMapEvent));
+  }
+  /** Simulate a map event, e.g. `map.trigger("click", { lngLat: { lng: 36.8, lat: -1.2 } })`. */
+  trigger(event: string, payload?: FakeMapEvent) {
+    this.emit(event, payload);
+  }
+  fitBounds(bounds: unknown, options?: unknown) {
+    this.fits.push({ bounds, options });
+  }
+  getCanvas() {
+    return this.canvas;
   }
   addControl() {}
   addSource(id: string, source: unknown) {

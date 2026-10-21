@@ -1,0 +1,98 @@
+import { useId, useState, type FormEvent } from "react";
+
+import { countryName, FEATURED_COUNTRIES, OTHER_COUNTRIES, suggestCountry } from "./countries";
+import { parseCoordinateText } from "./geometry";
+
+interface CountryStepProps {
+  countryCode: string | null;
+  onCountryChange(code: string | null): void;
+  onContinue(): void;
+}
+
+/** Step 1: which country is the land in? It decides which map sources the server uses. */
+export function CountryStep({ countryCode, onCountryChange, onContinue }: CountryStepProps) {
+  const selectId = useId();
+  const probeId = useId();
+  const [probe, setProbe] = useState("");
+
+  const parsed = probe.trim() === "" ? null : parseCoordinateText(probe, "lat-lng");
+  const probePoint = parsed && parsed.errors.length === 0 ? parsed.points[0] : undefined;
+  const suggestion = probePoint ? suggestCountry(probePoint) : null;
+
+  function submit(event: FormEvent) {
+    event.preventDefault();
+    if (countryCode) onContinue();
+  }
+
+  return (
+    <form className="card form" onSubmit={submit} aria-labelledby="setup-step-title">
+      <h2 id="setup-step-title">Step 1 of 2 · Where is your land?</h2>
+      <div className="field">
+        <label htmlFor={selectId}>Country</label>
+        <select
+          id={selectId}
+          value={countryCode ?? ""}
+          onChange={(e) => onCountryChange(e.target.value || null)}
+          aria-describedby={`${selectId}-hint`}
+        >
+          <option value="">Choose a country…</option>
+          <optgroup label="East Africa">
+            {FEATURED_COUNTRIES.map((c) => (
+              <option key={c.code} value={c.code}>
+                {c.name}
+              </option>
+            ))}
+          </optgroup>
+          <optgroup label="All other countries">
+            {OTHER_COUNTRIES.map((c) => (
+              <option key={c.code} value={c.code}>
+                {c.name}
+              </option>
+            ))}
+          </optgroup>
+        </select>
+        <p id={`${selectId}-hint`} className="field__hint">
+          The country decides which aerial imagery and map data we use for your site.
+        </p>
+      </div>
+
+      <div className="field">
+        <label htmlFor={probeId}>Not sure? Paste one coordinate from your land (optional)</label>
+        <input
+          id={probeId}
+          value={probe}
+          onChange={(e) => setProbe(e.target.value)}
+          placeholder="-1.2921, 36.8219"
+          inputMode="decimal"
+          autoComplete="off"
+        />
+        {suggestion ? (
+          <p role="status" className="field__hint">
+            That looks like {countryName(suggestion)}.{" "}
+            {suggestion === countryCode ? (
+              "✓ Selected."
+            ) : (
+              <button
+                type="button"
+                className="btn btn--link"
+                onClick={() => onCountryChange(suggestion)}
+              >
+                Use {countryName(suggestion)}
+              </button>
+            )}
+          </p>
+        ) : probePoint ? (
+          <p role="status" className="field__hint">
+            We can't tell the country from that coordinate. Please pick it from the list.
+          </p>
+        ) : null}
+      </div>
+
+      <div className="form__actions">
+        <button type="submit" className="btn btn--primary" disabled={!countryCode}>
+          Continue
+        </button>
+      </div>
+    </form>
+  );
+}

@@ -134,6 +134,14 @@ h1 {
   color: var(--accent-contrast);
 }
 
+.btn--link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  text-decoration: underline;
+}
+
 .btn:disabled {
   opacity: 0.6;
   cursor: progress;
@@ -176,7 +184,9 @@ h1 {
   margin-bottom: 0.2rem;
 }
 
-.field input {
+.field input,
+.field select,
+.field textarea {
   width: 100%;
   padding: 0.5rem 0.6rem;
   border: 1px solid var(--border);
@@ -186,10 +196,33 @@ h1 {
   font: inherit;
 }
 
+.field textarea {
+  resize: vertical;
+}
+
 .field__hint {
   margin: 0.2rem 0 0;
   font-size: 0.85rem;
   color: var(--muted);
+}
+
+.page-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+}
+
+.form__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.form__error-list {
+  margin: 0.4rem 0;
+  padding-left: 1.2rem;
 }
 
 /* ---- dashboard ---- */
@@ -312,4 +345,113 @@ h1 {
 
 .layer-panel label {
   display: block;
+}
+
+/* ---- site setup ---- */
+
+.setup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  flex: 1;
+}
+
+.setup__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.25rem 1rem;
+}
+
+.setup__header h1 {
+  margin: 0;
+  font-size: 1.4rem;
+}
+
+.setup .card h2 {
+  margin: 0;
+  font-size: 1.15rem;
+}
+
+.setup > .card {
+  max-width: 28rem;
+}
+
+.setup-layout {
+  flex: 1;
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 52rem) {
+  .setup-layout {
+    grid-template-columns: minmax(18rem, 24rem) 1fr;
+    align-items: start;
+  }
+
+  .setup-map {
+    position: sticky;
+    top: 1rem;
+    min-height: 32rem;
+    height: calc(100vh - 8rem);
+  }
+}
+
+.setup-map {
+  min-height: 20rem;
+}
+
+.order-choice {
+  margin: 0.4rem 0;
+  padding: 0;
+  border: 0;
+  font-size: 0.9rem;
+}
+
+.order-choice label {
+  display: block;
+  font-weight: normal;
+}
+
+.order-choice input {
+  width: auto;
+}
+
+.points-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 0.5rem;
+}
+
+.points-table th,
+.points-table td {
+  padding: 0.2rem 0.25rem;
+  text-align: left;
+  vertical-align: top;
+  font-weight: normal;
+}
+
+.points-table thead th {
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+.points-table input {
+  width: 100%;
+  padding: 0.3rem 0.4rem;
+  border: 1px solid var(--border);
+  border-radius: 0.375rem;
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+}
+
+.points-table input[aria-invalid="true"] {
+  border-color: var(--danger);
+}
+
+.points-table__error {
+  margin: 0.2rem 0 0;
+  font-size: 0.8rem;
 }

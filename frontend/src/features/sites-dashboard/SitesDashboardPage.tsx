@@ -26,7 +26,12 @@ export function SitesDashboardPage() {
 
   return (
     <section>
-      <h1>My sites</h1>
+      <header className="page-header">
+        <h1>My sites</h1>
+        <Link className="btn btn--primary" to="/sites/new">
+          New site
+        </Link>
+      </header>
       {isPending ? <p role="status">Loading your sites…</p> : null}
       {isError ? (
         <div role="alert" className="notice notice--error">
@@ -42,9 +47,10 @@ export function SitesDashboardPage() {
       {data && data.items.length === 0 ? (
         <div className="card">
           <p>You have no sites yet.</p>
-          <p className="muted">
-            Creating a site from coordinates is coming in the next step of the app.
-          </p>
+          <p className="muted">Pick your country and outline your land to get started.</p>
+          <Link className="btn btn--primary" to="/sites/new">
+            Create your first site
+          </Link>
         </div>
       ) : null}
       {data && data.items.length > 0 ? (
