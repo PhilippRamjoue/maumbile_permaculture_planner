@@ -9,6 +9,7 @@ from __future__ import annotations
 from fastapi import APIRouter
 
 from app.modules.auth.router import router as auth_router
+from app.modules.planning.router import router as planning_router
 from app.modules.regions.router import router as regions_router
 from app.modules.sites.router import router as sites_router
 
@@ -24,3 +25,4 @@ async def ping() -> dict[str, str]:
 api_router.include_router(auth_router, prefix="/auth", tags=["auth"])
 api_router.include_router(regions_router, prefix="/regions", tags=["regions"])
 api_router.include_router(sites_router, prefix="/sites", tags=["sites"])
+api_router.include_router(planning_router)
