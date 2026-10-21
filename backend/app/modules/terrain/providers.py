@@ -126,8 +126,8 @@ class CopernicusDemAwsProvider:
         "AWS_REGION": "eu-central-1",
         "GDAL_DISABLE_READDIR_ON_OPEN": "EMPTY_DIR",
         "CPL_VSIL_CURL_ALLOWED_EXTENSIONS": ".tif",
-        "GDAL_HTTP_MAX_RETRY": "2",
-        "GDAL_HTTP_TIMEOUT": "20",
+        "GDAL_HTTP_MAX_RETRY": "3",
+        "GDAL_HTTP_TIMEOUT": "60",
     }
 
     def __init__(
