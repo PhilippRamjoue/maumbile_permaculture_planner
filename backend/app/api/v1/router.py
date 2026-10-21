@@ -8,10 +8,10 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
+from app.modules.auth.router import router as auth_router
 from app.modules.regions.router import router as regions_router
 
 api_router = APIRouter()
-api_router.include_router(regions_router, prefix="/regions", tags=["regions"])
 
 
 @api_router.get("/ping", tags=["meta"])
@@ -19,6 +19,9 @@ async def ping() -> dict[str, str]:
     """Lightweight check that the versioned API is mounted."""
     return {"ping": "pong"}
 
+
+api_router.include_router(auth_router, prefix="/auth", tags=["auth"])
+api_router.include_router(regions_router, prefix="/regions", tags=["regions"])
 
 # Example of how modules will be wired in later packages:
 # from app.modules.sites.router import router as sites_router

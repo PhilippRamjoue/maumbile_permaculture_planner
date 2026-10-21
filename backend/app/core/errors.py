@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from typing import Any
 
 from fastapi import FastAPI, Request
@@ -17,17 +18,23 @@ def problem(
     title: str,
     detail: str | None = None,
     type_: str = "about:blank",
+    headers: Mapping[str, str] | None = None,
     **extra: Any,
 ) -> JSONResponse:
     body: dict[str, Any] = {"type": type_, "title": title, "status": status}
     if detail is not None:
         body["detail"] = detail
     body.update(extra)
-    return JSONResponse(status_code=status, content=body, media_type=PROBLEM_MEDIA_TYPE)
+    return JSONResponse(
+        status_code=status,
+        content=body,
+        media_type=PROBLEM_MEDIA_TYPE,
+        headers=dict(headers) if headers else None,
+    )
 
 
 async def _http_exception_handler(request: Request, exc: StarletteHTTPException) -> JSONResponse:
-    return problem(status=exc.status_code, title=str(exc.detail))
+    return problem(status=exc.status_code, title=str(exc.detail), headers=exc.headers)
 
 
 async def _validation_exception_handler(
