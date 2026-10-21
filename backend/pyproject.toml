@@ -14,6 +14,7 @@ dependencies = [
     "alembic>=1.13",
     "shapely>=2.0",
     "structlog>=24.1",
+    "reverse-geocoder>=1.5.1",
 ]
 
 [dependency-groups]
@@ -46,7 +47,7 @@ files = ["app"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
-testpaths = ["tests"]
+testpaths = ["tests", "app"]
 markers = [
     "integration: tests that require a live PostGIS container (Docker)",
 ]
