@@ -1,0 +1,12 @@
+# Throwaway smoke-test override, used only by infra/smoke-test.sh under a project name that starts
+# with "permaculture-smoke". Ports are intentionally different from the verify stack (15432/18000/18080)
+# and the local override (5432/8000/8080), so it can never collide with a stack holding real data.
+services:
+  db:
+    ports: !override ["127.0.0.1:${SMOKE_DB_PORT:-25432}:5432"]
+  backend:
+    environment:
+      APP_COOKIE_SECURE: "false"
+    ports: !override ["127.0.0.1:${SMOKE_BACKEND_PORT:-28000}:8000"]
+  frontend:
+    ports: !override ["127.0.0.1:${SMOKE_FRONTEND_PORT:-28080}:80"]

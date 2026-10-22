@@ -1,0 +1,17 @@
+# Local development override: publishes ports on localhost only and relaxes cookie/CORS settings
+# for plain http. Never use this on a server. Usage (from infra/):
+#   docker compose -f docker-compose.yml -f docker-compose.local.yml up --build
+#   frontend http://localhost:8080 · backend http://localhost:8000/docs · db localhost:5432
+services:
+  db:
+    ports:
+      - "127.0.0.1:5432:5432"
+  backend:
+    environment:
+      APP_COOKIE_SECURE: ${APP_COOKIE_SECURE:-false}
+      APP_CORS_ORIGINS: ${APP_CORS_ORIGINS:-["http://localhost:5173","http://localhost:8080"]}
+    ports:
+      - "127.0.0.1:8000:8000"
+  frontend:
+    ports:
+      - "127.0.0.1:8080:80"

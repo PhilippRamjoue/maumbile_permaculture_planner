@@ -3,6 +3,7 @@ from __future__ import annotations
 from unittest.mock import AsyncMock
 
 import pytest
+import structlog.testing
 from httpx import AsyncClient
 from sqlalchemy.exc import OperationalError
 
@@ -41,3 +42,14 @@ async def test_readyz_reports_unavailable(
     assert response.status_code == 503
     assert response.json()["title"] == "Database unavailable"
     assert (await client.get("/healthz")).status_code == 200
+
+
+async def test_requests_are_logged_but_probes_are_quiet(client: AsyncClient) -> None:
+    with structlog.testing.capture_logs() as logs:
+        await client.get("/healthz")
+        await client.get("/api/v1/ping")
+    requests = [entry for entry in logs if entry["event"] == "request"]
+    assert [(e["method"], e["path"], e["status"]) for e in requests] == [
+        ("GET", "/api/v1/ping", 200)
+    ]
+    assert requests[0]["duration_ms"] >= 0

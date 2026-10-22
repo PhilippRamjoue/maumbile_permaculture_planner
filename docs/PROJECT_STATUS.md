@@ -28,6 +28,7 @@ Built and merged to `main` (each package was implemented in isolation, then inte
 | WP9 | design editor | plan creation/opening; Terra Draw zones/sectors/paths/elements, selection/vertices/drag/rotation, properties, Turf/PostGIS measurements, layer toggle/reorder, undo/redo, atomic feature save/delete and reload |
 | WP10 | terrain viz + sector helpers | `TerrainPanel` (compute/poll `POST`/`GET /terrain`, contour + slope toggleable registry layers, slope legend, credit/notice); editor "Sector from bearings" wedges + sun-path helper; generated `TerrainRead` contract. See [`TERRAIN_VIZ.md`](TERRAIN_VIZ.md) |
 | WP11 | `modules/export` | `GET /plans/{id}/export?format=geojson\|png\|pdf` (scaled A4 plan with legend/attribution, round-trippable GeoJSON), read-only share links (`plan_shares`, migration `0006`), editor "Export & share" menu and public `/shared/:token` page; see [`EXPORT.md`](EXPORT.md) |
+| WP12 | `infra/` | production-shaped `docker-compose.yml` (no host ports, required secrets, migrate-then-serve, health-ordered), `docker-compose.local.yml`, throwaway `smoke-test.sh`; JSON request logging; runbook [`DEPLOY.md`](DEPLOY.md) |
 | WP8 | frontend site-setup | country-first flow at `/sites/new`: pick country → add ≥4 boundary points (paste/table/click) with live map preview → validate → `POST /sites` → redirect to the site map |
 
 API is versioned under `/api/v1`; OpenAPI at `/docs`. Alembic chain:
@@ -41,7 +42,7 @@ both suites, the frontend build, and Chromium acceptance tests against a disposa
 
 ## Not yet built (planned)
 
-- **WP12** — Coolify deployment hardening.
+- **WP12** (Coolify deployment) is implemented: see [`DEPLOY.md`](DEPLOY.md). Remaining WP12 items: optional Sentry and a live Coolify deploy of the real instance (needs a server and domain).
 - **Guided focus-mode UX + map-reliability pass** — see [`UX_GUIDED_MODES.md`](UX_GUIDED_MODES.md) (next priority).
 
 `frontend/` now includes Terra Draw and Turf. See [`DESIGN_EDITOR.md`](DESIGN_EDITOR.md) for controls,
@@ -51,7 +52,7 @@ save semantics and remaining editor refinements.
 
 ```bash
 # whole stack (needs Docker)
-cd infra && cp .env.example .env && docker compose up --build
+cd infra && cp .env.example .env && docker compose -f docker-compose.yml -f docker-compose.local.yml up --build
 #   frontend http://localhost:8080 · backend http://localhost:8000/docs · db :5432
 
 # backend dev

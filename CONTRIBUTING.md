@@ -61,7 +61,7 @@ npx playwright install chromium
 ```bash
 cd infra
 cp .env.example .env
-docker compose up --build     # frontend http://localhost:8080 · backend http://localhost:8000
+docker compose -f docker-compose.yml -f docker-compose.local.yml up --build   # frontend http://localhost:8080 · backend http://localhost:8000
 ```
 
 For isolated Docker/browser verification on separate ports, see
