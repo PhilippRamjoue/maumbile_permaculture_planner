@@ -29,7 +29,9 @@ describe("CreditsPage", () => {
   it("completes a site's imagery credit from the regions endpoint when the meta lacks license/terms", async () => {
     const fetchMock = mockApi({
       "GET /auth/me": { json: user },
-      [`GET /sites/${site.id}/imagery/meta`]: { json: imageryMeta },
+      [`GET /sites/${site.id}/imagery/meta`]: {
+        json: { ...imageryMeta, license: null, terms_url: null },
+      },
       "GET /regions/attribution": ({ query }) => ({
         json: { sources: query.get("keys") === esri.key ? [esri] : [] },
       }),
@@ -63,7 +65,9 @@ describe("CreditsPage", () => {
   it("falls back to the meta's credit line if the regions lookup fails", async () => {
     mockApi({
       "GET /auth/me": { json: user },
-      [`GET /sites/${site.id}/imagery/meta`]: { json: imageryMeta },
+      [`GET /sites/${site.id}/imagery/meta`]: {
+        json: { ...imageryMeta, license: null, terms_url: null },
+      },
       "GET /regions/attribution": problem(500, "boom"),
     });
     renderApp(`/sites/${site.id}/credits`);
@@ -81,5 +85,27 @@ describe("CreditsPage", () => {
     renderApp("/credits");
 
     expect(await screen.findByRole("alert")).toHaveTextContent(/could not load/i);
+  });
+
+  it("finishes loading when the backend reports no imagery coverage", async () => {
+    mockApi({
+      "GET /auth/me": { json: user },
+      [`GET /sites/${site.id}/imagery/meta`]: {
+        json: {
+          ...imageryMeta,
+          covered: false,
+          provider_key: null,
+          attribution: null,
+          license: null,
+          terms_url: null,
+          max_zoom: null,
+          cacheable: null,
+          tile_url_template: null,
+        },
+      },
+    });
+    renderApp(`/sites/${site.id}/credits`);
+    expect(await screen.findByText("No data sources are configured.")).toBeInTheDocument();
+    expect(screen.queryByRole("status")).not.toBeInTheDocument();
   });
 });

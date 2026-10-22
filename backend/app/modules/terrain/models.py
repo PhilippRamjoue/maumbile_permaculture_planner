@@ -22,7 +22,7 @@ FAILED = "failed"
 
 
 class TerrainResult(Base):
-    """Terrain for a site. ``site_id`` is unique: terrain is immutable, so there is one."""
+    """Latest terrain generation for a site, keyed by its geographic inputs."""
 
     __tablename__ = "terrain_results"
 
@@ -31,6 +31,8 @@ class TerrainResult(Base):
         Uuid, ForeignKey("sites.id", ondelete="CASCADE"), nullable=False, unique=True
     )
     status: Mapped[str] = mapped_column(String(16), nullable=False)
+    input_key: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    job_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
     contour_interval_m: Mapped[float] = mapped_column(Float, nullable=False)
     dem_source: Mapped[str | None] = mapped_column(String(64), nullable=True)
     attribution: Mapped[str | None] = mapped_column(String(512), nullable=True)

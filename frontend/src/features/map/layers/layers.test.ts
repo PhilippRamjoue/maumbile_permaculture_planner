@@ -56,7 +56,7 @@ describe("imagery layer", () => {
   });
 
   it("is omitted when the backend says imagery is unavailable", () => {
-    expect(imageryLayer.build({ site, imagery: { ...imageryMeta, available: false } })).toBeNull();
+    expect(imageryLayer.build({ site, imagery: { ...imageryMeta, covered: false } })).toBeNull();
   });
 });
 
@@ -132,7 +132,7 @@ describe("LayerSynchronizer", () => {
     const sync = new LayerSynchronizer(map, createLayerRegistry([imageryLayer]));
     sync.sync({ site, imagery: imageryMeta }, always);
 
-    sync.sync({ site, imagery: { ...imageryMeta, available: false } }, always);
+    sync.sync({ site, imagery: { ...imageryMeta, covered: false } }, always);
 
     expect(layers).toEqual([]);
     expect(sources.size).toBe(0);

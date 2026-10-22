@@ -1,3 +1,5 @@
+import imageryContract from "./imagery-contract.json";
+
 import type { DataSource, ImageryMeta } from "../../entities/imagery";
 import type { Site } from "../../entities/site";
 import type { User } from "../../entities/user";
@@ -52,9 +54,4 @@ export const sentinel: DataSource = {
   cacheable: true,
 };
 
-export const imageryMeta: ImageryMeta = {
-  provider: "esri_world_imagery",
-  attribution: esri.attribution,
-  max_zoom: 19,
-  available: true,
-};
+export const imageryMeta = imageryContract satisfies ImageryMeta;

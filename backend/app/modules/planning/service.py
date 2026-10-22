@@ -15,7 +15,11 @@ from geoalchemy2.shape import to_shape
 
 from app.core.geo import shape_to_geojson
 from app.modules.planning.models import ElementType, Layer, Plan
-from app.modules.planning.repository import MeasuredFeature, PlanningRepository
+from app.modules.planning.repository import (
+    FeatureWriteConflict,
+    MeasuredFeature,
+    PlanningRepository,
+)
 from app.modules.planning.validation import (
     FeatureValidationError,
     parse_geometry,
@@ -194,7 +198,11 @@ class PlanningService:
         return await self._repo.list_features(plan_id, layer_id, feature_type)
 
     async def upsert_features(
-        self, plan_id: uuid.UUID, owner_id: uuid.UUID, items: Sequence[FeatureInput]
+        self,
+        plan_id: uuid.UUID,
+        owner_id: uuid.UUID,
+        items: Sequence[FeatureInput],
+        deleted_ids: Sequence[uuid.UUID] = (),
     ) -> list[MeasuredFeature]:
         """Idempotent batch upsert keyed by feature id; all-or-nothing. Returns input order."""
         await self._plan(plan_id, owner_id)
@@ -208,8 +216,11 @@ class PlanningService:
             raise ConflictError(
                 "Feature ids already used by another plan: " + ", ".join(sorted(map(str, taken)))
             )
-        await self._repo.upsert_features(plan_id, rows)
-        return await self._repo.get_features(ids)
+        try:
+            await self._repo.upsert_features(plan_id, rows, deleted_ids)
+        except FeatureWriteConflict as exc:
+            raise ConflictError("Feature ids already used by another plan") from exc
+        return await self._repo.get_features(plan_id, ids)
 
     async def create_feature(
         self, plan_id: uuid.UUID, owner_id: uuid.UUID, item: FeatureInput

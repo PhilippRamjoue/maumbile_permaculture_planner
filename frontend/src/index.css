@@ -455,3 +455,123 @@ h1 {
   margin: 0.2rem 0 0;
   font-size: 0.8rem;
 }
+
+/* ---- design editor ---- */
+.design-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  flex: 1;
+  min-height: 0;
+}
+.editor-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.7rem;
+}
+.editor-header h1 {
+  margin: 0;
+  font-size: 1.35rem;
+}
+.editor-layout {
+  display: grid;
+  grid-template-columns: 19rem minmax(0, 1fr);
+  gap: 0.8rem;
+  flex: 1;
+  min-height: 35rem;
+}
+.editor-sidebar {
+  max-height: calc(100vh - 11rem);
+  overflow: auto;
+  padding: 0.8rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+}
+.editor-sidebar fieldset {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+.editor-sidebar legend,
+.editor-sidebar h2 {
+  font-size: 1rem;
+  font-weight: 650;
+  margin: 0.8rem 0 0.4rem;
+}
+.editor-sidebar label {
+  display: block;
+  margin: 0.5rem 0;
+}
+.editor-sidebar label input:not([type="checkbox"]),
+.editor-sidebar select,
+.editor-sidebar textarea,
+.plans-page input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.4rem;
+  font: inherit;
+  border: 1px solid var(--border);
+  border-radius: 0.3rem;
+}
+.editor-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+.editor-sidebar .btn[aria-pressed="true"] {
+  background: #d4e8d5;
+  color: #174a28;
+  border-color: #2f855a;
+}
+.editor-layer {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+.editor-layer label {
+  flex: 1;
+}
+.editor-layer input {
+  width: auto;
+}
+.editor-feature-list {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  max-height: 12rem;
+  overflow: auto;
+}
+.editor-canvas {
+  min-height: 35rem;
+}
+.editor-map-hint {
+  position: absolute;
+  top: 0.6rem;
+  left: 0.6rem;
+  z-index: 2;
+  padding: 0.4rem 0.6rem;
+  background: rgba(255, 255, 255, 0.9);
+  color: #213b28;
+  border-radius: 0.3rem;
+  pointer-events: none;
+}
+.editor-measurement {
+  border-top: 1px solid var(--border);
+  margin-top: 0.75rem;
+}
+@media (max-width: 52rem) {
+  .editor-layout {
+    grid-template-columns: 1fr;
+  }
+  .editor-sidebar {
+    max-height: 22rem;
+  }
+  .editor-canvas {
+    min-height: 28rem;
+  }
+}

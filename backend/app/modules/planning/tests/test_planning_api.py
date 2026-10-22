@@ -485,3 +485,81 @@ async def test_requires_authentication(engine: AsyncEngine) -> None:
         assert (await anon.get(f"{API}/plans/{uuid.uuid4()}")).status_code == 401
         resp = await anon.post(f"{API}/features:measure", json={"geometry": POINT})
         assert resp.status_code == 401
+
+
+async def test_plan_name_rejects_null_but_description_can_be_cleared(
+    api: AsyncClient, plan: dict[str, Any]
+) -> None:
+    url = f"{API}/plans/{plan['id']}"
+    assert (await api.patch(url, json={"name": None})).status_code == 422
+    response = await api.patch(url, json={"description": None})
+    assert response.status_code == 200 and response.json()["description"] is None
+    assert response.json()["name"] == plan["name"]
+
+
+async def test_batch_conflict_after_precheck_rolls_back_every_write(
+    api: AsyncClient, site: dict[str, Any], plan: dict[str, Any], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from app.modules.planning.repository import PlanningRepository
+
+    other = (await api.post(f"{API}/sites/{site['id']}/plans", json={"name": "Other"})).json()
+    existing = feat(layer_id(other), "element", POINT, properties={"private": "other plan"})
+    assert (
+        await api.post(f"{API}/plans/{other['id']}/features:batch", json={"features": [existing]})
+    ).status_code == 200
+
+    async def stale_precheck(self, plan_id, ids):
+        # Deterministically simulate a collision becoming visible only during the SQL write.
+        return set()
+
+    monkeypatch.setattr(PlanningRepository, "ids_in_other_plans", stale_precheck)
+    good = feat(layer_id(plan), "element", POINT)
+    clash = {**existing, "layer_id": layer_id(plan)}
+    response = await api.post(
+        f"{API}/plans/{plan['id']}/features:batch", json={"features": [good, clash]}
+    )
+    assert response.status_code == 409
+    assert "private" not in response.text
+    assert (await api.get(f"{API}/plans/{plan['id']}/features")).json()["features"] == []
+    original = (await api.get(f"{API}/features/{existing['id']}")).json()
+    assert original["plan_id"] == other["id"]
+    assert original["properties"] == existing["properties"]
+
+
+async def test_batch_deletes_are_atomic_and_scoped_to_the_plan(
+    api: AsyncClient, site: dict[str, Any], plan: dict[str, Any]
+) -> None:
+    url = f"{API}/plans/{plan['id']}/features:batch"
+    original = feat(layer_id(plan), "element", POINT)
+    await api.post(url, json={"features": [original]})
+    # A validation failure must not delete the original.
+    bad = feat(str(uuid.uuid4()), "element", POINT)
+    response = await api.post(url, json={"features": [bad], "deleted_ids": [original["id"]]})
+    assert response.status_code == 422
+    assert (await api.get(f"{API}/features/{original['id']}")).status_code == 200
+    other = (await api.post(f"{API}/sites/{site['id']}/plans", json={"name": "Other"})).json()
+    foreign = feat(layer_id(other), "element", POINT)
+    await api.post(f"{API}/plans/{other['id']}/features:batch", json={"features": [foreign]})
+    replacement = feat(layer_id(plan), "element", POINT)
+    response = await api.post(
+        url, json={"features": [replacement], "deleted_ids": [original["id"], foreign["id"]]}
+    )
+    assert response.status_code == 200
+    assert (await api.get(f"{API}/features/{original['id']}")).status_code == 404
+    assert (await api.get(f"{API}/features/{foreign['id']}")).status_code == 200
+    assert (
+        await api.post(url, json={"features": [], "deleted_ids": [replacement["id"]]})
+    ).status_code == 200
+    assert (
+        await api.post(url, json={"features": [], "deleted_ids": [replacement["id"]]})
+    ).status_code == 200
+    assert (await api.get(f"{API}/plans/{plan['id']}/features")).json()["features"] == []
+
+
+async def test_batch_cannot_delete_and_upsert_the_same_id(api: AsyncClient, plan: dict[str, Any]):
+    item = feat(layer_id(plan), "element", POINT)
+    response = await api.post(
+        f"{API}/plans/{plan['id']}/features:batch",
+        json={"features": [item], "deleted_ids": [item["id"]]},
+    )
+    assert response.status_code == 422

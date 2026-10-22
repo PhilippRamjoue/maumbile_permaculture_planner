@@ -13,8 +13,6 @@ interface SetupMapProps {
   points: LngLat[];
   /** Called with [lng, lat] when the user clicks the map. */
   onAddPoint(point: LngLat): void;
-  /** Re-frame the map on the points whenever this changes (not on first render). */
-  fitToken: number;
 }
 
 const FIT_PADDING = 64;
@@ -44,12 +42,16 @@ function draftSite(countryCode: string | null, points: LngLat[]): Site {
 }
 
 /** The shared map, set up for drawing a boundary: country framing, click-to-add, live preview. */
-export function SetupMap({ countryCode, points, onAddPoint, fitToken }: SetupMapProps) {
+export function SetupMap({ countryCode, points, onAddPoint }: SetupMapProps) {
   const mapRef = useRef<MapLibreMap | null>(null);
   const onAddPointRef = useRef(onAddPoint);
   onAddPointRef.current = onAddPoint;
   const pointsRef = useRef(points);
   pointsRef.current = points;
+  // A live map click adds a point the user is already looking at, so it must not re-frame the map.
+  // Every other way of adding a corner (typing a row, pasting a list) should, so the drawn boundary
+  // stays visible instead of being a speck at country zoom.
+  const skipNextFit = useRef(false);
 
   // The map is created once per mount, so the country only frames the first view; `points` and
   // the country change the draft site's content, not its identity.
@@ -65,6 +67,7 @@ export function SetupMap({ countryCode, points, onAddPoint, fitToken }: SetupMap
       mapRef.current = map;
       map.getCanvas().style.cursor = "crosshair";
       map.on("click", (event) => {
+        skipNextFit.current = true;
         onAddPointRef.current([event.lngLat.lng, event.lngLat.lat]);
       });
       fitToPoints(map);
@@ -72,12 +75,21 @@ export function SetupMap({ countryCode, points, onAddPoint, fitToken }: SetupMap
     [fitToPoints],
   );
 
-  const lastFit = useRef(fitToken);
+  // Re-frame on the boundary whenever the entered points change (typed, pasted, edited or deleted)
+  // so the live preview is always on screen — but not right after a map click, which adds a point
+  // the user is already looking at (see `skipNextFit`). Keyed on the points' values, not just their
+  // count, so finishing or correcting a coordinate ends with the map framed on the real boundary.
+  const lastPointsSig = useRef("");
   useEffect(() => {
-    if (fitToken === lastFit.current) return;
-    lastFit.current = fitToken;
-    if (mapRef.current) fitToPoints(mapRef.current);
-  }, [fitToken, fitToPoints]);
+    const signature = JSON.stringify(points);
+    if (signature === lastPointsSig.current) return;
+    lastPointsSig.current = signature;
+    if (skipNextFit.current) {
+      skipNextFit.current = false;
+      return;
+    }
+    if (points.length > 0 && mapRef.current) fitToPoints(mapRef.current);
+  }, [points, fitToPoints]);
 
   return <MapView site={site} registry={setupLayerRegistry} onMapReady={handleReady} />;
 }

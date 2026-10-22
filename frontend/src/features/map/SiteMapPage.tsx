@@ -31,8 +31,11 @@ export function SiteMapPage() {
         <Link to="/">← My sites</Link>
         <h1>{site.data.name}</h1>
         <span className="muted">{formatArea(site.data.area_m2)}</span>
+        <Link className="btn btn--primary" to={`/sites/${site.data.id}/design`}>
+          Design plans
+        </Link>
       </header>
-      {imagery.data && !imagery.data.available ? (
+      {imagery.data && !imagery.data.covered ? (
         <p role="status" className="notice">
           Aerial imagery is not available for this location yet.
         </p>

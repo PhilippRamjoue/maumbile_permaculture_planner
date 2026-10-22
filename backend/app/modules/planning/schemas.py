@@ -159,12 +159,15 @@ class FeatureCollection(BaseModel):
 
 class FeatureBatch(BaseModel):
     features: list[FeatureUpsert] = Field(max_length=MAX_BATCH_SIZE)
+    deleted_ids: list[uuid.UUID] = Field(default_factory=list, max_length=MAX_BATCH_SIZE)
 
     @model_validator(mode="after")
     def _unique_ids(self) -> FeatureBatch:
         ids = [f.id for f in self.features]
         if len(ids) != len(set(ids)):
             raise ValueError("Feature ids must be unique within a batch.")
+        if len(set(self.deleted_ids)) != len(self.deleted_ids) or set(ids) & set(self.deleted_ids):
+            raise ValueError("Deleted ids must be unique and cannot also be upserted.")
         return self
 
 

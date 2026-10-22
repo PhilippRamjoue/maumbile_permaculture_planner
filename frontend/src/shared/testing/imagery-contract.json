@@ -1,0 +1,10 @@
+{
+  "covered": true,
+  "provider_key": "esri_world_imagery",
+  "attribution": "Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community",
+  "license": "Esri Terms of Use (grey for commercial; used here for a free/non-commercial deployment with attribution)",
+  "terms_url": "https://www.arcgis.com/home/item.html?id=10df2279f9684e4a9f6a7f08febac2a9",
+  "max_zoom": 19,
+  "cacheable": false,
+  "tile_url_template": "/api/v1/sites/11111111-1111-1111-1111-111111111111/imagery/{z}/{x}/{y}.png"
+}

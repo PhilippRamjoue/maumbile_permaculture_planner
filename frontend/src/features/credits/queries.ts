@@ -20,11 +20,11 @@ export function useAllSources() {
 
 /** Sources straight from the imagery meta, when it already carries license + terms. */
 function sourcesFromMeta(meta: ImageryMeta): DataSource[] | null {
-  if (meta.sources?.length) return meta.sources;
-  if (meta.license && meta.terms_url) {
+  if (!meta.covered || !meta.provider_key) return [];
+  if (meta.license && meta.terms_url && meta.attribution) {
     return [
       {
-        key: meta.provider,
+        key: meta.provider_key,
         category: "imagery",
         attribution: meta.attribution,
         license: meta.license,
@@ -42,14 +42,14 @@ function sourcesFromMeta(meta: ImageryMeta): DataSource[] | null {
 export function useSiteSources(siteId: string) {
   const meta = useImageryMeta(siteId);
   const fromMeta = meta.data ? sourcesFromMeta(meta.data) : null;
-  const providerKey = meta.data?.provider;
+  const providerKey = meta.data?.provider_key;
 
   const lookup = useQuery({
     queryKey: creditsKeys.keys(providerKey ? [providerKey] : []),
     queryFn: async () =>
       (
         await apiFetch<AttributionResponse>("/regions/attribution", {
-          query: { keys: providerKey },
+          query: { keys: providerKey ?? undefined },
         })
       ).sources,
     enabled: Boolean(providerKey) && fromMeta === null,
@@ -62,9 +62,9 @@ export function useSiteSources(siteId: string) {
     // The meta still has the credit line; show that (license/terms unknown) rather than nothing.
     const fallback: DataSource[] | undefined = meta.data && [
       {
-        key: meta.data.provider,
+        key: meta.data.provider_key ?? "unknown",
         category: "imagery",
-        attribution: meta.data.attribution,
+        attribution: meta.data.attribution ?? "",
         license: "",
         terms_url: "",
       },

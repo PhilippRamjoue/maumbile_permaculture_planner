@@ -1,0 +1,12 @@
+# Disposable local verification on separate ports. Requires Compose >=2.24.4 (!override).
+# Always combine with docker-compose.yml and an explicit project name, e.g. permaculture-verify.
+# This local project now contains an owner account: preserve its volume; do not use down -v.
+services:
+  db:
+    ports: !override ["127.0.0.1:15432:5432"]
+  backend:
+    environment:
+      APP_COOKIE_SECURE: "false"
+    ports: !override ["127.0.0.1:18000:8000"]
+  frontend:
+    ports: !override ["127.0.0.1:18080:80"]

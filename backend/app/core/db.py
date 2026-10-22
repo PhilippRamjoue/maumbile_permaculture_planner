@@ -6,8 +6,10 @@ All ORM models inherit from ``Base``. Request handlers get a session via the
 
 from __future__ import annotations
 
+import asyncio
 from collections.abc import AsyncIterator
 
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import (
     AsyncSession,
     async_sessionmaker,
@@ -36,6 +38,13 @@ SessionLocal = async_sessionmaker(
     class_=AsyncSession,
     expire_on_commit=False,
 )
+
+
+async def check_database() -> None:
+    """Bound readiness checks so a failed database cannot hang the health probe."""
+    async with asyncio.timeout(3):
+        async with engine.connect() as connection:
+            await connection.execute(text("SELECT 1"))
 
 
 async def get_session() -> AsyncIterator[AsyncSession]:

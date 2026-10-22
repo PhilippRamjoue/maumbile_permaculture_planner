@@ -11,7 +11,7 @@ export default defineConfig({
     },
   },
   build: {
-    // The lazy-loaded map chunk is MapLibre (~800 kB); it is deliberately split from the main bundle.
+    // MapLibre is lazy-loaded separately; keep the budget visible as the library evolves.
     chunkSizeWarningLimit: 900,
   },
   test: {

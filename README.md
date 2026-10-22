@@ -6,10 +6,13 @@ terrain, then design: trace **zones** and **sectors**, place **elements** (house
 beds, trees, water, paths), and **measure** distances and areas accurately.
 
 > Status: **in development** — backend (auth, sites, regions, imagery proxy, planning, terrain) and
-> frontend (shell, auth, dashboard, map, country-first site setup) are implemented and tested; the
-> design editor (WP9) and later packages are next. For the current state, how to run/test, and known
+> frontend (shell, auth, dashboard, map, country-first site setup, design editor) are implemented and
+> tested; terrain visualization and exports are next. For the current state, how to run/test, and known
 > deferrals, see **[`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md)**. Design lives in
 > [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md); the task plan in [`docs/WORK_PACKAGES.md`](docs/WORK_PACKAGES.md).
+>
+> Review fixes and rationale: [`docs/REVIEW_FOLLOWUP_2026-10-21.md`](docs/REVIEW_FOLLOWUP_2026-10-21.md).
+> Claude/agent entry point: [`CLAUDE.md`](CLAUDE.md).
 
 ## Vision
 

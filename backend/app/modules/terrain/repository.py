@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
-from typing import Any
 
 from geoalchemy2.shape import from_shape
 from sqlalchemy import delete, select, update
@@ -41,7 +40,9 @@ class TerrainRepository:
         )
         return list((await self._session.execute(stmt)).scalars())
 
-    async def insert_pending(self, site_id: uuid.UUID, *, interval_m: float, now: datetime) -> bool:
+    async def insert_pending(
+        self, site_id: uuid.UUID, *, input_key: str, interval_m: float, now: datetime
+    ) -> bool:
         """Create the row for a site; ``False`` if it already exists (someone else got there)."""
         stmt = (
             insert(TerrainResult)
@@ -49,6 +50,8 @@ class TerrainRepository:
                 id=uuid.uuid4(),
                 site_id=site_id,
                 status=PENDING,
+                input_key=input_key,
+                job_id=uuid.uuid4(),
                 contour_interval_m=interval_m,
                 created_at=now,
                 updated_at=now,
@@ -61,18 +64,24 @@ class TerrainRepository:
         return inserted
 
     async def reset_to_pending(
-        self, current: TerrainResult, *, interval_m: float, now: datetime
+        self, current: TerrainResult, *, input_key: str, interval_m: float, now: datetime
     ) -> bool:
         """Re-queue a ready/failed/stale row. ``False`` if another request changed it first."""
         stmt = (
             update(TerrainResult)
             .where(
                 TerrainResult.id == current.id,
+                TerrainResult.job_id == current.job_id,
                 TerrainResult.status == current.status,
                 TerrainResult.updated_at == current.updated_at,
             )
             .values(
                 status=PENDING,
+                input_key=input_key,
+                job_id=uuid.uuid4(),
+                dem_source=None,
+                attribution=None,
+                resolution_m=None,
                 contour_interval_m=interval_m,
                 error=None,
                 slope_summary=None,
@@ -90,34 +99,57 @@ class TerrainRepository:
         await self._session.commit()
         return won
 
-    async def mark_running(self, terrain_id: uuid.UUID, *, now: datetime) -> None:
-        await self._set(terrain_id, status=RUNNING, updated_at=now)
+    async def mark_running(
+        self, terrain_id: uuid.UUID, job_id: uuid.UUID, *, now: datetime
+    ) -> bool:
+        stmt = (
+            update(TerrainResult)
+            .where(
+                TerrainResult.id == terrain_id,
+                TerrainResult.job_id == job_id,
+                TerrainResult.status == PENDING,
+            )
+            .values(status=RUNNING, updated_at=now)
+            .returning(TerrainResult.id)
+        )
+        won = (await self._session.execute(stmt)).scalar_one_or_none() is not None
+        await self._session.commit()
+        return won
 
-    async def mark_failed(self, terrain_id: uuid.UUID, error: str, *, now: datetime) -> None:
-        await self._set(terrain_id, status=FAILED, error=error[:500], updated_at=now)
+    async def mark_failed(
+        self, terrain_id: uuid.UUID, job_id: uuid.UUID, error: str, *, now: datetime
+    ) -> None:
+        await self._session.execute(
+            update(TerrainResult)
+            .where(
+                TerrainResult.id == terrain_id,
+                TerrainResult.job_id == job_id,
+                TerrainResult.status == RUNNING,
+            )
+            .values(status=FAILED, error=error[:500], updated_at=now)
+        )
+        await self._session.commit()
 
     async def save_ready(
         self,
         terrain_id: uuid.UUID,
         derived: DerivedTerrain,
         *,
+        job_id: uuid.UUID,
         dem_source: str,
         attribution: str,
         resolution_m: float,
         now: datetime,
     ) -> None:
         """Store contours and the slope result and flip to ``ready`` in one transaction."""
-        for level in derived.contours:
-            self._session.add(
-                TerrainContour(
-                    terrain_id=terrain_id,
-                    elevation_m=level.elevation_m,
-                    geom=from_shape(level.geometry, srid=WGS84_SRID),
-                )
-            )
-        await self._session.execute(
+        # Acquire the row lock and verify this generation before touching its contours.
+        result = await self._session.execute(
             update(TerrainResult)
-            .where(TerrainResult.id == terrain_id)
+            .where(
+                TerrainResult.id == terrain_id,
+                TerrainResult.job_id == job_id,
+                TerrainResult.status == RUNNING,
+            )
             .values(
                 status=READY,
                 dem_source=dem_source,
@@ -129,11 +161,20 @@ class TerrainRepository:
                 computed_at=now,
                 updated_at=now,
             )
+            .returning(TerrainResult.id)
         )
-        await self._session.commit()
-
-    async def _set(self, terrain_id: uuid.UUID, **values: Any) -> None:
+        if result.scalar_one_or_none() is None:
+            await self._session.rollback()
+            return  # superseded job: neither its result nor its contours may be published
         await self._session.execute(
-            update(TerrainResult).where(TerrainResult.id == terrain_id).values(**values)
+            delete(TerrainContour).where(TerrainContour.terrain_id == terrain_id)
         )
+        for level in derived.contours:
+            self._session.add(
+                TerrainContour(
+                    terrain_id=terrain_id,
+                    elevation_m=level.elevation_m,
+                    geom=from_shape(level.geometry, srid=WGS84_SRID),
+                )
+            )
         await self._session.commit()

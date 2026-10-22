@@ -28,6 +28,10 @@ class MeasuredFeature:
     area_m2: float
 
 
+class FeatureWriteConflict(Exception):
+    """A batch collided with an id owned by another plan; the entire write was rolled back."""
+
+
 def _measures(geometry: Any) -> tuple[ColumnElement[float], ColumnElement[float]]:
     """``(length_m, area_m2)`` SQL expressions for a geometry, measured on the geography.
 
@@ -150,9 +154,13 @@ class PlanningRepository:
         row = (await self._session.execute(stmt.execution_options(populate_existing=True))).first()
         return None if row is None else MeasuredFeature(row[0], float(row[1]), float(row[2]))
 
-    async def get_features(self, feature_ids: Sequence[uuid.UUID]) -> list[MeasuredFeature]:
+    async def get_features(
+        self, plan_id: uuid.UUID, feature_ids: Sequence[uuid.UUID]
+    ) -> list[MeasuredFeature]:
         """Features by id, in the order requested (missing ids are skipped)."""
-        stmt = self._measured_select().where(Feature.id.in_(feature_ids))
+        stmt = self._measured_select().where(
+            Feature.plan_id == plan_id, Feature.id.in_(feature_ids)
+        )
         rows = (await self._session.execute(stmt.execution_options(populate_existing=True))).all()
         by_id = {r[0].id: MeasuredFeature(r[0], float(r[1]), float(r[2])) for r in rows}
         return [by_id[i] for i in feature_ids if i in by_id]
@@ -179,7 +187,12 @@ class PlanningRepository:
         stmt = select(Feature.id).where(Feature.id.in_(ids), Feature.plan_id != plan_id)
         return set((await self._session.execute(stmt)).scalars())
 
-    async def upsert_features(self, plan_id: uuid.UUID, rows: Sequence[dict[str, Any]]) -> None:
+    async def upsert_features(
+        self,
+        plan_id: uuid.UUID,
+        rows: Sequence[dict[str, Any]],
+        deleted_ids: Sequence[uuid.UUID] = (),
+    ) -> None:
         """Insert-or-update features keyed by id in one statement/transaction.
 
         Each row: ``id, layer_id, feature_type, element_type_id, properties`` plus ``shape``
@@ -187,6 +200,11 @@ class PlanningRepository:
         to overwrite another plan's feature even under a race with the pre-check.
         """
         if not rows:
+            if deleted_ids:
+                await self._session.execute(
+                    delete(Feature).where(Feature.plan_id == plan_id, Feature.id.in_(deleted_ids))
+                )
+                await self._session.commit()
             return
         values = [
             {
@@ -213,7 +231,14 @@ class PlanningRepository:
             },
             where=Feature.plan_id == stmt.excluded.plan_id,
         )
-        await self._session.execute(stmt)
+        result = await self._session.execute(stmt.returning(Feature.id))
+        if len(result.scalars().all()) != len(rows):
+            await self._session.rollback()
+            raise FeatureWriteConflict
+        if deleted_ids:
+            await self._session.execute(
+                delete(Feature).where(Feature.plan_id == plan_id, Feature.id.in_(deleted_ids))
+            )
         await self._session.commit()
 
     async def update_feature(self, feature: Feature, **values: Any) -> None:

@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./map-fixture";
 
 // WP7 acceptance: login → open site → imagery + attribution visible.
 // Needs the real stack (and WP4's imagery endpoints); opt in with E2E=1.
@@ -35,13 +35,13 @@ test("login → open site → imagery source and attribution are visible", async
   expect(created.ok()).toBe(true);
 
   await page.reload();
+  const tileRequest = page.waitForResponse((r) => /\/imagery\/\d+\/\d+\/\d+\.png/.test(r.url()));
   await page.getByRole("link", { name: "Open E2E shamba" }).click();
 
   const attribution = page.getByRole("contentinfo", { name: "Map attribution" });
   await expect(attribution).toBeVisible();
   await expect(attribution).toContainText(/\S{4,}/);
 
-  const tileRequest = page.waitForResponse((r) => /\/imagery\/\d+\/\d+\/\d+\.png/.test(r.url()));
   await expect((await tileRequest).ok()).toBe(true);
 
   await attribution.getByRole("link", { name: /data sources & credits/i }).click();

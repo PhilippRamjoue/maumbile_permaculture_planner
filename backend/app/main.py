@@ -5,11 +5,13 @@ from __future__ import annotations
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy.exc import SQLAlchemyError
 
 from app.api.v1.router import api_router
 from app.core.config import get_settings
+from app.core.db import check_database
 from app.core.errors import register_exception_handlers
 from app.core.logging import RequestIDMiddleware, configure_logging
 
@@ -46,5 +48,9 @@ async def healthz() -> dict[str, str]:
 
 @app.get("/readyz", tags=["health"])
 async def readyz() -> dict[str, str]:
-    """Readiness probe. Extended with a DB check in a later package."""
+    """Ready only when the database can answer a query."""
+    try:
+        await check_database()
+    except (SQLAlchemyError, OSError, TimeoutError) as exc:
+        raise HTTPException(503, "Database unavailable") from exc
     return {"status": "ready"}

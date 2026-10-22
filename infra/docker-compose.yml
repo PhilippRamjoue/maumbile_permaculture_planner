@@ -30,23 +30,31 @@ services:
       APP_ENVIRONMENT: production
       APP_SECRET_KEY: ${APP_SECRET_KEY:?set APP_SECRET_KEY in infra/.env}
       APP_COOKIE_SECURE: ${APP_COOKIE_SECURE:-true}
+      APP_CORS_ORIGINS: ${APP_CORS_ORIGINS:-["http://localhost:5173","http://localhost:8080"]}
       APP_DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-permaculture}
     depends_on:
       db:
         condition: service_healthy
     # Apply migrations on deploy, then serve.
     command: >
-      sh -c "uv run --no-dev alembic upgrade head &&
-             uv run --no-dev uvicorn app.main:app --host 0.0.0.0 --port 8000"
+      sh -c "uv run --frozen --no-dev alembic upgrade head &&
+             uv run --frozen --no-dev uvicorn app.main:app --host 0.0.0.0 --port 8000"
     ports:
       - "8000:8000"
+    healthcheck:
+      test: ["CMD", "/app/.venv/bin/python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/readyz', timeout=5)"]
+      interval: 10s
+      timeout: 6s
+      retries: 6
+      start_period: 30s
 
   frontend:
     build:
       context: ../frontend
     restart: unless-stopped
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     ports:
       - "8080:80"
 

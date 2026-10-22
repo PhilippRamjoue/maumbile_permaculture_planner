@@ -121,6 +121,42 @@ describe("site setup flow", () => {
     expect(map.layers.has("setup-basemap")).toBe(true);
   });
 
+  it("re-frames the map on the boundary when corners are typed into the table", async () => {
+    // Regression: typed corners used to leave the map at country zoom, where a compound-sized
+    // boundary is a sub-pixel speck — "the drawing of the borders was not visible".
+    mockApi(handlers());
+    renderApp("/sites/new");
+    await chooseKenya();
+    const map = await setupMap();
+    expect(map.fits).toHaveLength(0); // country framing is the `bounds` option, not a fitBounds call
+
+    for (let i = 0; i < corners.length; i++) {
+      await userEvent.click(screen.getByRole("button", { name: "Add a row" }));
+    }
+    for (let i = 0; i < corners.length; i++) {
+      const n = i + 1;
+      await userEvent.type(screen.getByLabelText(`Point ${n} latitude`), String(corners[i][1]));
+      await userEvent.type(screen.getByLabelText(`Point ${n} longitude`), String(corners[i][0]));
+    }
+
+    await waitFor(() => expect(map.layers.has("draft-boundary-fill")).toBe(true));
+    // The map ends framed tightly on the drawn boundary, so it is actually visible.
+    expect(map.fits.at(-1)?.bounds).toEqual([36.8, -1.201, 36.801, -1.2]);
+  });
+
+  it("does not re-frame the map when corners are added by clicking", async () => {
+    // Clicking adds a corner the user is already looking at, so the view must stay put.
+    mockApi(handlers());
+    renderApp("/sites/new");
+    await chooseKenya();
+    const map = await setupMap();
+
+    for (const [lng, lat] of corners) clickMap(map, lng, lat);
+
+    await waitFor(() => expect(map.layers.has("draft-boundary-fill")).toBe(true));
+    expect(map.fits).toHaveLength(0);
+  });
+
   it("previews the boundary live and always credits the base map", async () => {
     mockApi(handlers());
     renderApp("/sites/new");

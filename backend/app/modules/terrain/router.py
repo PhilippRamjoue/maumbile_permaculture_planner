@@ -11,13 +11,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
 from app.core.db import SessionLocal, get_session
-from app.core.geo import BBox, shape_to_geojson
+from app.core.geo import shape_to_geojson
 from app.modules.regions.deps import get_resolver
 from app.modules.regions.resolver import RegionResolver
-from app.modules.sites.models import Site
-from app.modules.sites.router import OwnerId
-from app.modules.sites.router import Service as SiteServiceDep
-from app.modules.sites.service import SiteError, SiteForbiddenError, SiteNotFoundError
+from app.modules.sites.dependencies import OwnedSite
+from app.modules.terrain.limits import TerrainExtentError, validate_dem_extent
 from app.modules.terrain.models import READY, TerrainResult
 from app.modules.terrain.schemas import (
     ContourCollection,
@@ -32,6 +30,8 @@ from app.modules.terrain.service import (
     SessionFactory,
     TerrainService,
     TerrainView,
+    pad_bbox,
+    terrain_input_key,
 )
 
 router = APIRouter()
@@ -59,22 +59,6 @@ def get_terrain_service(
 
 
 TerrainDep = Annotated[TerrainService, Depends(get_terrain_service)]
-
-
-async def _load_site(sites: SiteServiceDep, site_id: uuid.UUID, owner_id: OwnerId) -> Site:
-    try:
-        return await sites.get(site_id, owner_id)
-    except SiteNotFoundError as exc:
-        raise HTTPException(404, "Site not found") from exc
-    except SiteForbiddenError as exc:
-        raise HTTPException(403, "You do not own this site") from exc
-    except SiteError as exc:  # pragma: no cover - defensive
-        raise HTTPException(400, str(exc)) from exc
-
-
-def _bbox_of(site: Site) -> BBox:
-    min_lon, min_lat, max_lon, max_lat = site.bbox
-    return BBox(min_lon, min_lat, max_lon, max_lat)
 
 
 def _read(site_id: uuid.UUID, result: TerrainResult | None) -> TerrainRead:
@@ -125,8 +109,7 @@ def _read_view(site_id: uuid.UUID, view: TerrainView | None) -> TerrainRead:
 )
 async def request_terrain(
     site_id: uuid.UUID,
-    sites: SiteServiceDep,
-    owner_id: OwnerId,
+    site: OwnedSite,
     terrain: TerrainDep,
     background: BackgroundTasks,
     response: Response,
@@ -138,18 +121,32 @@ async def request_terrain(
     ``status: "ready"`` when terrain is already stored. A different ``contour_interval_m``
     re-derives; a ``failed`` run is retried.
     """
-    site = await _load_site(sites, site_id, owner_id)
-    bbox = _bbox_of(site)
+    bbox = site.bbox
     try:
         provider = terrain.resolve_provider(site.country_code, bbox)
     except NoElevationProviderError as exc:
         raise HTTPException(404, "No elevation data available for this site") from exc
 
     interval = body.contour_interval_m if body else None
-    req = await terrain.request(site_id, interval_m=interval)
+    try:
+        validate_dem_extent(pad_bbox(bbox, provider.resolution_m))
+    except TerrainExtentError as exc:
+        raise HTTPException(422, str(exc)) from exc
+    req = await terrain.request(
+        site_id,
+        input_key=terrain_input_key(bbox, site.country_code),
+        provider_key=provider.key,
+        interval_m=interval,
+    )
     if req.start:
+        assert req.result.job_id is not None
         background.add_task(
-            terrain.run_job, req.result.id, bbox, provider, req.result.contour_interval_m
+            terrain.run_job,
+            req.result.id,
+            bbox,
+            provider,
+            req.result.contour_interval_m,
+            req.result.job_id,
         )
     elif req.result.status == READY:
         response.status_code = status.HTTP_200_OK
@@ -157,9 +154,9 @@ async def request_terrain(
 
 
 @router.get("/{site_id}/terrain", response_model=TerrainRead)
-async def get_terrain(
-    site_id: uuid.UUID, sites: SiteServiceDep, owner_id: OwnerId, terrain: TerrainDep
-) -> TerrainRead:
+async def get_terrain(site_id: uuid.UUID, site: OwnedSite, terrain: TerrainDep) -> TerrainRead:
     """Status, plus contour GeoJSON, slope legend/summary and slope grid once ``ready``."""
-    await _load_site(sites, site_id, owner_id)
-    return _read_view(site_id, await terrain.view(site_id))
+    return _read_view(
+        site_id,
+        await terrain.view(site_id, input_key=terrain_input_key(site.bbox, site.country_code)),
+    )

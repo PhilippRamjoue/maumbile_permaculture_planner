@@ -18,6 +18,7 @@ from rasterio.merge import merge
 
 from app.core.geo import BBox
 from app.modules.regions.providers import DataProvider, ProviderRegistry
+from app.modules.terrain.limits import validate_dem_extent
 
 ELEVATION_CATEGORY = "elevation"
 
@@ -143,6 +144,7 @@ class CopernicusDemAwsProvider:
         return await asyncio.to_thread(self._read, bbox)
 
     def _read(self, bbox: BBox) -> DemRaster:
+        validate_dem_extent(bbox)
         with rasterio.Env(**self._env), ExitStack() as stack:
             datasets = []
             for name in tiles_for(bbox):
@@ -158,6 +160,7 @@ class CopernicusDemAwsProvider:
 
             first = datasets[0]
             res_x, res_y = first.res
+            validate_dem_extent(bbox, res_x, res_y)
             origin_x, origin_y = first.transform.c, first.transform.f
             # Snap outwards to the tile pixel grid so merging copies pixels instead of resampling.
             west = origin_x + math.floor((bbox.min_lon - origin_x) / res_x) * res_x

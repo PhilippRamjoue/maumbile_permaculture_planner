@@ -4,6 +4,7 @@ __pycache__/
 .venv/
 venv/
 .pytest_cache/
+.pytest-tmp/
 .mypy_cache/
 .ruff_cache/
 *.egg-info/
@@ -14,6 +15,8 @@ node_modules/
 dist/
 .vite/
 coverage/
+test-results/
+playwright-report/
 *.tsbuildinfo
 # Env & secrets
 .env

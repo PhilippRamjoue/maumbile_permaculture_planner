@@ -18,12 +18,19 @@ export const imageryLayer: MapLayerDefinition = {
   toggleable: false,
   defaultVisible: true,
   build({ site, imagery }) {
-    if (imagery && !imagery.available) return null;
+    if (imagery && !imagery.covered) return null;
     return {
       sources: {
         [IMAGERY_LAYER_ID]: {
           type: "raster",
-          tiles: [imageryTileUrl(site.id)],
+          tiles: [
+            imagery?.tile_url_template
+              ? new URL(imagery.tile_url_template, absoluteApiUrl("/")).href.replace(
+                  /%7B([zxy])%7D/gi,
+                  "{$1}",
+                )
+              : imageryTileUrl(site.id),
+          ],
           tileSize: 256,
           maxzoom: imagery?.max_zoom ?? DEFAULT_MAX_ZOOM,
           // Credit line is rendered by <ImageryAttribution>, which is always visible.

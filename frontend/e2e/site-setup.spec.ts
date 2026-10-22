@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./map-fixture";
 
 // WP8 acceptance: pick a country, enter 4 corners, see the boundary, create, and arrive on the site
 // map with imagery resolved for that country and its attribution visible.
@@ -40,12 +40,13 @@ test("choose country → enter 4 corners → boundary preview → create → sit
   await expect(page.getByLabel("Point 4 latitude")).toHaveValue("-1.201");
 
   await page.getByLabel("Site name").fill("E2E setup shamba");
+  const tileResponse = page.waitForResponse((r) => /\/imagery\/\d+\/\d+\/\d+\.png/.test(r.url()));
   await page.getByRole("button", { name: "Create site" }).click();
 
   // Arrive on the new site's map: imagery tiles load and the provider credit is visible.
   await expect(page).toHaveURL(/\/sites\/[0-9a-f-]{36}$/);
   await expect(page.getByRole("heading", { name: "E2E setup shamba" })).toBeVisible();
-  const tile = await page.waitForResponse((r) => /\/imagery\/\d+\/\d+\/\d+\.png/.test(r.url()));
+  const tile = await tileResponse;
   expect(tile.ok()).toBe(true);
   await expect(page.getByRole("contentinfo", { name: "Map attribution" })).toContainText(/\S{4,}/);
 });

@@ -16,7 +16,7 @@ interface ImageryAttributionProps {
  */
 export function ImageryAttribution({ siteId, meta, isLoading, isError }: ImageryAttributionProps) {
   let credit: string;
-  if (meta) credit = meta.attribution;
+  if (meta) credit = meta.attribution ?? "";
   else if (isLoading) credit = "Loading imagery credits…";
   else if (isError) credit = "Imagery credits unavailable";
   else credit = "";

@@ -66,7 +66,7 @@ describe("SiteMapPage", () => {
   });
 
   it("explains when imagery is unavailable and does not add the raster layer", async () => {
-    mockApi(baseHandlers({ ...imageryMeta, available: false }));
+    mockApi(baseHandlers({ ...imageryMeta, covered: false }));
     renderApp(route);
 
     expect(await screen.findByText(/imagery is not available/i)).toBeInTheDocument();

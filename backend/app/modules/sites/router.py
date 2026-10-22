@@ -5,44 +5,24 @@ from __future__ import annotations
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
+from fastapi import APIRouter, HTTPException, Query, Response, status
 from geoalchemy2.shape import to_shape
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.db import get_session
 from app.core.geo import shape_to_geojson
 from app.core.pagination import Page, PageParams
-from app.modules.auth.dependencies import CurrentUser
+from app.modules.sites.dependencies import OwnerId, Service
+from app.modules.sites.dependencies import get_owner_id as get_owner_id
+from app.modules.sites.dependencies import get_site_service as get_site_service
 from app.modules.sites.models import Site
-from app.modules.sites.repository import SiteRepository
 from app.modules.sites.schemas import SiteCreate, SiteRead, SiteUpdate
 from app.modules.sites.service import (
     InvalidBoundaryError,
     SiteError,
     SiteForbiddenError,
     SiteNotFoundError,
-    SiteService,
 )
 
 router = APIRouter()
-
-
-def get_site_service(session: Annotated[AsyncSession, Depends(get_session)]) -> SiteService:
-    return SiteService(SiteRepository(session))
-
-
-def get_owner_id(user: CurrentUser) -> uuid.UUID:
-    """The authenticated caller's id.
-
-    Wired to the auth ``current_user`` dependency: every site endpoint requires a signed-in
-    user (401 otherwise), and callers only see and modify their own sites. Tests override this
-    dependency to run anonymously or as a chosen owner.
-    """
-    return user.id
-
-
-Service = Annotated[SiteService, Depends(get_site_service)]
-OwnerId = Annotated[uuid.UUID, Depends(get_owner_id)]
 
 
 def _to_read(site: Site) -> SiteRead:

@@ -6,6 +6,7 @@ them to HTTP responses.
 
 from __future__ import annotations
 
+import asyncio
 import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
@@ -60,7 +61,7 @@ class AuthService:
         try:
             return await self._repo.create_user(
                 email=normalize_email(data.email),
-                password_hash=security.hash_password(data.password),
+                password_hash=await asyncio.to_thread(security.hash_password, data.password),
                 display_name=data.display_name,
                 country_code=data.country_code.upper() if data.country_code else None,
             )
@@ -69,11 +70,15 @@ class AuthService:
 
     async def authenticate(self, email: str, password: str) -> User:
         user = await self._repo.get_user_by_email(normalize_email(email))
-        valid = security.verify_password(user.password_hash if user else None, password)
+        valid = await asyncio.to_thread(
+            security.verify_password, user.password_hash if user else None, password
+        )
         if user is None or not valid or not user.is_active:
             raise InvalidCredentialsError
         if security.needs_rehash(user.password_hash):
-            await self._repo.update_password_hash(user, security.hash_password(password))
+            await self._repo.update_password_hash(
+                user, await asyncio.to_thread(security.hash_password, password)
+            )
         return user
 
     # -- tokens -----------------------------------------------------------------------------

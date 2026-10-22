@@ -24,15 +24,13 @@ interface SetupState {
   /** Which number comes first in pasted text. */
   order: CoordinateOrder;
   rows: DraftRow[];
-  /** Bumped when the map should re-frame on the points (paste / suggested fit), not on every click. */
-  fitToken: number;
 
   setStep(step: SetupStep): void;
   setCountry(code: string | null): void;
   setName(name: string): void;
   setOrder(order: CoordinateOrder): void;
-  /** Appends points; `fit` asks the map to zoom to the result. */
-  addPoints(points: LngLat[], options?: { fit?: boolean }): void;
+  /** Appends points. The map re-frames itself on any change to the entered points. */
+  addPoints(points: LngLat[]): void;
   addEmptyRow(): void;
   updateRow(id: number, field: "lat" | "lng", value: string): void;
   removeRow(id: number): void;
@@ -50,7 +48,6 @@ const initial = (countryCode: string | null = null) => ({
   name: "",
   order: "lat-lng" as CoordinateOrder,
   rows: [] as DraftRow[],
-  fitToken: 0,
 });
 
 /** Draft of the site being set up. Lives only while the setup page is open. */
@@ -60,11 +57,8 @@ export const useSetupStore = create<SetupState>((set) => ({
   setCountry: (countryCode) => set({ countryCode }),
   setName: (name) => set({ name }),
   setOrder: (order) => set({ order }),
-  addPoints: (points, options) =>
-    set((s) => ({
-      rows: [...s.rows, ...points.map((p) => newRow(pointToCell(p)))],
-      fitToken: options?.fit ? s.fitToken + 1 : s.fitToken,
-    })),
+  addPoints: (points) =>
+    set((s) => ({ rows: [...s.rows, ...points.map((p) => newRow(pointToCell(p)))] })),
   addEmptyRow: () => set((s) => ({ rows: [...s.rows, newRow({ lat: "", lng: "" })] })),
   updateRow: (id, field, value) =>
     set((s) => ({ rows: s.rows.map((r) => (r.id === id ? { ...r, [field]: value } : r)) })),

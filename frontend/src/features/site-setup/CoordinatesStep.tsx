@@ -16,7 +16,7 @@ import { useCreateSite } from "./useCreateSite";
 export function CoordinatesStep() {
   const navigate = useNavigate();
   const create = useCreateSite();
-  const { countryCode, name, order, rows, fitToken } = useSetupStore();
+  const { countryCode, name, order, rows } = useSetupStore();
   const store = useSetupStore.getState;
 
   const { points, rowErrors, validation } = useMemo(() => analyseRows(rows), [rows]);
@@ -75,7 +75,7 @@ export function CoordinatesStep() {
           rows={rows}
           rowErrors={rowErrors}
           onOrderChange={(o) => store().setOrder(o)}
-          onPaste={(pasted) => store().addPoints(pasted, { fit: true })}
+          onPaste={(pasted) => store().addPoints(pasted)}
           onChange={(id, field, value) => store().updateRow(id, field, value)}
           onRemove={(id) => store().removeRow(id)}
           onAddEmpty={() => store().addEmptyRow()}
@@ -126,7 +126,6 @@ export function CoordinatesStep() {
         <SetupMap
           countryCode={countryCode}
           points={points}
-          fitToken={fitToken}
           onAddPoint={(point) => store().addPoints([point])}
         />
         <SetupAttribution />

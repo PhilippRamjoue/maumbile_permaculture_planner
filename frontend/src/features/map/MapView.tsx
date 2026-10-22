@@ -1,4 +1,11 @@
-import maplibregl, { type Map as MapLibreMap, type RequestParameters } from "maplibre-gl";
+import {
+  Map as MapLibreMap,
+  NavigationControl,
+  ScaleControl,
+  setWorkerUrl,
+  type RequestParameters,
+} from "maplibre-gl";
+import mapWorkerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { useEffect, useRef, useState } from "react";
 
@@ -9,6 +16,10 @@ import { LayerSynchronizer } from "./layers/applyLayers";
 import { layerRegistry } from "./layers/defaultRegistry";
 import type { LayerRegistry } from "./layers/registry";
 import { isLayerVisible, useMapLayerStore } from "./store";
+
+// MapLibre 6 ships a separate module worker. Let Vite bundle it as a real JS asset so
+// production nginx serves it with the correct URL and MIME type.
+setWorkerUrl(mapWorkerUrl);
 
 interface MapViewProps {
   site: Site;
@@ -46,7 +57,7 @@ export function MapView({ site, imagery, registry = layerRegistry, onMapReady }:
     const container = containerRef.current;
     if (!container) return;
 
-    const instance = new maplibregl.Map({
+    const instance = new MapLibreMap({
       container,
       style: { version: 8, sources: {}, layers: [] },
       bounds: bbox,
@@ -54,8 +65,8 @@ export function MapView({ site, imagery, registry = layerRegistry, onMapReady }:
       attributionControl: false, // credits are always shown by <ImageryAttribution>
       transformRequest,
     });
-    instance.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
-    instance.addControl(new maplibregl.ScaleControl({ unit: "metric" }), "bottom-left");
+    instance.addControl(new NavigationControl({ showCompass: false }), "top-right");
+    instance.addControl(new ScaleControl({ unit: "metric" }), "bottom-left");
 
     let disposed = false;
     instance.on("load", () => {
@@ -93,5 +104,12 @@ export function MapView({ site, imagery, registry = layerRegistry, onMapReady }:
     synchronizerRef.current?.sync({ site, imagery }, (d) => isLayerVisible(d, overrides));
   }, [map, registry, site, imagery, overrides]);
 
-  return <div ref={containerRef} className="map-view" data-testid="map-view" />;
+  return (
+    <div
+      ref={containerRef}
+      className="map-view"
+      data-testid="map-view"
+      data-map-ready={map ? "true" : "false"}
+    />
+  );
 }

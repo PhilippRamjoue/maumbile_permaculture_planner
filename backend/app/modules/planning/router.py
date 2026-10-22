@@ -183,6 +183,8 @@ async def get_plan(plan_id: uuid.UUID, service: Service, owner_id: OwnerId) -> P
 async def update_plan(
     plan_id: uuid.UUID, body: PlanUpdate, service: Service, owner_id: OwnerId
 ) -> Plan:
+    if "name" in body.model_fields_set and body.name is None:
+        raise HTTPException(422, detail="name cannot be null")
     try:
         return await service.update_plan(plan_id, owner_id, **body.model_dump(exclude_unset=True))
     except PlanningError as exc:
@@ -289,7 +291,9 @@ async def upsert_features(
 ) -> FeatureCollection:
     """Idempotent bulk upsert keyed by client-supplied feature UUIDs (all-or-nothing)."""
     try:
-        saved = await service.upsert_features(plan_id, owner_id, [_input(f) for f in body.features])
+        saved = await service.upsert_features(
+            plan_id, owner_id, [_input(f) for f in body.features], body.deleted_ids
+        )
     except PlanningError as exc:
         raise _http_error(exc) from exc
     return FeatureCollection(features=[_feature_read(m) for m in saved])

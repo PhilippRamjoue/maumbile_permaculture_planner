@@ -212,7 +212,14 @@ ElementType (catalog)   TerrainDataset (per site)      ImageryCacheTile (optiona
 
 ## 6. API design (REST, versioned under `/api/v1`)
 
-Resource-oriented, OpenAPI-documented, typed client generated for the frontend.
+Resource-oriented and OpenAPI-documented. The imagery response type and fixture are generated
+from the backend schema (`backend/scripts/generate_frontend_contracts.py`), with CI drift checks.
+Other frontend API types are currently handwritten; a complete generated client remains a target.
+
+WP9's batch save adds optional `deleted_ids` to `POST /plans/{id}/features:batch`.
+Upserts and plan-scoped deletions are atomic; omitted feature IDs are preserved. Layer metadata
+continues through separate idempotent PATCH requests. See [`DESIGN_EDITOR.md`](DESIGN_EDITOR.md)
+for the client save/retry protocol and its transaction boundaries.
 
 ```
 POST   /auth/register                 POST /auth/login   POST /auth/refresh   POST /auth/logout
@@ -343,9 +350,12 @@ class ElevationProvider(DataProvider):   # category = "elevation"
   33×33 px). Slope + contours on that is a milliseconds-scale `numpy`/`rasterio` computation — **not**
   heavy GIS. So it runs as a **FastAPI background task** (lean v1; the optional arq worker from §3 is
   only needed for high-res DEMs or heavy batch work).
-- **Compute once, cache forever:** terrain never changes, so we derive it when a site is created
-  (or first requested), store contours as `MULTILINESTRING` + a slope overlay, and serve instantly
-  after. The editor performs **no** terrain math, which keeps it smooth on a small instance.
+- **Cache by geographic inputs:** derive terrain when requested and store contours as
+  `MULTILINESTRING` + a slope overlay. Reuse matching bbox/country inputs and contour interval;
+  rederive after geographic or provider changes. GET hides results for old geographic inputs.
+  Each attempt has a job UUID checked by every background write, fencing superseded tasks.
+  Padded DEM requests are bounded to 1,000,000 estimated cells and 16 source tiles before I/O.
+  The editor performs **no** terrain math, which keeps it smooth on a small instance.
 - **Derivation:** load the DEM window with `rasterio`, compute **slope** (°/%) and **contour lines**
   at a configurable interval (e.g. 1 m / 5 m), simplify, store.
 - **Philosophy — planning aid, not survey instrument:** 30 m slope/contours show where water flows

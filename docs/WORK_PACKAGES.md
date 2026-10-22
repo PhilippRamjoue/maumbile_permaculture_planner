@@ -1,8 +1,11 @@
 # Work Packages
 
-> **Progress (2026-10-21):** ✅ done — WP0, WP1, WP2, WP3, WP3B, WP4, WP5, WP6, WP7, WP8.
-> ⬜ remaining — WP9 (design editor, next), WP10, WP11, WP12. See [`PROJECT_STATUS.md`](PROJECT_STATUS.md)
+> **Progress (2026-10-21):** ✅ done — WP0, WP1, WP2, WP3, WP3B, WP4, WP5, WP6, WP7, WP8, WP9.
+> ⬜ remaining — WP10, WP11, WP12. See [`PROJECT_STATUS.md`](PROJECT_STATUS.md)
 > for the current state, how to run/test, and known deferrals.
+>
+> Integration review fixes: [`REVIEW_FOLLOWUP_2026-10-21.md`](REVIEW_FOLLOWUP_2026-10-21.md).
+> WP7's imagery contract is generated and checked; the complete generated API client remains deferred.
 
 Self-contained units of work for implementing agents (Sonnet / Codex). Read
 [`ARCHITECTURE.md`](ARCHITECTURE.md) first — it defines the stack, module shapes,
@@ -132,7 +135,8 @@ test passes.
   (no key). Self-hosted OpenTopoData documented as the offline alternative.
 - Derivation as a **FastAPI background task** (lean v1 — no arq worker): fetch DEM window → `rasterio`
   slope (°/%) + contours at a configurable interval → store contours as MULTILINESTRING + slope overlay.
-  **Compute once per site and cache** (terrain is immutable for a site).
+  **Cache by site geographic inputs and contour interval**; editable boundaries invalidate results.
+  Job UUID guards fence superseded attempts, and DEM extent budgets run before fetching/allocating.
 - `POST /sites/{id}/terrain` (kick off / returns status) and `GET /sites/{id}/terrain` (status + results).
 - GDAL/rasterio provisioned in the backend image (use a GDAL base image or `libgdal-dev`).
 
@@ -194,6 +198,9 @@ map with imagery resolved for that country; attribution for the active source is
 ---
 
 ## WP9 — Design editor (core)  `XL`  (depends: WP6, WP7, WP8)
+
+**Status:** implemented; see [`DESIGN_EDITOR.md`](DESIGN_EDITOR.md) for controls, tested behavior,
+save semantics, and explicitly deferred refinements.
 
 **Goal:** the heart — draw, place, measure, save.
 

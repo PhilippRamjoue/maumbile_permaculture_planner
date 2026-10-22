@@ -38,6 +38,8 @@ uv run mypy app               # type-check
 uv run pytest                 # all tests (integration tests need Docker running)
 uv run pytest -m "not integration"     # unit tests only (no Docker)
 uv run alembic upgrade head   # apply migrations
+uv run python scripts/generate_frontend_contracts.py          # update imagery type + fixture
+uv run python scripts/generate_frontend_contracts.py --check  # CI drift check
 ```
 
 ## Frontend — dev commands
@@ -50,6 +52,8 @@ npm run lint
 npm run typecheck
 npm test
 npm run build
+npx playwright install chromium
+# With the stack running: E2E=1 E2E_BASE_URL=http://localhost:8080 npm run e2e
 ```
 
 ## Whole stack
@@ -59,3 +63,13 @@ cd infra
 cp .env.example .env
 docker compose up --build     # frontend http://localhost:8080 · backend http://localhost:8000
 ```
+
+For isolated Docker/browser verification on separate ports, see
+[`docs/REVIEW_FOLLOWUP_2026-10-21.md`](docs/REVIEW_FOLLOWUP_2026-10-21.md).
+Browser tests use real auth/site/metadata endpoints and stub external tile images by default.
+Set `E2E_LIVE_TILES=1` to test upstream imagery availability as well. CI runs the default browser
+suite against a disposable Compose stack. Frontend tooling requires Node 22.12 or later.
+
+Generated imagery files must be updated through the backend generator, not edited manually.
+Shared ownership dependencies live in `sites/dependencies.py`; use `OwnedSite` in consuming
+HTTP modules rather than importing the sites router or ORM model.

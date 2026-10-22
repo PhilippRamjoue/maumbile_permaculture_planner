@@ -9,7 +9,6 @@ from fastapi import APIRouter, Depends, HTTPException, Path, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db import get_session
-from app.core.geo import BBox
 from app.modules.imagery.providers import TileFetchError
 from app.modules.imagery.repository import TileCacheRepository
 from app.modules.imagery.schemas import ImageryMeta
@@ -20,10 +19,7 @@ from app.modules.imagery.service import (
 )
 from app.modules.regions.deps import get_resolver
 from app.modules.regions.resolver import RegionResolver
-from app.modules.sites.models import Site
-from app.modules.sites.router import OwnerId
-from app.modules.sites.router import Service as SiteServiceDep
-from app.modules.sites.service import SiteError, SiteForbiddenError, SiteNotFoundError
+from app.modules.sites.dependencies import OwnedSite
 
 router = APIRouter()
 
@@ -42,30 +38,11 @@ def get_imagery_service(
 ImageryDep = Annotated[ImageryService, Depends(get_imagery_service)]
 
 
-async def _load_site(sites: SiteServiceDep, site_id: uuid.UUID, owner_id: OwnerId) -> Site:
-    try:
-        return await sites.get(site_id, owner_id)
-    except SiteNotFoundError as exc:
-        raise HTTPException(404, "Site not found") from exc
-    except SiteForbiddenError as exc:
-        raise HTTPException(403, "You do not own this site") from exc
-    except SiteError as exc:  # pragma: no cover - defensive
-        raise HTTPException(400, str(exc)) from exc
-
-
-def _bbox_of(site: Site) -> BBox:
-    min_lon, min_lat, max_lon, max_lat = site.bbox
-    return BBox(min_lon, min_lat, max_lon, max_lat)
-
-
 @router.get("/{site_id}/imagery/meta", response_model=ImageryMeta)
-async def imagery_meta(
-    site_id: uuid.UUID, sites: SiteServiceDep, owner_id: OwnerId, imagery: ImageryDep
-) -> ImageryMeta:
+async def imagery_meta(site_id: uuid.UUID, site: OwnedSite, imagery: ImageryDep) -> ImageryMeta:
     """Provider, attribution, license, terms link and max zoom for this site's imagery."""
-    site = await _load_site(sites, site_id, owner_id)
     try:
-        provider = imagery.resolve_provider(site.country_code, _bbox_of(site))
+        provider = imagery.resolve_provider(site.country_code, site.bbox)
     except NoImageryProviderError:
         return ImageryMeta(covered=False)
     return ImageryMeta(
@@ -90,8 +67,7 @@ async def imagery_tile(
     z: Annotated[int, Path(ge=0, le=_MAX_ZOOM)],
     x: Annotated[int, Path(ge=0)],
     y: Annotated[int, Path(ge=0)],
-    sites: SiteServiceDep,
-    owner_id: OwnerId,
+    site: OwnedSite,
     imagery: ImageryDep,
 ) -> Response:
     """A tile from the provider resolved for the site's country, fronted by our proxy.
@@ -101,9 +77,8 @@ async def imagery_tile(
     attribution is in ``/imagery/meta``) and ``X-Tile-Cache`` is HIT, MISS or BYPASS (the
     provider forbids storing tiles).
     """
-    site = await _load_site(sites, site_id, owner_id)
     try:
-        result = await imagery.tile(site.country_code, _bbox_of(site), z, x, y)
+        result = await imagery.tile(site.country_code, site.bbox, z, x, y)
     except NoImageryProviderError as exc:
         raise HTTPException(404, "No imagery available for this site") from exc
     except TileNotFoundError as exc:

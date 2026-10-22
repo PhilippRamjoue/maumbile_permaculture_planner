@@ -33,6 +33,13 @@ export const routes: RouteObject[] = [
             }),
           },
           {
+            path: "sites/:siteId/design/:planId?",
+            lazy: async () => ({
+              Component: (await import("../features/design-editor/DesignEditorPage"))
+                .DesignEditorPage,
+            }),
+          },
+          {
             path: "sites/:siteId",
             lazy: async () => ({
               Component: (await import("../features/map/SiteMapPage")).SiteMapPage,

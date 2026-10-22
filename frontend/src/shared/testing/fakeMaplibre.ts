@@ -78,5 +78,8 @@ export class FakeMap {
 class FakeControl {}
 
 export const fakeMaplibreModule = {
-  default: { Map: FakeMap, NavigationControl: FakeControl, ScaleControl: FakeControl },
+  Map: FakeMap,
+  NavigationControl: FakeControl,
+  ScaleControl: FakeControl,
+  setWorkerUrl: () => {},
 };
