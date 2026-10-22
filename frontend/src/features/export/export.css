@@ -1,0 +1,47 @@
+.export-menu {
+  position: relative;
+}
+.export-menu > summary {
+  list-style: none;
+  cursor: pointer;
+}
+.export-menu > summary::-webkit-details-marker {
+  display: none;
+}
+.export-menu__panel {
+  position: absolute;
+  z-index: 10;
+  top: calc(100% + 0.3rem);
+  left: 0;
+  width: min(24rem, 90vw);
+  padding: 0.8rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  box-shadow: 0 6px 20px rgb(0 0 0 / 18%);
+}
+.export-menu__panel h2 {
+  margin: 0 0 0.4rem;
+  font-size: 1rem;
+}
+.export-menu__panel p {
+  margin: 0.3rem 0;
+}
+.export-menu__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0.4rem 0 0.8rem;
+}
+.export-menu__row input {
+  flex: 1;
+  min-width: 0;
+  font: inherit;
+}
+.shared-plan__image {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  border: 1px solid var(--border);
+  background: #fff;
+}

@@ -15,6 +15,7 @@ import { useSite } from "../../entities/siteQueries";
 import { useTerrain } from "../../entities/terrainQueries";
 import { ApiError } from "../../shared/api/client";
 import { formatArea } from "../../shared/format";
+import { ExportMenu } from "../export";
 import { MapView } from "../map/MapView";
 import { ImageryAttribution } from "../map/ImageryAttribution";
 import { useImageryMeta } from "../map/imageryMeta";
@@ -272,6 +273,7 @@ function Workspace({
         <Link to={`/sites/${site.id}/design`}>← Plans</Link>
         <h1>{plan.name}</h1>
         <span>{site.name}</span>
+        <ExportMenu planId={plan.id} unsaved={dirty} />
         <button
           className="btn btn--primary"
           onClick={() => {

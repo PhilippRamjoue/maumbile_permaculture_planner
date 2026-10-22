@@ -1,4 +1,4 @@
-"""Generate the imagery and terrain response types and fixtures from the backend contracts.
+"""Generate frontend response types and fixtures (imagery, terrain, share links).
 
 Run from backend: python scripts/generate_frontend_contracts.py [--check].
 Keep this deliberately scoped; add other response models as their frontend consumers arrive.
@@ -16,6 +16,7 @@ from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from app.modules.export.schemas import ShareCreated, ShareStatus  # noqa: E402
 from app.modules.imagery.providers import EsriWorldImageryProvider  # noqa: E402
 from app.modules.imagery.schemas import ImageryMeta  # noqa: E402
 from app.modules.terrain.schemas import (  # noqa: E402
@@ -135,6 +136,10 @@ def outputs() -> dict[Path, str]:
     )
     return {
         FRONTEND / "entities/generated/imagery.ts": declaration,
+        FRONTEND / "entities/generated/export.ts": HEADER
+        + ts_interface("ShareCreated", ShareCreated.model_json_schema())
+        + "\n"
+        + ts_interface("ShareStatus", ShareStatus.model_json_schema()),
         FRONTEND / "shared/testing/imagery-contract.json": json.dumps(
             fixture.model_dump(), indent=2, ensure_ascii=False
         )

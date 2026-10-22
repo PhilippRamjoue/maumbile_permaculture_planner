@@ -9,6 +9,7 @@ from __future__ import annotations
 from fastapi import APIRouter
 
 from app.modules.auth.router import router as auth_router
+from app.modules.export.router import router as export_router
 from app.modules.imagery.router import router as imagery_router
 from app.modules.planning.router import router as planning_router
 from app.modules.regions.router import router as regions_router
@@ -30,3 +31,4 @@ api_router.include_router(sites_router, prefix="/sites", tags=["sites"])
 api_router.include_router(imagery_router, prefix="/sites", tags=["imagery"])
 api_router.include_router(terrain_router, prefix="/sites", tags=["terrain"])
 api_router.include_router(planning_router)
+api_router.include_router(export_router)

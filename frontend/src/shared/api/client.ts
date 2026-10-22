@@ -88,8 +88,7 @@ async function toError(res: Response): Promise<ApiError> {
   return new ApiError(res.status, problem?.title ?? res.statusText ?? "Request failed", problem);
 }
 
-/** Typed JSON request against `/api/v1`. Throws {@link ApiError} on non-2xx. */
-export async function apiFetch<T>(path: string, options: RequestOptions = {}): Promise<T> {
+async function request(path: string, options: RequestOptions): Promise<Response> {
   let res = await send(path, options);
 
   const canRefresh = (options.refreshOn401 ?? true) && !NO_REFRESH_PATHS.includes(path);
@@ -98,6 +97,22 @@ export async function apiFetch<T>(path: string, options: RequestOptions = {}): P
   }
 
   if (!res.ok) throw await toError(res);
+  return res;
+}
+
+/** Typed JSON request against `/api/v1`. Throws {@link ApiError} on non-2xx. */
+export async function apiFetch<T>(path: string, options: RequestOptions = {}): Promise<T> {
+  const res = await request(path, options);
   if (res.status === 204) return undefined as T;
   return (await res.json()) as T;
+}
+
+/** Binary request (e.g. an export file) with the same session handling as {@link apiFetch}. */
+export async function apiBlob(
+  path: string,
+  options: RequestOptions = {},
+): Promise<{ blob: Blob; filename: string | null }> {
+  const res = await request(path, options);
+  const disposition = res.headers.get("Content-Disposition") ?? "";
+  return { blob: await res.blob(), filename: /filename="([^"]+)"/.exec(disposition)?.[1] ?? null };
 }

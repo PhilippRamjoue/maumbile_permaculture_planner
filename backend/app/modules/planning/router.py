@@ -11,15 +11,13 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from geoalchemy2.shape import to_shape
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.db import get_session
 from app.core.geo import shape_to_geojson
 from app.core.pagination import Page, PageParams
 from app.modules.auth.dependencies import CurrentUser
-from app.modules.planning.access import SiteOwnership
+from app.modules.planning.dependencies import get_planning_service
 from app.modules.planning.models import ElementType, Layer, Plan
-from app.modules.planning.repository import MeasuredFeature, PlanningRepository
+from app.modules.planning.repository import MeasuredFeature
 from app.modules.planning.schemas import (
     ElementTypeRead,
     FeatureBatch,
@@ -47,18 +45,8 @@ from app.modules.planning.service import (
     PlanningError,
     PlanningService,
 )
-from app.modules.sites.repository import SiteRepository
-from app.modules.sites.service import SiteService
 
 router = APIRouter()
-
-
-def get_planning_service(
-    session: Annotated[AsyncSession, Depends(get_session)],
-) -> PlanningService:
-    return PlanningService(
-        PlanningRepository(session), SiteOwnership(SiteService(SiteRepository(session)))
-    )
 
 
 def get_owner_id(user: CurrentUser) -> uuid.UUID:

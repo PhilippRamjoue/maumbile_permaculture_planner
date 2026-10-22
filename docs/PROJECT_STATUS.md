@@ -27,21 +27,22 @@ Built and merged to `main` (each package was implemented in isolation, then inte
 | WP7 | frontend shell | router + auth guards + TanStack Query; API client (`credentials: include`, RFC-7807 parsing, 401→refresh→replay); auth pages; sites dashboard; `MapView` + layer registry; always-on attribution; credits page |
 | WP9 | design editor | plan creation/opening; Terra Draw zones/sectors/paths/elements, selection/vertices/drag/rotation, properties, Turf/PostGIS measurements, layer toggle/reorder, undo/redo, atomic feature save/delete and reload |
 | WP10 | terrain viz + sector helpers | `TerrainPanel` (compute/poll `POST`/`GET /terrain`, contour + slope toggleable registry layers, slope legend, credit/notice); editor "Sector from bearings" wedges + sun-path helper; generated `TerrainRead` contract. See [`TERRAIN_VIZ.md`](TERRAIN_VIZ.md) |
+| WP11 | `modules/export` | `GET /plans/{id}/export?format=geojson\|png\|pdf` (scaled A4 plan with legend/attribution, round-trippable GeoJSON), read-only share links (`plan_shares`, migration `0006`), editor "Export & share" menu and public `/shared/:token` page; see [`EXPORT.md`](EXPORT.md) |
 | WP8 | frontend site-setup | country-first flow at `/sites/new`: pick country → add ≥4 boundary points (paste/table/click) with live map preview → validate → `POST /sites` → redirect to the site map |
 
 API is versioned under `/api/v1`; OpenAPI at `/docs`. Alembic chain:
-`0001 → 0002_auth → 0002_sites → 0003_imagery → 0003_planning → 0004_terrain → 0005_terrain_generations`
+`0001 → 0002_auth → 0002_sites → 0003_imagery → 0003_planning → 0004_terrain → 0005_terrain_generations → 0006_plan_shares`
 (single head). Existing terrain is lazily recomputed after the new migration; site/design data is retained.
 
-**Tests:** backend 178 passing + one opt-in live test (pytest; unit + PostGIS integration via
-Testcontainers + the migration chain), frontend 133 (Vitest; MapLibre + fetch are faked).
+**Tests:** backend 207 passing + one opt-in live test (pytest; unit + PostGIS integration via
+Testcontainers + the migration chain), frontend 139 (Vitest; MapLibre + fetch are faked).
 CI (`.github/workflows/ci.yml`) runs lint/type checks, backend formatting, API contract drift checks,
 both suites, the frontend build, and Chromium acceptance tests against a disposable Compose stack.
 
 ## Not yet built (planned)
 
-- **WP11** — export/share (PNG/PDF/GeoJSON).
 - **WP12** — Coolify deployment hardening.
+- **Guided focus-mode UX + map-reliability pass** — see [`UX_GUIDED_MODES.md`](UX_GUIDED_MODES.md) (next priority).
 
 `frontend/` now includes Terra Draw and Turf. See [`DESIGN_EDITOR.md`](DESIGN_EDITOR.md) for controls,
 save semantics and remaining editor refinements.
