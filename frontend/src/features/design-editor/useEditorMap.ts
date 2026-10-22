@@ -47,6 +47,9 @@ export function useEditorMap(
   saving: boolean,
   setTool: (tool: Tool) => void,
   imagery: ImageryMeta | undefined,
+  // Registry layers rebuilt after the editor drew its own (terrain arriving late) are restacked on
+  // top of them; changing this re-adds the document layers above them again.
+  overlays?: unknown,
 ) {
   const [live, setLive] = useState<Measurement | null>(null);
   const [error, setError] = useState("");
@@ -286,7 +289,7 @@ export function useEditorMap(
         /* map already removed during route teardown */
       }
     };
-  }, [map, document, selectedId, tool, saving, imagery]);
+  }, [map, document, selectedId, tool, saving, imagery, overlays]);
 
   const rotate = (angle: number) => {
     const draw = drawRef.current;

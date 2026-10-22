@@ -6,7 +6,7 @@ import { isLayerVisible, useMapLayerStore } from "./store";
 export function LayerPanel({ registry = layerRegistry }: { registry?: LayerRegistry }) {
   const overrides = useMapLayerStore((s) => s.overrides);
   const setVisible = useMapLayerStore((s) => s.setVisible);
-  const toggleable = registry.list().filter((d) => d.toggleable);
+  const toggleable = registry.list().filter((d) => d.toggleable && !d.group);
   if (toggleable.length === 0) return null;
 
   return (
