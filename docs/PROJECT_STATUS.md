@@ -35,15 +35,19 @@ API is versioned under `/api/v1`; OpenAPI at `/docs`. Alembic chain:
 `0001 → 0002_auth → 0002_sites → 0003_imagery → 0003_planning → 0004_terrain → 0005_terrain_generations → 0006_plan_shares`
 (single head). Existing terrain is lazily recomputed after the new migration; site/design data is retained.
 
-**Tests:** backend 207 passing + one opt-in live test (pytest; unit + PostGIS integration via
-Testcontainers + the migration chain), frontend 139 (Vitest; MapLibre + fetch are faked).
+**Tests:** backend 208 passing + one opt-in live test (pytest; unit + PostGIS integration via
+Testcontainers + the migration chain), frontend 232 (Vitest; MapLibre + fetch are faked).
 CI (`.github/workflows/ci.yml`) runs lint/type checks, backend formatting, API contract drift checks,
 both suites, the frontend build, and Chromium acceptance tests against a disposable Compose stack.
 
 ## Not yet built (planned)
 
 - **WP12** (Coolify deployment) is implemented: see [`DEPLOY.md`](DEPLOY.md). Remaining WP12 items: optional Sentry and a live Coolify deploy of the real instance (needs a server and domain).
-- **Guided focus-mode UX + map-reliability pass** — see [`UX_GUIDED_MODES.md`](UX_GUIDED_MODES.md) (next priority).
+- **Map-reliability pass** is **done** (satellite setup basemap; precise corner placement, drag, snap,
+  select, delete, undo/redo, zoom-to-boundary; zoom-stable drawing). See `frontend/README.md`.
+- **Guided focus-mode shell** — the remaining piece: reshape the editor into focus modes
+  (Boundary → Sectors&terrain → Zones → Elements → Functions) as filtered views over one saved design.
+  See [`UX_GUIDED_MODES.md`](UX_GUIDED_MODES.md).
 
 `frontend/` now includes Terra Draw and Turf. See [`DESIGN_EDITOR.md`](DESIGN_EDITOR.md) for controls,
 save semantics and remaining editor refinements.
