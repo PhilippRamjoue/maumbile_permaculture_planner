@@ -44,11 +44,31 @@ style layers`) registered in `defaultRegistry.ts`. Registration order is draw or
   East Africa first; a pasted coordinate can suggest one), step 2 collects ≥3 corners by map click, pasted
   list (lat,lng or lng,lat) or an editable table, validates the ring client-side (`geometry.ts`: closable,
   no self-intersection, non-zero area) and `POST /sites {name, country_code, coordinates}`, then opens
-  `/sites/:id`. The draft lives in a Zustand store (`store.ts`). The live preview is a
-  `MapLayerDefinition` (`map/draftBoundaryLayer.ts`) in its own registry (`map/setupRegistry.ts`) passed to
-  the unchanged `<MapView>`; there is no per-site imagery before the site exists, so that map uses a plain
-  base map (OpenStreetMap by default; `VITE_SETUP_BASEMAP_URL` / `VITE_SETUP_BASEMAP_ATTRIBUTION`) with its
-  credit always visible. Country boxes in `countries.ts` only frame the map and drive suggestions.
+  `/sites/:id`. The draft lives in a Zustand store (`store.ts`): the **table rows are the single source of
+  truth**, with undo/redo history (typing in a cell, and every move of one drag, fold into one step) and a
+  selected corner. The live preview is a `MapLayerDefinition` (`map/draftBoundaryLayer.ts`) in its own
+  registry (`map/setupRegistry.ts`) passed to the unchanged `<MapView>`; there is no per-site imagery
+  before the site exists, so that map uses Esri World Imagery (satellite; `VITE_SETUP_BASEMAP_URL` /
+  `VITE_SETUP_BASEMAP_ATTRIBUTION` override it) with its credit always visible. Country boxes in
+  `countries.ts` only frame the map and drive suggestions.
+- **Boundary editing on the map** (`site-setup/map/`): `boundaryEditing.ts` is a MapLibre-event controller
+  (no React). Click empty map adds a corner; press-and-drag moves one (the map does not pan; a 3 px dead
+  zone keeps a shaky click from nudging it; the grab offset is kept so the corner never jumps); click
+  selects (Delete or the button removes it, Escape deselects); a dragged corner **snaps** onto another
+  corner within 12 px; hover shows a grab cursor. A click within reach of a corner _selects_ it rather than
+  adding a duplicate on top of it. Reach is measured in **screen pixels** against the live `map.project` /
+  `unproject` (`vertexHit.ts`: 12 px mouse, 22 px touch), so it behaves the same at every zoom. Placed
+  points are stored at 8 decimals (~1 mm, < 0.1 px at MapLibre's deepest zoom) and the preview is always
+  re-derived from the rows, so it cannot desync from the data. Longitude is wrapped to ±180. Hover /
+  selected / snap highlights reach the layer through `MapLayerContext.ui` and the layer's GeoJSON
+  properties; `LayerSynchronizer` swaps changed GeoJSON data with `setData` instead of re-adding layers, so
+  a drag does not flicker. Changes from outside the map (typing, paste, undo) re-frame only when the
+  boundary is not already comfortably on screen (`framing.ts`); the map's own clicks and drags never do.
+  The setup map disables double-click zoom (it would also drop two corners) and rotation.
+  `features/map/ZoomToBoundaryButton` is the shared "Zoom to boundary" control (setup map and editor).
+- **Map tests** (`shared/testing/fakeMaplibre.ts`): the fake map has a real Web-Mercator camera (`jumpTo`,
+  `project`, `unproject`, `fitBounds`) and `trigger("mousedown", { point })`-style pointer events
+  (`defaultPrevented` is reported), so tests click _pixels_, change zoom, and assert where coordinates land.
 
 ## Commands
 

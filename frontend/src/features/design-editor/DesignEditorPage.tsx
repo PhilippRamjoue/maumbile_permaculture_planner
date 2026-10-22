@@ -17,6 +17,7 @@ import { ApiError } from "../../shared/api/client";
 import { formatArea } from "../../shared/format";
 import { ExportMenu } from "../export";
 import { MapView } from "../map/MapView";
+import { ZoomToBoundaryButton } from "../map/ZoomToBoundaryButton";
 import { ImageryAttribution } from "../map/ImageryAttribution";
 import { useImageryMeta } from "../map/imageryMeta";
 import { TerrainPanel } from "../terrain";
@@ -195,6 +196,7 @@ function Workspace({
     finishTool,
     imagery.data,
     terrain.data,
+    site.boundary,
   );
   const blocker = useBlocker(dirty || save.isPending);
   const saveRef = useRef(() => save.mutate());
@@ -370,6 +372,9 @@ function Workspace({
         </aside>
         <div className="site-map__canvas editor-canvas">
           <MapView site={site} imagery={imagery.data} terrain={terrain.data} onMapReady={setMap} />
+          <div className="map-tools map-tools--bottom">
+            <ZoomToBoundaryButton map={map} bounds={site.bbox} />
+          </div>
           <div className="editor-map-hint" role="status">
             {tool === "select"
               ? "Select a feature on the map or in the list"

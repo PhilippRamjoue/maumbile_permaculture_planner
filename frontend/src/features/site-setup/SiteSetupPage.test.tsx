@@ -40,8 +40,15 @@ async function setupMap(): Promise<FakeMap> {
   return FakeMap.instances.at(-1)!;
 }
 
+/**
+ * Click a coordinate the way a user would: zoomed in on their land. At country zoom a whole
+ * compound is a few pixels wide, so neighbouring clicks would (rightly) select the corner they hit.
+ */
 function clickMap(map: FakeMap, lng: number, lat: number) {
-  act(() => map.trigger("click", { lngLat: { lng, lat } }));
+  act(() => {
+    if (map.getZoom() < 15) map.jumpTo({ center: [lng, lat], zoom: 17 });
+    map.trigger("click", { lngLat: { lng, lat } });
+  });
 }
 
 const corners = [
@@ -238,7 +245,8 @@ describe("site setup flow", () => {
     expect(screen.getByTestId("boundary-status")).toHaveTextContent(/boundary looks good/i);
 
     await userEvent.click(screen.getByRole("button", { name: "Remove point 4" }));
-    await userEvent.click(screen.getByRole("button", { name: "Undo last point" }));
+    expect(screen.getByTestId("boundary-status")).toHaveTextContent(/boundary looks good/i);
+    await userEvent.click(screen.getByRole("button", { name: "Remove point 3" }));
     expect(screen.getByTestId("boundary-status")).toHaveTextContent(/1 more needed/i);
   });
 

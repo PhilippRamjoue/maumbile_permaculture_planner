@@ -79,13 +79,24 @@ export function PasteBox({ order, onOrderChange, onAdd }: PasteBoxProps) {
 interface PointsTableProps {
   rows: DraftRow[];
   rowErrors: Record<number, string>;
+  /** The corner highlighted on the map; its row is highlighted here too. */
+  selectedId: number | null;
+  onSelect(id: number | null): void;
   onChange(id: number, field: "lat" | "lng", value: string): void;
   onRemove(id: number): void;
   onAddEmpty(): void;
 }
 
 /** Editable list of corners. */
-export function PointsTable({ rows, rowErrors, onChange, onRemove, onAddEmpty }: PointsTableProps) {
+export function PointsTable({
+  rows,
+  rowErrors,
+  selectedId,
+  onSelect,
+  onChange,
+  onRemove,
+  onAddEmpty,
+}: PointsTableProps) {
   return (
     <div>
       <table className="points-table">
@@ -112,7 +123,11 @@ export function PointsTable({ rows, rowErrors, onChange, onRemove, onAddEmpty }:
             const error = rowErrors[row.id];
             const n = index + 1;
             return (
-              <tr key={row.id}>
+              <tr
+                key={row.id}
+                className={row.id === selectedId ? "points-table__row--selected" : undefined}
+                aria-selected={row.id === selectedId}
+              >
                 <th scope="row">{n}</th>
                 <td>
                   <input
@@ -120,6 +135,7 @@ export function PointsTable({ rows, rowErrors, onChange, onRemove, onAddEmpty }:
                     aria-invalid={error ? true : undefined}
                     inputMode="decimal"
                     value={row.lat}
+                    onFocus={() => onSelect(row.id)}
                     onChange={(e) => onChange(row.id, "lat", e.target.value)}
                   />
                 </td>
@@ -129,6 +145,7 @@ export function PointsTable({ rows, rowErrors, onChange, onRemove, onAddEmpty }:
                     aria-invalid={error ? true : undefined}
                     inputMode="decimal"
                     value={row.lng}
+                    onFocus={() => onSelect(row.id)}
                     onChange={(e) => onChange(row.id, "lng", e.target.value)}
                   />
                   {error ? (
@@ -163,7 +180,11 @@ interface CoordinateInputsProps extends PointsTableProps {
   order: CoordinateOrder;
   onOrderChange(order: CoordinateOrder): void;
   onPaste(points: LngLat[]): void;
+  canUndo: boolean;
+  canRedo: boolean;
   onUndo(): void;
+  onRedo(): void;
+  onDeleteSelected(): void;
   onClear(): void;
 }
 
@@ -172,7 +193,11 @@ export function CoordinateInputs({
   order,
   onOrderChange,
   onPaste,
+  canUndo,
+  canRedo,
   onUndo,
+  onRedo,
+  onDeleteSelected,
   onClear,
   ...table
 }: CoordinateInputsProps) {
@@ -180,13 +205,25 @@ export function CoordinateInputs({
     <div className="coordinate-inputs">
       <p>
         Zoom in on your land and click its corners on the map, or paste / type the coordinates. Go
-        around the edge in order.
+        around the edge in order. Drag a corner to move it; select one and press Delete to remove
+        it.
       </p>
       <PasteBox order={order} onOrderChange={onOrderChange} onAdd={onPaste} />
       <PointsTable {...table} />
       <div className="form__actions">
-        <button type="button" className="btn" onClick={onUndo} disabled={table.rows.length === 0}>
-          Undo last point
+        <button type="button" className="btn" onClick={onUndo} disabled={!canUndo}>
+          Undo
+        </button>
+        <button type="button" className="btn" onClick={onRedo} disabled={!canRedo}>
+          Redo
+        </button>
+        <button
+          type="button"
+          className="btn"
+          onClick={onDeleteSelected}
+          disabled={table.selectedId === null}
+        >
+          Delete selected corner
         </button>
         <button type="button" className="btn" onClick={onClear} disabled={table.rows.length === 0}>
           Clear all

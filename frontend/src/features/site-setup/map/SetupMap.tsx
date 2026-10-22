@@ -1,18 +1,27 @@
 import type { Map as MapLibreMap } from "maplibre-gl";
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type { Site } from "../../../entities/site";
 import { MapView } from "../../map/MapView";
+import { ZoomToBoundaryButton } from "../../map/ZoomToBoundaryButton";
 import { countryBBox } from "../countries";
-import { bboxOf, type LngLat } from "../geometry";
+import { bboxOf, cellToPoint, pointToCell, type LngLat } from "../geometry";
+import { attachBoundaryEditing } from "./boundaryEditing";
+import { DRAFT_BOUNDARY_LAYER_ID, type DraftBoundaryUi } from "./draftBoundaryLayer";
+import { isComfortablyFramed } from "./framing";
 import { setupLayerRegistry } from "./setupRegistry";
+import type { BoundaryVertex } from "./vertexHit";
 
 interface SetupMapProps {
   countryCode: string | null;
-  /** Corners typed so far (open ring). */
-  points: LngLat[];
-  /** Called with [lng, lat] when the user clicks the map. */
+  /** Corners entered so far (an open ring), each tagged with its table row. */
+  vertices: BoundaryVertex[];
+  selectedId: number | null;
+  /** Called with [lng, lat] when the user clicks empty map. */
   onAddPoint(point: LngLat): void;
+  onSelect(id: number | null): void;
+  /** `gesture` is shared by all moves of one drag, so the store can make it a single undo step. */
+  onMovePoint(id: number, point: LngLat, gesture: string): void;
 }
 
 const FIT_PADDING = 64;
@@ -41,55 +50,128 @@ function draftSite(countryCode: string | null, points: LngLat[]): Site {
   };
 }
 
-/** The shared map, set up for drawing a boundary: country framing, click-to-add, live preview. */
-export function SetupMap({ countryCode, points, onAddPoint }: SetupMapProps) {
+/** What a point becomes once stored in a table cell (and so what the map will read back). */
+const stored = (point: LngLat): LngLat => cellToPoint(pointToCell(point))!;
+
+/**
+ * The shared map, set up for drawing a boundary: country framing, click to add a corner, drag to
+ * move one, click to select, snap, live preview and a "Zoom to boundary" button. The store's rows
+ * are the only source of truth; this component draws them and reports pointer intent.
+ */
+export function SetupMap({
+  countryCode,
+  vertices,
+  selectedId,
+  onAddPoint,
+  onSelect,
+  onMovePoint,
+}: SetupMapProps) {
   const mapRef = useRef<MapLibreMap | null>(null);
-  const onAddPointRef = useRef(onAddPoint);
-  onAddPointRef.current = onAddPoint;
-  const pointsRef = useRef(points);
-  pointsRef.current = points;
-  // A live map click adds a point the user is already looking at, so it must not re-frame the map.
-  // Every other way of adding a corner (typing a row, pasting a list) should, so the drawn boundary
-  // stays visible instead of being a speck at country zoom.
-  const skipNextFit = useRef(false);
+  const [map, setMap] = useState<MapLibreMap | null>(null);
+  const detachRef = useRef<(() => void) | null>(null);
+  const [hoverId, setHoverId] = useState<number | null>(null);
+  const [snapId, setSnapId] = useState<number | null>(null);
+
+  const points = useMemo(() => vertices.map((v) => v.point), [vertices]);
+  const live = useRef({ vertices, points, onAddPoint, onSelect, onMovePoint });
+  live.current = { vertices, points, onAddPoint, onSelect, onMovePoint };
+  // The corners the map itself just produced. Re-framing a view the user is looking at (they just
+  // clicked or dragged there) would make the point they placed slide away from the cursor.
+  const expectedSignature = useRef<string | null>(null);
 
   // The map is created once per mount, so the country only frames the first view; `points` and
   // the country change the draft site's content, not its identity.
   const site = useMemo(() => draftSite(countryCode, points), [countryCode, points]);
 
-  const fitToPoints = useCallback((map: MapLibreMap) => {
-    const box = bboxOf(pointsRef.current);
-    if (box) map.fitBounds(box, { padding: FIT_PADDING, maxZoom: MAX_FIT_ZOOM, duration: 0 });
+  const ui = useMemo(() => {
+    const indexOf = (id: number | null) => {
+      const index = vertices.findIndex((v) => v.id === id);
+      return index < 0 ? null : index;
+    };
+    const state: DraftBoundaryUi = {
+      hoverIndex: indexOf(hoverId),
+      selectedIndex: indexOf(selectedId),
+      snapIndex: indexOf(snapId),
+    };
+    return { [DRAFT_BOUNDARY_LAYER_ID]: state };
+  }, [vertices, hoverId, selectedId, snapId]);
+
+  const fitToPoints = useCallback((target: MapLibreMap) => {
+    const box = bboxOf(live.current.points);
+    if (box) target.fitBounds(box, { padding: FIT_PADDING, maxZoom: MAX_FIT_ZOOM, duration: 0 });
   }, []);
+  const bounds = useMemo(() => bboxOf(points), [points]);
 
   const handleReady = useCallback(
-    (map: MapLibreMap) => {
+    (ready: MapLibreMap) => {
+      const map = ready;
       mapRef.current = map;
+      setMap(map);
       map.getCanvas().style.cursor = "crosshair";
-      map.on("click", (event) => {
-        skipNextFit.current = true;
-        onAddPointRef.current([event.lngLat.lng, event.lngLat.lat]);
+      // A double-click zooms and would also drop two corners; rotation makes "north is up" lie.
+      map.doubleClickZoom.disable();
+      map.dragRotate.disable();
+      map.touchZoomRotate.disableRotation();
+      detachRef.current?.();
+      detachRef.current = attachBoundaryEditing(map, {
+        vertices: () => live.current.vertices,
+        onAdd: (point) => {
+          const next = stored(point);
+          expectedSignature.current = JSON.stringify([...live.current.points, next]);
+          live.current.onSelect(null);
+          live.current.onAddPoint(next);
+        },
+        onSelect: (id) => live.current.onSelect(id),
+        onMove: (id, point, gesture) => {
+          const next = stored(point);
+          expectedSignature.current = JSON.stringify(
+            live.current.vertices.map((v) => (v.id === id ? next : v.point)),
+          );
+          live.current.onMovePoint(id, next, gesture);
+        },
+        onHover: setHoverId,
+        onSnap: setSnapId,
       });
       fitToPoints(map);
     },
     [fitToPoints],
   );
 
-  // Re-frame on the boundary whenever the entered points change (typed, pasted, edited or deleted)
-  // so the live preview is always on screen — but not right after a map click, which adds a point
-  // the user is already looking at (see `skipNextFit`). Keyed on the points' values, not just their
-  // count, so finishing or correcting a coordinate ends with the map framed on the real boundary.
-  const lastPointsSig = useRef("");
+  useEffect(
+    () => () => {
+      detachRef.current?.();
+      detachRef.current = null;
+    },
+    [],
+  );
+
+  // Keep the boundary on screen when corners change from outside the map (typed, pasted, undone):
+  // re-frame unless it is already comfortably in view. Changes the map itself made never re-frame
+  // (see `expectedSignature`). Keyed on the points' values so finishing a half-typed coordinate
+  // ends with the map framed on the real boundary.
+  const lastSignature = useRef("");
   useEffect(() => {
     const signature = JSON.stringify(points);
-    if (signature === lastPointsSig.current) return;
-    lastPointsSig.current = signature;
-    if (skipNextFit.current) {
-      skipNextFit.current = false;
-      return;
-    }
-    if (points.length > 0 && mapRef.current) fitToPoints(mapRef.current);
+    if (signature === lastSignature.current) return;
+    lastSignature.current = signature;
+    const fromMap = signature === expectedSignature.current;
+    expectedSignature.current = null;
+    const current = mapRef.current;
+    if (fromMap || !current || points.length === 0) return;
+    const container = current.getContainer();
+    const size = { width: container.clientWidth, height: container.clientHeight };
+    if (!isComfortablyFramed(points, (p) => current.project(p), size)) fitToPoints(current);
   }, [points, fitToPoints]);
 
-  return <MapView site={site} registry={setupLayerRegistry} onMapReady={handleReady} />;
+  return (
+    <>
+      <MapView site={site} registry={setupLayerRegistry} layerUi={ui} onMapReady={handleReady} />
+      <div className="map-tools">
+        <ZoomToBoundaryButton map={map} bounds={bounds} padding={FIT_PADDING} />
+      </div>
+      <p className="map-hint" aria-hidden="true">
+        Click to add a corner · drag a corner to move it · click a corner to select it
+      </p>
+    </>
+  );
 }

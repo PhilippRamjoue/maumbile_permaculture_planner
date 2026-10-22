@@ -1,4 +1,4 @@
-import { useMemo, type FormEvent } from "react";
+import { useEffect, useMemo, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { ApiError } from "../../shared/api/client";
@@ -12,14 +12,48 @@ import { SetupAttribution } from "./SetupAttribution";
 import { analyseRows, useSetupStore } from "./store";
 import { useCreateSite } from "./useCreateSite";
 
+const isTextField = (target: EventTarget | null) =>
+  target instanceof HTMLElement &&
+  (target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName));
+
+/**
+ * Delete / Escape / undo / redo for the corner on the map. Ignored while typing, where the keys
+ * keep their normal editing meaning.
+ */
+function useBoundaryShortcuts() {
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (isTextField(event.target)) return;
+      const store = useSetupStore.getState();
+      const mod = event.ctrlKey || event.metaKey;
+      const key = event.key.toLowerCase();
+      if (mod && key === "z") (event.shiftKey ? store.redo : store.undo)();
+      else if (mod && key === "y") store.redo();
+      else if (!mod && (event.key === "Delete" || event.key === "Backspace")) {
+        if (store.selectedRowId === null) return;
+        store.deleteSelected();
+      } else if (!mod && event.key === "Escape") store.select(null);
+      else return;
+      event.preventDefault();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
+}
+
 /** Step 2: outline the land (map clicks, pasted list or table), name it, create it. */
 export function CoordinatesStep() {
   const navigate = useNavigate();
   const create = useCreateSite();
-  const { countryCode, name, order, rows } = useSetupStore();
+  const { countryCode, name, order, rows, selectedRowId, past, future } = useSetupStore();
   const store = useSetupStore.getState;
+  useBoundaryShortcuts();
 
-  const { points, rowErrors, validation } = useMemo(() => analyseRows(rows), [rows]);
+  const { points, pointRowIds, rowErrors, validation } = useMemo(() => analyseRows(rows), [rows]);
+  const vertices = useMemo(
+    () => points.map((point, i) => ({ id: pointRowIds[i], point })),
+    [points, pointRowIds],
+  );
   const firstPoint: LngLat | undefined = points[0];
   const suggested = firstPoint ? suggestCountry(firstPoint) : null;
   const countryMismatch =
@@ -74,12 +108,18 @@ export function CoordinatesStep() {
           order={order}
           rows={rows}
           rowErrors={rowErrors}
+          selectedId={selectedRowId}
+          onSelect={(id) => store().select(id)}
           onOrderChange={(o) => store().setOrder(o)}
           onPaste={(pasted) => store().addPoints(pasted)}
           onChange={(id, field, value) => store().updateRow(id, field, value)}
           onRemove={(id) => store().removeRow(id)}
           onAddEmpty={() => store().addEmptyRow()}
-          onUndo={() => store().removeLastRow()}
+          canUndo={past.length > 0}
+          canRedo={future.length > 0}
+          onUndo={() => store().undo()}
+          onRedo={() => store().redo()}
+          onDeleteSelected={() => store().deleteSelected()}
           onClear={() => store().clearRows()}
         />
 
@@ -125,8 +165,11 @@ export function CoordinatesStep() {
       <div className="site-map__canvas setup-map">
         <SetupMap
           countryCode={countryCode}
-          points={points}
+          vertices={vertices}
+          selectedId={selectedRowId}
           onAddPoint={(point) => store().addPoints([point])}
+          onSelect={(id) => store().select(id)}
+          onMovePoint={(id, point, gesture) => store().movePoint(id, point, gesture)}
         />
         <SetupAttribution />
       </div>
