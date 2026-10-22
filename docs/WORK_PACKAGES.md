@@ -1,7 +1,7 @@
 # Work Packages
 
-> **Progress (2026-10-21):** ✅ done — WP0, WP1, WP2, WP3, WP3B, WP4, WP5, WP6, WP7, WP8, WP9.
-> ⬜ remaining — WP11, WP12 (WP10 done: [`TERRAIN_VIZ.md`](TERRAIN_VIZ.md)). See [`PROJECT_STATUS.md`](PROJECT_STATUS.md)
+> **Progress (2026-10-22):** ✅ done — WP0–WP12 (WP10: [`TERRAIN_VIZ.md`](TERRAIN_VIZ.md); WP11: [`EXPORT.md`](EXPORT.md);
+> WP12: [`DEPLOY.md`](DEPLOY.md)). See [`PROJECT_STATUS.md`](PROJECT_STATUS.md)
 > for the current state, how to run/test, and known deferrals.
 >
 > Integration review fixes: [`REVIEW_FOLLOWUP_2026-10-21.md`](REVIEW_FOLLOWUP_2026-10-21.md).

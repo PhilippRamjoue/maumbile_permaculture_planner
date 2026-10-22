@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import time
 import uuid
 
 import structlog
@@ -11,6 +12,10 @@ from starlette.requests import Request
 from starlette.responses import Response
 
 REQUEST_ID_HEADER = "X-Request-ID"
+# Orchestrator probes hit these every few seconds; logging them would drown real traffic.
+_QUIET_PATHS = frozenset({"/healthz", "/readyz"})
+
+access_log = structlog.get_logger("app.access")
 
 
 def configure_logging(debug: bool = False) -> None:
@@ -32,14 +37,29 @@ def configure_logging(debug: bool = False) -> None:
 
 
 class RequestIDMiddleware(BaseHTTPMiddleware):
-    """Attach a request id to each request and echo it in the response header."""
+    """Attach a request id to each request, echo it in the response header, log one line each."""
 
     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         request_id = request.headers.get(REQUEST_ID_HEADER) or str(uuid.uuid4())
         request.state.request_id = request_id
         structlog.contextvars.bind_contextvars(request_id=request_id)
+        started = time.perf_counter()
         try:
             response = await call_next(request)
+        except Exception:
+            access_log.exception(
+                "request_failed", method=request.method, path=request.url.path, status=500
+            )
+            raise
+        else:
+            if request.url.path not in _QUIET_PATHS or response.status_code >= 400:
+                access_log.info(
+                    "request",
+                    method=request.method,
+                    path=request.url.path,
+                    status=response.status_code,
+                    duration_ms=round((time.perf_counter() - started) * 1000, 1),
+                )
         finally:
             structlog.contextvars.clear_contextvars()
         response.headers[REQUEST_ID_HEADER] = request_id

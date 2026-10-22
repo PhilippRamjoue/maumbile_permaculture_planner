@@ -56,6 +56,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       APP_SECRET_KEY: ci-only-disposable-secret-01234567890123456789
+      POSTGRES_PASSWORD: ci-only-disposable-pw
       APP_COOKIE_SECURE: "false"
       E2E: "1"
       E2E_BASE_URL: http://localhost:8080
@@ -71,13 +72,13 @@ jobs:
       - run: npx playwright install --with-deps chromium
         working-directory: frontend
       - name: Start disposable stack
-        run: docker compose -p permaculture-ci -f infra/docker-compose.yml up --build -d --wait
+        run: docker compose -p permaculture-ci -f infra/docker-compose.yml -f infra/docker-compose.local.yml up --build -d --wait
       - name: Browser acceptance tests
         run: npm run e2e -- --project=chromium
         working-directory: frontend
       - name: Stack logs
         if: failure()
-        run: docker compose -p permaculture-ci -f infra/docker-compose.yml logs --no-color
+        run: docker compose -p permaculture-ci -f infra/docker-compose.yml -f infra/docker-compose.local.yml logs --no-color
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
@@ -85,4 +86,4 @@ jobs:
           path: frontend/test-results
       - name: Remove disposable stack
         if: always()
-        run: docker compose -p permaculture-ci -f infra/docker-compose.yml down -v
+        run: docker compose -p permaculture-ci -f infra/docker-compose.yml -f infra/docker-compose.local.yml down -v
