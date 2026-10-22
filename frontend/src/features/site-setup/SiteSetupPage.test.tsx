@@ -172,9 +172,7 @@ describe("site setup flow", () => {
     expect(source.data.features.filter((f) => f.properties.kind === "vertex")).toHaveLength(4);
     expect(source.data.features.every((f) => f.properties.state === "ok")).toBe(true);
     expect(screen.getByTestId("boundary-status")).toHaveTextContent(/boundary looks good/i);
-    expect(screen.getByRole("contentinfo", { name: "Map attribution" })).toHaveTextContent(
-      "OpenStreetMap",
-    );
+    expect(screen.getByRole("contentinfo", { name: "Map attribution" })).toHaveTextContent("Esri");
   });
 
   it("flags a self-crossing boundary on the map and blocks creating the site", async () => {
