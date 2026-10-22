@@ -14,6 +14,7 @@ from app.core.db import Base
 
 # Import models here so Alembic autogenerate sees them.
 from app.modules.auth import models as _auth_models  # noqa: F401
+from app.modules.export import models as _export_models  # noqa: F401
 from app.modules.imagery import models as _imagery_models  # noqa: F401
 from app.modules.planning import models as _planning_models  # noqa: F401
 from app.modules.sites import models as _sites_models  # noqa: F401

@@ -26,10 +26,11 @@ Built and merged to `main` (each package was implemented in isolation, then inte
 | WP5 | `modules/terrain` | `ElevationProvider` + Copernicus GLO-30 adapter (anonymous AWS); rasterio slope + contours as a background task, cached per site; `POST`/`GET /sites/{id}/terrain` |
 | WP7 | frontend shell | router + auth guards + TanStack Query; API client (`credentials: include`, RFC-7807 parsing, 401→refresh→replay); auth pages; sites dashboard; `MapView` + layer registry; always-on attribution; credits page |
 | WP9 | design editor | plan creation/opening; Terra Draw zones/sectors/paths/elements, selection/vertices/drag/rotation, properties, Turf/PostGIS measurements, layer toggle/reorder, undo/redo, atomic feature save/delete and reload |
+| WP11 | `modules/export` | `GET /plans/{id}/export?format=geojson\|png\|pdf` (scaled A4 plan with legend/attribution, round-trippable GeoJSON), read-only share links (`plan_shares`, migration `0006`), editor "Export & share" menu and public `/shared/:token` page; see [`EXPORT.md`](EXPORT.md) |
 | WP8 | frontend site-setup | country-first flow at `/sites/new`: pick country → add ≥4 boundary points (paste/table/click) with live map preview → validate → `POST /sites` → redirect to the site map |
 
 API is versioned under `/api/v1`; OpenAPI at `/docs`. Alembic chain:
-`0001 → 0002_auth → 0002_sites → 0003_imagery → 0003_planning → 0004_terrain → 0005_terrain_generations`
+`0001 → 0002_auth → 0002_sites → 0003_imagery → 0003_planning → 0004_terrain → 0005_terrain_generations → 0006_plan_shares`
 (single head). Existing terrain is lazily recomputed after the new migration; site/design data is retained.
 
 **Tests:** backend 178 passing + one opt-in live test (pytest; unit + PostGIS integration via
@@ -40,7 +41,6 @@ both suites, the frontend build, and Chromium acceptance tests against a disposa
 ## Not yet built (planned)
 
 - **WP10** — terrain visualization & sector helpers (overlay WP5 output in the editor).
-- **WP11** — export/share (PNG/PDF/GeoJSON).
 - **WP12** — Coolify deployment hardening.
 
 `frontend/` now includes Terra Draw and Turf. See [`DESIGN_EDITOR.md`](DESIGN_EDITOR.md) for controls,
