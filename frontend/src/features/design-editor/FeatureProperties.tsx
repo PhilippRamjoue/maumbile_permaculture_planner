@@ -30,35 +30,38 @@ export function FeatureProperties({
           onChange={(event) => patchProperties({ name: event.target.value })}
         />
       </label>
-      <label>
-        Notes
-        <textarea
-          value={String(selected.properties.notes ?? "")}
-          maxLength={5000}
-          onChange={(event) => patchProperties({ notes: event.target.value })}
-        />
-      </label>
-      <label>
-        Feature color
-        <input
-          type="color"
-          value={String(selected.properties.color ?? "#2f855a")}
-          onChange={(event) => patchProperties({ color: event.target.value })}
-        />
-      </label>
-      <label>
-        Feature layer
-        <select
-          value={selected.layer_id}
-          onChange={(event) => onChange({ ...selected, layer_id: event.target.value })}
-        >
-          {layers.map((l) => (
-            <option value={l.id} key={l.id}>
-              {l.name}
-            </option>
-          ))}
-        </select>
-      </label>
+      <details className="editor-more">
+        <summary>More options</summary>
+        <label>
+          Notes
+          <textarea
+            value={String(selected.properties.notes ?? "")}
+            maxLength={5000}
+            onChange={(event) => patchProperties({ notes: event.target.value })}
+          />
+        </label>
+        <label>
+          Feature color
+          <input
+            type="color"
+            value={String(selected.properties.color ?? "#2f855a")}
+            onChange={(event) => patchProperties({ color: event.target.value })}
+          />
+        </label>
+        <label>
+          Feature layer
+          <select
+            value={selected.layer_id}
+            onChange={(event) => onChange({ ...selected, layer_id: event.target.value })}
+          >
+            {layers.map((l) => (
+              <option value={l.id} key={l.id}>
+                {l.name}
+              </option>
+            ))}
+          </select>
+        </label>
+      </details>
       {selected.feature_type === "zone" && (
         <label>
           Zone number

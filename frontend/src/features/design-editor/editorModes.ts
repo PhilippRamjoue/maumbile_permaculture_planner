@@ -38,17 +38,18 @@ export function verticesOf(geometry: Geometry): Position[] {
 /**
  * The corners a new or dragged corner may snap onto: the vertices of every feature on a visible
  * layer, plus the site boundary — except the feature being edited, whose old corners would pull
- * its own dragged corner back.
+ * its own dragged corner back. `isShown` leaves out features a focus mode has switched off.
  */
 export function snapTargets(
   document: EditorDocument,
   selectedId: string | null,
   boundary?: Polygon,
+  isShown: (feature: DesignFeature) => boolean = () => true,
 ): Position[] {
   const visible = new Set(document.layers.filter((l) => l.visible).map((l) => l.id));
   const targets: Position[] = boundary ? verticesOf(boundary) : [];
   for (const feature of document.features) {
-    if (feature.id !== selectedId && visible.has(feature.layer_id)) {
+    if (feature.id !== selectedId && visible.has(feature.layer_id) && isShown(feature)) {
       targets.push(...verticesOf(feature.geometry));
     }
   }
