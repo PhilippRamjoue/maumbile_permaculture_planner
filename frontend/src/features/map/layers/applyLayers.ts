@@ -1,7 +1,7 @@
 import type { LayerSpecification, SourceSpecification } from "maplibre-gl";
 
 import type { LayerRegistry } from "./registry";
-import type { MapLayerContext, MapLayerDefinition } from "./types";
+import type { MapLayerContext, MapLayerDefinition, MapLayerSpec } from "./types";
 
 /** The slice of the MapLibre `Map` API this module needs (also makes it testable with a fake). */
 export interface MapLike {
@@ -17,16 +17,49 @@ export interface MapLike {
 
 /** What is currently on the map for one registry layer, so changes can be diffed. */
 interface Applied {
-  signature: string;
+  /** The built spec minus the contents of its GeoJSON sources. */
+  structure: string;
+  /** GeoJSON source id → serialized data. */
+  data: Map<string, string>;
   sourceIds: string[];
   layerIds: string[];
 }
+
+interface Serialized {
+  structure: string;
+  data: Map<string, string>;
+}
+
+/**
+ * Splits a spec into what needs layers re-created when it changes (structure) and what a
+ * GeoJSON source can swap in place (its data). A live edit then moves vertices without removing
+ * and re-adding layers, which flickers and would lose any pointer state tied to them.
+ */
+function serialize(spec: MapLayerSpec): Serialized {
+  const data = new Map<string, string>();
+  const sources: Record<string, unknown> = {};
+  for (const [id, source] of Object.entries(spec.sources)) {
+    if (source.type === "geojson") {
+      data.set(id, JSON.stringify(source.data ?? null));
+      sources[id] = { ...source, data: null };
+    } else sources[id] = source;
+  }
+  return { structure: JSON.stringify({ sources, layers: spec.layers }), data };
+}
+
+interface GeoJSONSourceLike {
+  setData(data: unknown): unknown;
+}
+
+const isGeoJSONSource = (source: unknown): source is GeoJSONSourceLike =>
+  typeof (source as GeoJSONSourceLike | undefined)?.setData === "function";
 
 /**
  * Keeps a MapLibre map in sync with a layer registry: adds, replaces and removes the sources and
  * style layers of each definition as the context changes, and applies visibility. Only layers whose
  * built spec actually changed are touched, so e.g. imagery tiles aren't reloaded when an unrelated
- * layer or the visibility of another layer changes.
+ * layer or the visibility of another layer changes. When only GeoJSON data changed, the data is
+ * swapped on the existing source.
  */
 export class LayerSynchronizer {
   private readonly applied = new Map<string, Applied>();
@@ -50,23 +83,26 @@ export class LayerSynchronizer {
 
     for (const definition of definitions) {
       const spec = definition.build(context);
-      const signature = JSON.stringify(spec);
+      const serialized = spec ? serialize(spec) : null;
       const existing = this.applied.get(definition.id);
 
-      if (existing && existing.signature === signature) {
-        this.setVisibility(existing, isVisible(definition));
-        continue;
+      if (existing && serialized && existing.structure === serialized.structure) {
+        if (this.updateData(existing, serialized.data)) {
+          this.setVisibility(existing, isVisible(definition));
+          continue;
+        }
       }
       if (!existing && !spec) continue;
       if (existing) this.remove(definition.id);
       changed = true;
-      if (!spec) continue;
+      if (!spec || !serialized) continue;
 
       for (const [id, source] of Object.entries(spec.sources)) this.map.addSource(id, source);
       for (const layer of spec.layers) this.map.addLayer(layer);
 
       const applied: Applied = {
-        signature,
+        structure: serialized.structure,
+        data: serialized.data,
         sourceIds: Object.keys(spec.sources),
         layerIds: spec.layers.map((l) => l.id),
       };
@@ -74,6 +110,21 @@ export class LayerSynchronizer {
       this.setVisibility(applied, isVisible(definition));
     }
     if (changed) this.restack(definitions);
+  }
+
+  /**
+   * Swaps changed GeoJSON data in place. Returns false when a source cannot take it, in which case
+   * the caller replaces the whole layer instead.
+   */
+  private updateData(applied: Applied, next: Map<string, string>): boolean {
+    const stale = [...next].filter(([id, json]) => applied.data.get(id) !== json);
+    const sources = stale.map(([id]) => this.map.getSource(id));
+    if (!sources.every(isGeoJSONSource)) return false;
+    stale.forEach(([id, json], index) => {
+      (sources[index] as GeoJSONSourceLike).setData(JSON.parse(json));
+      applied.data.set(id, json);
+    });
+    return true;
   }
 
   /** Detach everything this synchronizer added (map is about to be reused or torn down). */

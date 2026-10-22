@@ -11,6 +11,12 @@ export interface MapLayerContext {
   imagery: ImageryMeta | undefined;
   /** Undefined until `/terrain` has answered; terrain layers draw only once its status is `ready`. */
   terrain?: TerrainRead | undefined;
+  /**
+   * Transient interaction state (hover, selection, snap target) of the feature that owns the map,
+   * keyed by that feature's layer ids. Kept apart from the data so layers stay pure functions of
+   * their context while a pointer is moving.
+   */
+  ui?: Readonly<Record<string, unknown>> | undefined;
 }
 
 export interface MapLayerSpec {

@@ -17,6 +17,9 @@ export interface DraftRow extends CoordinateCell {
 
 export type SetupStep = "country" | "coordinates";
 
+/** Deepest undo history; a boundary has a handful of corners, so this is effectively unlimited. */
+const HISTORY_LIMIT = 100;
+
 interface SetupState {
   step: SetupStep;
   countryCode: string | null;
@@ -24,6 +27,17 @@ interface SetupState {
   /** Which number comes first in pasted text. */
   order: CoordinateOrder;
   rows: DraftRow[];
+  /** The corner chosen on the map or in the table (delete / highlight target). */
+  selectedRowId: number | null;
+  /** Earlier values of `rows`, oldest first. */
+  past: DraftRow[][];
+  /** Values undone, most recently undone last. */
+  future: DraftRow[][];
+  /**
+   * Names the edit in progress. Consecutive edits with the same key (every keystroke in one table
+   * cell, every pointer move of one drag) fold into a single undo step.
+   */
+  editKey: string | null;
 
   setStep(step: SetupStep): void;
   setCountry(code: string | null): void;
@@ -33,9 +47,17 @@ interface SetupState {
   addPoints(points: LngLat[]): void;
   addEmptyRow(): void;
   updateRow(id: number, field: "lat" | "lng", value: string): void;
+  /**
+   * Moves a corner (a map drag). Pass the same `gesture` for every move of one drag so the whole
+   * drag is one undo step.
+   */
+  movePoint(id: number, point: LngLat, gesture: string): void;
+  select(id: number | null): void;
   removeRow(id: number): void;
-  removeLastRow(): void;
+  deleteSelected(): void;
   clearRows(): void;
+  undo(): void;
+  redo(): void;
   reset(initial?: { countryCode?: string | null }): void;
 }
 
@@ -48,7 +70,30 @@ const initial = (countryCode: string | null = null) => ({
   name: "",
   order: "lat-lng" as CoordinateOrder,
   rows: [] as DraftRow[],
+  selectedRowId: null as number | null,
+  past: [] as DraftRow[][],
+  future: [] as DraftRow[][],
+  editKey: null as string | null,
 });
+
+type EditResult = Pick<SetupState, "rows" | "past" | "future" | "editKey" | "selectedRowId">;
+
+/** Applies a change to `rows` and records the old value for undo (unless it continues `key`). */
+function edit(
+  s: SetupState,
+  rows: DraftRow[],
+  key: string | null = null,
+  selectedRowId: number | null = s.selectedRowId,
+): EditResult {
+  const continuing = key !== null && key === s.editKey;
+  return {
+    rows,
+    selectedRowId: rows.some((r) => r.id === selectedRowId) ? selectedRowId : null,
+    past: continuing ? s.past : [...s.past, s.rows].slice(-HISTORY_LIMIT),
+    future: continuing ? s.future : [],
+    editKey: key,
+  };
+}
 
 /** Draft of the site being set up. Lives only while the setup page is open. */
 export const useSetupStore = create<SetupState>((set) => ({
@@ -58,19 +103,77 @@ export const useSetupStore = create<SetupState>((set) => ({
   setName: (name) => set({ name }),
   setOrder: (order) => set({ order }),
   addPoints: (points) =>
-    set((s) => ({ rows: [...s.rows, ...points.map((p) => newRow(pointToCell(p)))] })),
-  addEmptyRow: () => set((s) => ({ rows: [...s.rows, newRow({ lat: "", lng: "" })] })),
+    set((s) => edit(s, [...s.rows, ...points.map((p) => newRow(pointToCell(p)))])),
+  addEmptyRow: () => set((s) => edit(s, [...s.rows, newRow({ lat: "", lng: "" })])),
   updateRow: (id, field, value) =>
-    set((s) => ({ rows: s.rows.map((r) => (r.id === id ? { ...r, [field]: value } : r)) })),
-  removeRow: (id) => set((s) => ({ rows: s.rows.filter((r) => r.id !== id) })),
-  removeLastRow: () => set((s) => ({ rows: s.rows.slice(0, -1) })),
-  clearRows: () => set({ rows: [] }),
+    set((s) =>
+      edit(
+        s,
+        s.rows.map((r) => (r.id === id ? { ...r, [field]: value } : r)),
+        `row:${id}`,
+      ),
+    ),
+  movePoint: (id, point, gesture) =>
+    set((s) =>
+      edit(
+        s,
+        s.rows.map((r) => (r.id === id ? { ...r, ...pointToCell(point) } : r)),
+        gesture,
+      ),
+    ),
+  select: (selectedRowId) =>
+    set((s) => ({
+      selectedRowId: s.rows.some((r) => r.id === selectedRowId) ? selectedRowId : null,
+    })),
+  removeRow: (id) =>
+    set((s) =>
+      edit(
+        s,
+        s.rows.filter((r) => r.id !== id),
+      ),
+    ),
+  deleteSelected: () =>
+    set((s) =>
+      s.selectedRowId === null
+        ? s
+        : edit(
+            s,
+            s.rows.filter((r) => r.id !== s.selectedRowId),
+          ),
+    ),
+  clearRows: () => set((s) => edit(s, [])),
+  undo: () =>
+    set((s) => {
+      const rows = s.past.at(-1);
+      if (!rows) return s;
+      return {
+        rows,
+        past: s.past.slice(0, -1),
+        future: [...s.future, s.rows],
+        editKey: null,
+        selectedRowId: rows.some((r) => r.id === s.selectedRowId) ? s.selectedRowId : null,
+      };
+    }),
+  redo: () =>
+    set((s) => {
+      const rows = s.future.at(-1);
+      if (!rows) return s;
+      return {
+        rows,
+        past: [...s.past, s.rows],
+        future: s.future.slice(0, -1),
+        editKey: null,
+        selectedRowId: rows.some((r) => r.id === s.selectedRowId) ? s.selectedRowId : null,
+      };
+    }),
   reset: (init) => set(initial(init?.countryCode ?? null)),
 }));
 
 export interface DraftAnalysis {
   /** Every row that parses, in order. */
   points: LngLat[];
+  /** The id of the row behind each entry of `points`. */
+  pointRowIds: number[];
   /** Row id → what is wrong with that row's numbers. */
   rowErrors: Record<number, string>;
   validation: RingValidation;
@@ -79,6 +182,7 @@ export interface DraftAnalysis {
 /** Derives the usable points, per-row input errors and the ring verdict from the typed rows. */
 export function analyseRows(rows: DraftRow[]): DraftAnalysis {
   const points: LngLat[] = [];
+  const pointRowIds: number[] = [];
   const rowErrors: Record<number, string> = {};
   for (const row of rows) {
     const error = cellError(row);
@@ -88,11 +192,13 @@ export function analyseRows(rows: DraftRow[]): DraftAnalysis {
       continue;
     }
     points.push(cellToPoint(row)!);
+    pointRowIds.push(row.id);
   }
   const validation = validateRing(points);
   if (Object.keys(rowErrors).length > 0 && validation.status === "valid") {
     return {
       points,
+      pointRowIds,
       rowErrors,
       validation: {
         ...validation,
@@ -101,5 +207,5 @@ export function analyseRows(rows: DraftRow[]): DraftAnalysis {
       },
     };
   }
-  return { points, rowErrors, validation };
+  return { points, pointRowIds, rowErrors, validation };
 }

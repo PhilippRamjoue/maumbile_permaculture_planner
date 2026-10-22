@@ -3,10 +3,14 @@ import { describe, expect, it } from "vitest";
 import { countryBBox, suggestCountry, WORLD_BBOX } from "./countries";
 import {
   bboxOf,
+  cellToPoint,
   closeRing,
   hasSelfIntersection,
+  normalizeLngLat,
   parseCoordinateText,
+  pointToCell,
   ringAreaM2,
+  roundCoord,
   validateRing,
   type LngLat,
 } from "./geometry";
@@ -118,5 +122,38 @@ describe("countries", () => {
     expect(countryBBox("KE")).not.toEqual(WORLD_BBOX);
     expect(countryBBox("JP")).toEqual(WORLD_BBOX);
     expect(countryBBox(null)).toEqual(WORLD_BBOX);
+  });
+});
+
+describe("normalizeLngLat", () => {
+  it("leaves valid positions untouched", () => {
+    expect(normalizeLngLat([36.8219, -1.2921])).toEqual([36.8219, -1.2921]);
+    expect(normalizeLngLat([180, 0])).toEqual([180, 0]);
+    expect(normalizeLngLat([-180, 0])).toEqual([-180, 0]);
+  });
+
+  it("wraps longitudes the map reports past the antimeridian", () => {
+    expect(normalizeLngLat([190, 10])[0]).toBeCloseTo(-170, 9);
+    expect(normalizeLngLat([-190, 10])[0]).toBeCloseTo(170, 9);
+    expect(normalizeLngLat([540.5, 0])[0]).toBeCloseTo(-179.5, 9);
+  });
+
+  it("clamps latitude to what Web Mercator can show", () => {
+    expect(normalizeLngLat([0, 89])[1]).toBeCloseTo(85.0511287798, 9);
+    expect(normalizeLngLat([0, -89])[1]).toBeCloseTo(-85.0511287798, 9);
+  });
+});
+
+describe("roundCoord", () => {
+  it("keeps map-click precision (finer than a pixel at the deepest zoom)", () => {
+    expect(roundCoord(36.822763671302766)).toBe("36.82276367");
+    expect(roundCoord(-1.2)).toBe("-1.2");
+  });
+
+  it("round-trips through a table cell within a millimetre", () => {
+    const point: LngLat = [36.822763671302766, -1.292134567891234];
+    const back = cellToPoint(pointToCell(point))!;
+    expect(Math.abs(back[0] - point[0])).toBeLessThan(1e-8);
+    expect(Math.abs(back[1] - point[1])).toBeLessThan(1e-8);
   });
 });

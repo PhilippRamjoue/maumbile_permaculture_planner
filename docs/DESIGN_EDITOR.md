@@ -68,9 +68,28 @@ changes are **not one aggregate transaction**. A failed layer request leaves the
 retains the successful feature baseline, allowing an idempotent retry without orphaning features.
 Editing is disabled during a save. Failures retain the local document and expose a retry message.
 
+## Map reliability (precision pass)
+
+`editorModes.ts` configures the Terra Draw modes and the click-to-select logic:
+
+- **Reach.** Terra Draw's default pointer distance is 40 px in every mode. A small plot at low zoom fits
+  inside that, so a press near one corner grabs another and a second corner placed near the first closes the
+  polygon. Select mode now uses 24 px and the polygon/line draw modes 20 px.
+- **Snapping.** Drawing and dragging a vertex snaps onto the corners of every feature on a visible layer and
+  of the site boundary (12 px on screen, exact coordinates). It is Terra Draw "custom snapping", so the other
+  features need not live inside Terra Draw. The feature being edited is excluded so a corner cannot snap back
+  onto itself.
+- **Picking.** A click on a feature searches ±6 px (thin paths, shaky or finger clicks); a marker or path wins
+  over the zone under it; a click on a corner of the feature being edited is left to Terra Draw instead of
+  re-selecting the neighbouring zone that shares that corner.
+- Vertex drag, midpoint insertion, coordinate deletion and rotation were already enabled; each finishes with
+  one store upsert, i.e. one undo step. "Zoom to boundary" (`ZoomToBoundaryButton`) sits over the map.
+
 ## Verification and limits
 
 - Store tests cover geometry/properties/deletion undo/redo, dirty state and deletion payloads.
+- `editorModes.test.ts` drives the real Terra Draw draw/select modes through a test adapter with a
+  Web-Mercator camera: vertex drag is exact at zoom 8–22, snapping onto other features' corners, reach, picking.
 - A save-coordinator regression covers successful feature writes followed by a layer failure.
 - Backend tests cover atomic/scoped/idempotent deletion and invalid upsert/delete overlap.
 - Chromium covers plan creation, zone drawing, House placement/drag/rotation, path drawing,
@@ -80,7 +99,7 @@ Editing is disabled during a save. Failures retain the local document and expose
 Up to 1,000 features can be saved per plan, matching the backend batch limit. The editor is an
 online, single-user drafting UI: there is no durable browser draft recovery, cross-tab conflict
 resolution or real-time co-editing. Save before intentionally discarding a draft or closing the page.
-Feature vertex snapping, custom icons, extra user-created layers and footprint dimension inputs can
+Custom icons, extra user-created layers and footprint dimension inputs can
 be added later. Hand-drawn sectors only describe the drawn polygon in their bearing properties; the
 bearing-wedge and sun-path helpers and the terrain overlays are in [`TERRAIN_VIZ.md`](TERRAIN_VIZ.md)
 (WP10). Export/share remains WP11.

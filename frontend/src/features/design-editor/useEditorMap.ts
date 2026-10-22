@@ -1,16 +1,20 @@
 import { useEffect, useRef, useState } from "react";
+import type { Polygon } from "geojson";
 import type { Map as MapLibreMap, MapMouseEvent } from "maplibre-gl";
-import {
-  TerraDraw,
-  TerraDrawPointMode,
-  TerraDrawLineStringMode,
-  TerraDrawPolygonMode,
-  TerraDrawRectangleMode,
-  TerraDrawSelectMode,
-} from "terra-draw";
+import { TerraDraw } from "terra-draw";
 import { TerraDrawMapLibreGLAdapter } from "terra-draw-maplibre-gl-adapter";
 import type { DesignFeature, ElementType } from "../../entities/planning";
 import type { ImageryMeta } from "../../entities/imagery";
+import {
+  createEditorModes,
+  geometryMode,
+  isOnCorner,
+  pickBox,
+  pickFeature,
+  snapTargets,
+  verticesOf,
+  type FeatureHit,
+} from "./editorModes";
 import { measureGeometry, type Measurement } from "./measure";
 import type { EditorStore } from "./store";
 import { useStore } from "zustand";
@@ -24,19 +28,6 @@ const numberStyle = (style: unknown, key: string, fallback: number, min: number,
       : NaN;
   return Number.isFinite(value) ? Math.max(min, Math.min(max, value)) : fallback;
 };
-const editable = {
-  feature: {
-    draggable: true,
-    rotateable: true,
-    coordinates: { draggable: true, deletable: true, midpoints: true },
-  },
-};
-const geometryMode = (feature: DesignFeature) =>
-  feature.geometry.type === "Point"
-    ? "point"
-    : feature.geometry.type === "LineString"
-      ? "linestring"
-      : "polygon";
 
 export function useEditorMap(
   map: MapLibreMap | null,
@@ -50,6 +41,8 @@ export function useEditorMap(
   // Registry layers rebuilt after the editor drew its own (terrain arriving late) are restacked on
   // top of them; changing this re-adds the document layers above them again.
   overlays?: unknown,
+  // The site boundary: zones and paths snap onto its corners.
+  boundary?: Polygon,
 ) {
   const [live, setLive] = useState<Measurement | null>(null);
   const [error, setError] = useState("");
@@ -57,6 +50,8 @@ export function useEditorMap(
   const syncing = useRef(false);
   const options = useRef({ tool, element, activeLayer, saving, setTool });
   options.current = { tool, element, activeLayer, saving, setTool };
+  const boundaryRef = useRef(boundary);
+  boundaryRef.current = boundary;
   const document = useStore(store, (s) => s.document);
   const selectedId = useStore(store, (s) => s.selectedId);
 
@@ -68,16 +63,9 @@ export function useEditorMap(
         coordinatePrecision: 8,
         prefixId: "editor-draw",
       }),
-      modes: [
-        new TerraDrawPointMode(),
-        new TerraDrawLineStringMode(),
-        new TerraDrawPolygonMode(),
-        new TerraDrawRectangleMode(),
-        new TerraDrawSelectMode({
-          flags: { point: editable, linestring: editable, polygon: editable, rectangle: editable },
-          keyEvents: { deselect: "Escape", delete: null, rotate: null, scale: null },
-        }),
-      ],
+      modes: createEditorModes(() =>
+        snapTargets(store.getState().document, store.getState().selectedId, boundaryRef.current),
+      ),
     });
     draw.start();
     draw.setMode("select");
@@ -140,9 +128,24 @@ export function useEditorMap(
           .layers?.filter((l) => l.id.startsWith("design-"))
           .map((l) => l.id) ?? [];
       if (!ids.length) return;
-      const found = map.queryRenderedFeatures(event.point, { layers: ids })[0];
-      const id = found?.properties._editor_id;
-      if (typeof id === "string") store.getState().select(id);
+      const current = store.getState();
+      const editing = current.document.features.find((f) => f.id === current.selectedId);
+      if (
+        editing &&
+        isOnCorner(event.point, verticesOf(editing.geometry), (c) => map.project([c[0], c[1]]))
+      ) {
+        return;
+      }
+      // A few pixels of slack: paths and outlines are thinner than a fingertip or a shaky click.
+      const hits: FeatureHit[] = map
+        .queryRenderedFeatures(pickBox(event.point), { layers: ids })
+        .flatMap((found) =>
+          typeof found.properties._editor_id === "string"
+            ? [{ id: found.properties._editor_id, geometryType: found.geometry.type }]
+            : [],
+        );
+      const id = pickFeature(hits);
+      if (id !== undefined) store.getState().select(id);
     };
     map.on("click", click);
     return () => {

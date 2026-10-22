@@ -37,9 +37,25 @@ export function cellToPoint(cell: CoordinateCell): LngLat | null {
   return [parseNumber(cell.lng)!, parseNumber(cell.lat)!];
 }
 
-/** ~0.1 m precision, without trailing zeros. */
+/**
+ * ~1 mm precision (8 decimals, like the editor), without trailing zeros. MapLibre's deepest zoom
+ * is ≈2 cm per pixel, so a corner placed or dragged on the map never visibly shifts (< 0.1 px)
+ * when it is stored as text and read back.
+ */
 export function roundCoord(value: number): string {
-  return String(Number(value.toFixed(6)));
+  return String(Number(value.toFixed(8)));
+}
+
+/** Web-Mercator's latitude limit; the map cannot show (or click) anything beyond it. */
+export const MAX_MERCATOR_LAT = 85.0511287798;
+
+/**
+ * A map position as a valid [lng, lat]. MapLibre does not wrap longitude: after panning across
+ * the antimeridian a click can be at lng 190, which the API rejects. Wraps it back into ±180.
+ */
+export function normalizeLngLat([lng, lat]: LngLat): LngLat {
+  const wrapped = lng < -180 || lng > 180 ? ((((lng + 180) % 360) + 360) % 360) - 180 : lng;
+  return [wrapped, Math.max(-MAX_MERCATOR_LAT, Math.min(MAX_MERCATOR_LAT, lat))];
 }
 
 export function pointToCell([lng, lat]: LngLat): CoordinateCell {

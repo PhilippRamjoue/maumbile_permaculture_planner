@@ -176,3 +176,85 @@ describe("LayerSynchronizer", () => {
     expect(sources.size).toBe(0);
   });
 });
+
+describe("LayerSynchronizer: live data updates", () => {
+  const always = () => true;
+
+  /** A GeoJSON layer whose data follows `site.name` (cheap stand-in for a changing preview). */
+  const live = (layerId = "live-a"): MapLayerDefinition => ({
+    id: "live",
+    label: "live",
+    toggleable: false,
+    defaultVisible: true,
+    build: ({ site: s }) => ({
+      sources: {
+        live: { type: "geojson", data: { type: "FeatureCollection", features: [], name: s.name } },
+      },
+      layers: [{ id: layerId, type: "circle", source: "live" }],
+    }),
+  });
+
+  /** A fake map whose GeoJSON sources accept `setData`, like MapLibre's. */
+  function mapWithSetData() {
+    const base = fakeMap();
+    const setData: unknown[] = [];
+    const map: MapLike = {
+      ...base.map,
+      getSource: (id) =>
+        base.sources.has(id) ? { setData: (d: unknown) => setData.push(d) } : undefined,
+    };
+    return { ...base, map, setData };
+  }
+
+  it("swaps changed GeoJSON data in place instead of re-adding the layers", () => {
+    const { map, log, setData } = mapWithSetData();
+    const sync = new LayerSynchronizer(map, createLayerRegistry([live()]));
+    sync.sync({ site: { ...site, name: "one" }, imagery: undefined }, always);
+    log.length = 0;
+
+    sync.sync({ site: { ...site, name: "two" }, imagery: undefined }, always);
+
+    expect(log).toEqual([]);
+    expect(setData).toHaveLength(1);
+    expect(setData[0]).toMatchObject({ name: "two" });
+  });
+
+  it("does not touch the source when the data is unchanged", () => {
+    const { map, log, setData } = mapWithSetData();
+    const sync = new LayerSynchronizer(map, createLayerRegistry([live()]));
+    sync.sync({ site, imagery: undefined }, always);
+    log.length = 0;
+
+    sync.sync({ site: { ...site }, imagery: undefined }, always);
+
+    expect(log).toEqual([]);
+    expect(setData).toEqual([]);
+  });
+
+  it("still replaces the layer when its structure changes", () => {
+    const { map, log } = mapWithSetData();
+    const registry = createLayerRegistry([live("live-a")]);
+    const sync = new LayerSynchronizer(map, registry);
+    sync.sync({ site, imagery: undefined }, always);
+    log.length = 0;
+
+    registry.unregister("live");
+    registry.register(live("live-b"));
+    sync.sync({ site, imagery: undefined }, always);
+
+    expect(log).toContain("-layer live-a");
+    expect(log).toContain("+layer live-b");
+  });
+
+  it("falls back to replacing the layer when the source cannot take new data", () => {
+    const { map, log } = fakeMap(); // its sources have no setData
+    const sync = new LayerSynchronizer(map, createLayerRegistry([live()]));
+    sync.sync({ site: { ...site, name: "one" }, imagery: undefined }, always);
+    log.length = 0;
+
+    sync.sync({ site: { ...site, name: "two" }, imagery: undefined }, always);
+
+    expect(log).toContain("-source live");
+    expect(log).toContain("+source live");
+  });
+});

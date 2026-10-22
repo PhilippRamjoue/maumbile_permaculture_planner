@@ -55,8 +55,11 @@ Map interaction quality is make-or-break. Required behaviors:
 
 ## Scope for the next wave (after WP10/WP11)
 
-- **Map reliability pass** first: satellite setup basemap (done as a quick win), precise corner
-  placement/drag/snap/undo, zoom-stable drawing, verified with tests.
+- **Map reliability pass** first (**done**; see `frontend/README.md` "Boundary editing on the map" and
+  `DESIGN_EDITOR.md` "Map reliability"): satellite setup basemap; precise corner placement, drag, snap,
+  select, delete, undo/redo and zoom-to-boundary on the setup map; snapping, tighter reach and tolerant
+  picking in the editor; zoom-stable drawing, verified with tests and in real MapLibre. Not done: inserting
+  a corner into the middle of the setup ring (the editor has midpoint handles) and snapping to edges.
 - **Guided focus-mode shell** over the WP9 editor: focus switcher, per-mode tool palettes, dim-context
   layers, save-on-the-fly, free navigation between modes.
 - Keep it lean: start with Boundary / Sectors / Zones solid; Elements and Functions build on the same

@@ -16,6 +16,7 @@ import { API_BASE } from "../../shared/config";
 import { LayerSynchronizer } from "./layers/applyLayers";
 import { layerRegistry } from "./layers/defaultRegistry";
 import type { LayerRegistry } from "./layers/registry";
+import type { MapLayerContext } from "./layers/types";
 import { isLayerVisible, useMapLayerStore } from "./store";
 
 // MapLibre 6 ships a separate module worker. Let Vite bundle it as a real JS asset so
@@ -29,6 +30,8 @@ interface MapViewProps {
   /** Undefined until `/terrain` has answered; the terrain layers draw it once it is ready. */
   terrain?: TerrainRead;
   registry?: LayerRegistry;
+  /** Transient interaction state for layers (hover, selection); see `MapLayerContext.ui`. */
+  layerUi?: MapLayerContext["ui"];
   /** Hands the live map to feature code (e.g. the design editor) once its style has loaded. */
   onMapReady?: (map: MapLibreMap) => void;
 }
@@ -50,6 +53,7 @@ export function MapView({
   imagery,
   terrain,
   registry = layerRegistry,
+  layerUi,
   onMapReady,
 }: MapViewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -110,8 +114,10 @@ export function MapView({
   }, [map, registry]);
 
   useEffect(() => {
-    synchronizerRef.current?.sync({ site, imagery, terrain }, (d) => isLayerVisible(d, overrides));
-  }, [map, registry, site, imagery, terrain, overrides]);
+    synchronizerRef.current?.sync({ site, imagery, terrain, ui: layerUi }, (d) =>
+      isLayerVisible(d, overrides),
+    );
+  }, [map, registry, site, imagery, terrain, layerUi, overrides]);
 
   return (
     <div
