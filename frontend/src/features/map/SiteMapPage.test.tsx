@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { FakeMap } from "../../shared/testing/fakeMaplibre";
-import { imageryMeta, site, user } from "../../shared/testing/fixtures";
+import { imageryMeta, site, terrainEmpty, user } from "../../shared/testing/fixtures";
 import { mockApi, problem } from "../../shared/testing/mockApi";
 import { renderApp } from "../../shared/testing/renderApp";
 
@@ -19,6 +19,7 @@ function baseHandlers(meta: object = imageryMeta) {
     "GET /auth/me": { json: user },
     [`GET /sites/${site.id}`]: { json: site },
     [`GET /sites/${site.id}/imagery/meta`]: { json: meta },
+    [`GET /sites/${site.id}/terrain`]: { json: terrainEmpty },
   };
 }
 

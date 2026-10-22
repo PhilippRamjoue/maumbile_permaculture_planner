@@ -1,7 +1,9 @@
 import imageryContract from "./imagery-contract.json";
+import terrainContract from "./terrain-contract.json";
 
 import type { DataSource, ImageryMeta } from "../../entities/imagery";
 import type { Site } from "../../entities/site";
+import type { TerrainRead } from "../../entities/terrain";
 import type { User } from "../../entities/user";
 
 export const user: User = {
@@ -55,3 +57,21 @@ export const sentinel: DataSource = {
 };
 
 export const imageryMeta = imageryContract satisfies ImageryMeta;
+
+/** A `ready` terrain response generated from the backend model (see imagery above). */
+// JSON widens the status literal to `string`, hence the cast; every other key is checked by it.
+export const terrainReady = terrainContract as TerrainRead;
+/** What `GET /terrain` returns before anything was computed: no results, same envelope. */
+export const terrainEmpty: TerrainRead = {
+  ...terrainReady,
+  status: "not_requested",
+  contour_interval_m: null,
+  dem_source: null,
+  attribution: null,
+  resolution_m: null,
+  requested_at: null,
+  computed_at: null,
+  contours: null,
+  slope: null,
+  slope_grid: null,
+};

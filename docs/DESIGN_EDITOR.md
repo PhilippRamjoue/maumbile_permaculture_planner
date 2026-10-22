@@ -81,5 +81,6 @@ Up to 1,000 features can be saved per plan, matching the backend batch limit. Th
 online, single-user drafting UI: there is no durable browser draft recovery, cross-tab conflict
 resolution or real-time co-editing. Save before intentionally discarding a draft or closing the page.
 Feature vertex snapping, custom icons, extra user-created layers and footprint dimension inputs can
-be added later. Sector bearing properties currently describe a drawn polygon; generated bearing
-wedges, sun helpers and terrain overlays are WP10. Export/share remains WP11.
+be added later. Hand-drawn sectors only describe the drawn polygon in their bearing properties; the
+bearing-wedge and sun-path helpers and the terrain overlays are in [`TERRAIN_VIZ.md`](TERRAIN_VIZ.md)
+(WP10). Export/share remains WP11.

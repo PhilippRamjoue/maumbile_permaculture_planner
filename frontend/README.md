@@ -14,6 +14,7 @@ src/
     ├── sites-dashboard/     # "My sites" list (+ "New site" entry point)
     ├── site-setup/          # country-first site creation flow (`/sites/new`)
     ├── map/                 # <MapView>, layer registry, always-on attribution, site map page
+    ├── terrain/             # terrain panel: compute/poll, contour + slope toggles, slope legend
     └── credits/             # "Data sources & credits" page
 ```
 

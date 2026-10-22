@@ -1,4 +1,5 @@
 import type { DesignFeature, PlanLayer } from "../../entities/planning";
+import { redrawSector } from "./sectors";
 
 export function FeatureProperties({
   selected,
@@ -95,7 +96,13 @@ export function FeatureProperties({
                 value={Number(selected.properties[key] ?? 0)}
                 onChange={(event) => {
                   const value = Number(event.target.value);
-                  if (value >= 0 && value < 360) patchProperties({ [key]: value });
+                  if (value >= 0 && value < 360)
+                    onChange(
+                      redrawSector({
+                        ...selected,
+                        properties: { ...selected.properties, [key]: value },
+                      }),
+                    );
                 }}
               />
             </label>

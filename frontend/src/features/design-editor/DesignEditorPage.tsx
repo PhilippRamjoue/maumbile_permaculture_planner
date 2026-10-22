@@ -12,16 +12,20 @@ import type {
 } from "../../entities/planning";
 import type { Site } from "../../entities/site";
 import { useSite } from "../../entities/siteQueries";
+import { useTerrain } from "../../entities/terrainQueries";
 import { ApiError } from "../../shared/api/client";
 import { formatArea } from "../../shared/format";
 import { MapView } from "../map/MapView";
 import { ImageryAttribution } from "../map/ImageryAttribution";
 import { useImageryMeta } from "../map/imageryMeta";
+import { TerrainPanel } from "../terrain";
 import { persistDesign, planningApi, planningKeys } from "./api";
 import { createEditorStore, signature } from "./store";
 import { measureGeometry, type Measurement } from "./measure";
 import { useEditorMap, type Tool } from "./useEditorMap";
 import { EditorControls } from "./EditorControls";
+import { SectorHelper } from "./SectorHelper";
+import { defaultSectorRadius } from "./sectors";
 
 const message = (error: unknown) =>
   error instanceof ApiError
@@ -156,6 +160,8 @@ function Workspace({
     null,
   );
   const imagery = useImageryMeta(site.id);
+  const terrain = useTerrain(site.id);
+  const sectorsLayer = state.document.layers.find((l) => l.name === "Sectors" && l.visible);
   const queryClient = useQueryClient();
   const dirty = signature(state.document) !== state.savedSignature;
   const selected = state.document.features.find((f) => f.id === state.selectedId);
@@ -187,6 +193,7 @@ function Workspace({
     save.isPending,
     finishTool,
     imagery.data,
+    terrain.data,
   );
   const blocker = useBlocker(dirty || save.isPending);
   const saveRef = useRef(() => save.mutate());
@@ -317,6 +324,18 @@ function Workspace({
             setActiveLayer={setActiveLayer}
             onRotate={drawing.rotate}
           />
+          <SectorHelper
+            origin={site.centroid.coordinates}
+            defaultRadiusM={defaultSectorRadius(site.bbox)}
+            layerId={sectorsLayer?.id}
+            disabled={save.isPending || !map}
+            onAdd={(feature) => {
+              setTool("select");
+              setSaved(false);
+              state.upsert(feature);
+            }}
+          />
+          <TerrainPanel siteId={site.id} />
           <div className="editor-measurement" aria-label="Measurement">
             <h2>Measurements</h2>
             {measurement ? (
@@ -348,7 +367,7 @@ function Workspace({
           </div>
         </aside>
         <div className="site-map__canvas editor-canvas">
-          <MapView site={site} imagery={imagery.data} onMapReady={setMap} />
+          <MapView site={site} imagery={imagery.data} terrain={terrain.data} onMapReady={setMap} />
           <div className="editor-map-hint" role="status">
             {tool === "select"
               ? "Select a feature on the map or in the list"

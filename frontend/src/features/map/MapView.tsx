@@ -11,6 +11,7 @@ import { useEffect, useRef, useState } from "react";
 
 import type { ImageryMeta } from "../../entities/imagery";
 import type { Site } from "../../entities/site";
+import type { TerrainRead } from "../../entities/terrain";
 import { API_BASE } from "../../shared/config";
 import { LayerSynchronizer } from "./layers/applyLayers";
 import { layerRegistry } from "./layers/defaultRegistry";
@@ -25,6 +26,8 @@ interface MapViewProps {
   site: Site;
   /** Undefined while `/imagery/meta` is loading. */
   imagery?: ImageryMeta;
+  /** Undefined until `/terrain` has answered; the terrain layers draw it once it is ready. */
+  terrain?: TerrainRead;
   registry?: LayerRegistry;
   /** Hands the live map to feature code (e.g. the design editor) once its style has loaded. */
   onMapReady?: (map: MapLibreMap) => void;
@@ -42,7 +45,13 @@ function transformRequest(url: string): RequestParameters {
  * Owns the MapLibre instance for one site, framed on the site's bounding box. What is drawn comes
  * entirely from the layer registry (imagery, boundary, later design layers).
  */
-export function MapView({ site, imagery, registry = layerRegistry, onMapReady }: MapViewProps) {
+export function MapView({
+  site,
+  imagery,
+  terrain,
+  registry = layerRegistry,
+  onMapReady,
+}: MapViewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [map, setMap] = useState<MapLibreMap | null>(null);
   const overrides = useMapLayerStore((s) => s.overrides);
@@ -101,8 +110,8 @@ export function MapView({ site, imagery, registry = layerRegistry, onMapReady }:
   }, [map, registry]);
 
   useEffect(() => {
-    synchronizerRef.current?.sync({ site, imagery }, (d) => isLayerVisible(d, overrides));
-  }, [map, registry, site, imagery, overrides]);
+    synchronizerRef.current?.sync({ site, imagery, terrain }, (d) => isLayerVisible(d, overrides));
+  }, [map, registry, site, imagery, terrain, overrides]);
 
   return (
     <div

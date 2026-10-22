@@ -1,8 +1,10 @@
 import { Link, useParams } from "react-router-dom";
 
 import { useSite } from "../../entities/siteQueries";
+import { useTerrain } from "../../entities/terrainQueries";
 import { ApiError } from "../../shared/api/client";
 import { formatArea } from "../../shared/format";
+import { TerrainPanel } from "../terrain";
 import { ImageryAttribution } from "./ImageryAttribution";
 import { useImageryMeta } from "./imageryMeta";
 import { LayerPanel } from "./LayerPanel";
@@ -12,6 +14,7 @@ export function SiteMapPage() {
   const { siteId = "" } = useParams();
   const site = useSite(siteId);
   const imagery = useImageryMeta(siteId);
+  const terrain = useTerrain(siteId);
 
   if (site.isPending) return <p role="status">Loading site…</p>;
 
@@ -41,8 +44,11 @@ export function SiteMapPage() {
         </p>
       ) : null}
       <div className="site-map__canvas">
-        <MapView site={site.data} imagery={imagery.data} />
-        <LayerPanel />
+        <MapView site={site.data} imagery={imagery.data} terrain={terrain.data} />
+        <div className="map-panels">
+          <LayerPanel />
+          <TerrainPanel siteId={site.data.id} />
+        </div>
         <ImageryAttribution
           siteId={site.data.id}
           meta={imagery.data}
