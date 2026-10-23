@@ -36,7 +36,7 @@ API is versioned under `/api/v1`; OpenAPI at `/docs`. Alembic chain:
 (single head). Existing terrain is lazily recomputed after the new migration; site/design data is retained.
 
 **Tests:** backend 208 passing + one opt-in live test (pytest; unit + PostGIS integration via
-Testcontainers + the migration chain), frontend 246 (Vitest; MapLibre + fetch are faked).
+Testcontainers + the migration chain), frontend 257 (Vitest; MapLibre + fetch are faked).
 CI (`.github/workflows/ci.yml`) runs lint/type checks, backend formatting, API contract drift checks,
 both suites, the frontend build, and Chromium acceptance tests against a disposable Compose stack.
 
