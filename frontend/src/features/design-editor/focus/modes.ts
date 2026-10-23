@@ -1,15 +1,17 @@
 import type { DesignFeature, FeatureType } from "../../../entities/planning";
+import type { PlanGoals } from "../../../entities/generated/plan";
 import type { EditorDocument } from "../store";
 import { functionsOf } from "./functions";
 
 /**
- * The guided focus modes of the design editor, in the order permaculture design naturally runs.
+ * The guided focus modes of the design editor, in the order permaculture design naturally runs:
+ * it starts from what the owner wants from the land (goals), and only then reads the map.
  * They are *filtered views over one saved design*, never separate documents: the boundary is the
  * Site, sectors / zones / elements are Features of the plan told apart by `feature_type`, and
  * functions live in an element's `properties`. A mode only decides what is editable right now
  * and what is shown faintly as context.
  */
-export type FocusId = "boundary" | "sectors" | "zones" | "elements" | "functions";
+export type FocusId = "goals" | "boundary" | "sectors" | "zones" | "elements" | "functions";
 
 /** What the user can toggle as faint context: the site border and the three feature families. */
 export type ContextGroup = "boundary" | "sectors" | "zones" | "elements";
@@ -26,8 +28,11 @@ export interface FocusMode {
   help: string;
   /** Features of these types can be selected and edited; everything else is context. */
   editableTypes: readonly FeatureType[];
-  /** The context family this mode's own work belongs to (never listed as context for itself). */
-  group: ContextGroup;
+  /**
+   * The context family this mode's own work belongs to (never listed as context for itself);
+   * null when the mode edits nothing on the map.
+   */
+  group: ContextGroup | null;
   /** Drawing / placing tools offered in this mode (besides the always-available "select"). */
   tools: readonly FocusTool[];
   /** Whether the shape of a selected feature may be edited on the map (vs. only its properties). */
@@ -37,6 +42,17 @@ export interface FocusMode {
 }
 
 export const FOCUS_MODES: readonly FocusMode[] = [
+  {
+    id: "goals",
+    label: "Goals",
+    question: "What do I want from this land?",
+    help: "Permaculture starts with you, not the map. Say what matters most; every later step can come back to it. Optional, and you can change it any time.",
+    editableTypes: [],
+    group: null,
+    tools: [],
+    geometryEditable: false,
+    layerName: null,
+  },
   {
     id: "boundary",
     label: "Boundary",
@@ -143,14 +159,19 @@ export function isShown(
 
 export type Progress = Record<FocusId, boolean>;
 
+/** Whether the owner has said anything about what they want (a priority or a few words). */
+export const hasGoals = (goals: PlanGoals | null | undefined): boolean =>
+  !!goals && (goals.priorities.length > 0 || goals.vision.trim().length > 0);
+
 /**
  * Which steps have something in them. The boundary always counts (a site cannot exist without
  * one), so the check marks only ever follow real work in the saved design.
  */
-export function progressOf(document: EditorDocument): Progress {
+export function progressOf(document: EditorDocument, goals?: PlanGoals | null): Progress {
   const has = (...types: FeatureType[]) =>
     document.features.some((f) => types.includes(f.feature_type));
   return {
+    goals: hasGoals(goals),
     boundary: true,
     sectors: has("sector"),
     zones: has("zone"),
@@ -164,13 +185,15 @@ export function progressOf(document: EditorDocument): Progress {
 }
 
 /**
- * Where to open a plan: the border for an empty plan (confirm the land first), otherwise the first
- * step that has nothing yet — and the last step once everything has something.
+ * Where to open a plan: a brand-new plan starts from the owner's goals, then the border (confirm
+ * the land). A plan that already has design work opens on its first unstarted map step — goals
+ * are optional, so a missing one never pulls anybody back — and on the last step once everything
+ * has something.
  */
-export function initialFocus(document: EditorDocument): FocusId {
-  if (document.features.length === 0) return "boundary";
-  const progress = progressOf(document);
-  return FOCUS_IDS.find((id) => !progress[id]) ?? "functions";
+export function initialFocus(document: EditorDocument, goals?: PlanGoals | null): FocusId {
+  if (document.features.length === 0) return hasGoals(goals) ? "boundary" : "goals";
+  const progress = progressOf(document, goals);
+  return FOCUS_IDS.find((id) => id !== "goals" && !progress[id]) ?? "functions";
 }
 
 /**
@@ -179,6 +202,8 @@ export function initialFocus(document: EditorDocument): FocusId {
  * stays reachable at any time.
  */
 export function suggestNext(current: FocusId, progress: Progress): FocusId | null {
+  // The land is always confirmed right after the goals, even though the border always "has content".
+  if (current === "goals") return "boundary";
   const index = FOCUS_IDS.indexOf(current);
   const later = FOCUS_IDS.slice(index + 1);
   return later.find((id) => !progress[id]) ?? later[0] ?? null;
@@ -191,13 +216,16 @@ export interface Nudge {
 }
 
 const WHEN_EMPTY: Record<FocusId, string> = {
+  goals: "Tick what matters most to you — or skip this and come back any time.",
   boundary: "Check that the yellow border follows your land, then move on whenever you are ready.",
-  sectors: "Add where the sun and wind come from — or skip ahead and come back any time.",
+  sectors: "Add where the sun, wind and water come from — or skip ahead and come back any time.",
   zones: "Sketch your first zone — or skip ahead and come back any time.",
-  elements: "Place your first element, such as the house or a tree.",
+  elements:
+    "Place your first element. Water first: a tank, pond or well — then the house, beds and trees.",
   functions: "Pick an element and note what it needs and what it gives.",
 };
 const WHEN_DONE: Record<FocusId, string> = {
+  goals: "Your goals are saved. Look back at them whenever you are unsure what to do next.",
   boundary: "Your border is saved and used by every step.",
   sectors: "Good start. Sectors stay visible as faint context in the other steps.",
   zones: "Zones are saved. They stay visible as context while you place elements.",

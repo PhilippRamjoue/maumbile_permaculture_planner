@@ -6,6 +6,7 @@ import type {
   PlanDetail,
   PlanLayer,
 } from "../../entities/planning";
+import type { PlanGoals } from "../../entities/generated/plan";
 import type { Page } from "../../entities/site";
 import { apiFetch } from "../../shared/api/client";
 import { savePayload, type EditorDocument } from "./store";
@@ -22,6 +23,8 @@ export const planningApi = {
   create: (siteId: string, name: string) =>
     apiFetch<PlanDetail>(`/sites/${siteId}/plans`, { method: "POST", body: { name } }),
   get: (id: string) => apiFetch<PlanDetail>(`/plans/${id}`),
+  updateGoals: (id: string, goals: PlanGoals) =>
+    apiFetch<Plan>(`/plans/${id}`, { method: "PATCH", body: { goals } }),
   features: (id: string) => apiFetch<FeatureCollection>(`/plans/${id}/features`),
   types: () => apiFetch<ElementType[]>("/element-types"),
   save: (id: string, features: DesignFeature[], deleted_ids: string[]) =>

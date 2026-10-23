@@ -23,7 +23,7 @@ const noneHidden = new Set<ContextGroup>();
 
 describe("focus modes", () => {
   it("run in the permaculture design order", () => {
-    expect(FOCUS_IDS).toEqual(["boundary", "sectors", "zones", "elements", "functions"]);
+    expect(FOCUS_IDS).toEqual(["goals", "boundary", "sectors", "zones", "elements", "functions"]);
   });
 
   describe("one focus editable at a time", () => {
@@ -46,6 +46,15 @@ describe("focus modes", () => {
       for (const t of ["sector", "zone", "element", "path"] as FeatureType[]) {
         expect(isEditable("boundary", feat(t))).toBe(false);
       }
+    });
+  });
+
+  describe("the goals step", () => {
+    it("edits nothing on the map and treats every family as context", () => {
+      for (const t of ["sector", "zone", "element"] as FeatureType[]) {
+        expect(isEditable("goals", feat(t))).toBe(false);
+      }
+      expect(contextGroups("goals")).toEqual(["boundary", "sectors", "zones", "elements"]);
     });
   });
 
@@ -75,6 +84,11 @@ describe("focus modes", () => {
       expect(p.sectors).toBe(false);
       expect(p.boundary).toBe(true); // a site always has a boundary
     });
+    it("counts goals once a priority or a vision is written", () => {
+      expect(progressOf(doc()).goals).toBe(false);
+      expect(progressOf(doc(), { priorities: ["food"], vision: "" }).goals).toBe(true);
+      expect(progressOf(doc(), { priorities: [], vision: "A shady garden" }).goals).toBe(true);
+    });
     it("counts functions only when an element records needs or yields", () => {
       expect(progressOf(doc(feat("element"))).functions).toBe(false);
       expect(progressOf(doc(feat("element", { needs: ["water"] }))).functions).toBe(true);
@@ -82,20 +96,23 @@ describe("focus modes", () => {
   });
 
   describe("guided but never blocking", () => {
-    it("opens an empty design on the boundary", () => {
-      expect(initialFocus(doc())).toBe("boundary");
+    it("opens a brand-new design on the goals, then on the boundary once goals exist", () => {
+      expect(initialFocus(doc())).toBe("goals");
+      expect(initialFocus(doc(), { priorities: ["water"], vision: "" })).toBe("boundary");
+      expect(initialFocus(doc(), { priorities: [], vision: "  " })).toBe("goals");
     });
-    it("opens on the first unstarted step once the boundary exists", () => {
+    it("opens on the first unstarted map step, never pulling back to optional goals", () => {
       expect(initialFocus(doc(feat("zone")))).toBe("sectors");
     });
     it("suggests the next unstarted step, and every step stays reachable", () => {
       const progress = progressOf(doc());
+      expect(suggestNext("goals", progress)).toBe("boundary");
       expect(suggestNext("boundary", progress)).toBe("sectors");
       expect(FOCUS_IDS).toContain(suggestNext("sectors", progress)!);
       expect(suggestNext("functions", progress)).toBeNull();
     });
     it("gives an empty-vs-done nudge per step", () => {
-      expect(nudgeFor("sectors", progressOf(doc())).text).toMatch(/sun and wind/i);
+      expect(nudgeFor("sectors", progressOf(doc())).text).toMatch(/sun, wind and water/i);
       expect(nudgeFor("sectors", progressOf(doc(feat("sector")))).text).toMatch(/context/i);
     });
   });

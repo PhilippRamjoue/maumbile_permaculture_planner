@@ -915,3 +915,49 @@ h1 {
 .placed-notice p {
   margin: 0 0 0.5rem;
 }
+
+/* ---- goals step ---- */
+.goal-options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+.goal-options__rest {
+  display: grid;
+  gap: 0.4rem;
+}
+.goal-option {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  padding: 0.5rem 0.7rem;
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.goal-option .muted {
+  font-size: 0.85rem;
+}
+.goal-option[aria-pressed="true"] {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, var(--bg));
+}
+.goal-option[data-goal="water"] {
+  padding: 0.7rem 0.8rem;
+  border-width: 2px;
+  font-size: 1.05rem;
+}
+.goal-water-note {
+  margin: 0 0 0.4rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+.goals-reminder {
+  margin: 0 0 0.6rem;
+  font-size: 0.9rem;
+}

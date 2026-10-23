@@ -1,5 +1,7 @@
 import type { LineString, Point, Polygon } from "geojson";
 
+import type { PlanGoals } from "./generated/plan";
+
 export type DesignGeometry = Point | LineString | Polygon;
 export type FeatureType = "zone" | "sector" | "element" | "path" | "annotation";
 export interface PlanLayer {
@@ -15,6 +17,8 @@ export interface Plan {
   site_id: string;
   name: string;
   description: string | null;
+  /** What the owner wants from the land; null until they say. */
+  goals: PlanGoals | null;
   created_at: string;
   updated_at: string;
 }

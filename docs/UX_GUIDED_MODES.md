@@ -12,6 +12,8 @@ each focus edits one layer of the design while the others are faint, toggleable 
 
 **Focus modes (suggested order, not forced):**
 
+0. **Goals** — what do I want from this land? Priorities (water first) and a few words; optional
+   and skippable (`plans.goals`, see `DESIGN_EDITOR.md`).
 1. **Boundary** — see the land (satellite) and set/adjust the border.
 2. **Sectors & terrain** — incoming energies (sun arc, prevailing & cold winds, water flow, fire, views,
    noise) + slope/contours (WP5/WP10). "What is this site subject to?"

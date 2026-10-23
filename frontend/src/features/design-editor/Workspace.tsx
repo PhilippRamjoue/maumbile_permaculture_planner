@@ -38,6 +38,9 @@ import {
 } from "./focus/boundaryDraft";
 import type { PanelProps } from "./focus/common";
 import { ElementsPanel } from "./focus/ElementsPanel";
+import { labelOf } from "./focus/goals";
+import { GoalsPanel, GoalsReminder } from "./focus/GoalsPanel";
+import { useGoals } from "./focus/useGoals";
 import { ContextToggles, FocusRail } from "./focus/FocusRail";
 import { FunctionsPanel } from "./focus/FunctionsPanel";
 import { connectionLines } from "./focus/functions";
@@ -78,6 +81,7 @@ const layerNameFor = (tool: Tool) =>
         : "Elements";
 
 const HINTS: Record<FocusId, string> = {
+  goals: "Your land is shown for reference — goals do not need the map",
   boundary: "Drag a corner of the yellow border to adjust it",
   sectors: "Add sectors from bearings, or draw one by hand",
   zones: "Draw a zone on the map",
@@ -107,8 +111,9 @@ export function Workspace({
   const [draft] = useState(() => createBoundaryDraft(site.boundary));
   const state = useStore(store);
   const [defaultFocus] = useState(() =>
-    initialFocus({ layers: plan.layers, features: initial.features }),
+    initialFocus({ layers: plan.layers, features: initial.features }, plan.goals),
   );
+  const goals = useGoals(plan);
   const [params, setParams] = useSearchParams();
   const focus = parseFocus(params.get("focus")) ?? defaultFocus;
   const mode = focusMode(focus);
@@ -178,7 +183,10 @@ export function Workspace({
     onSuccess: ({ snapshot, result, layers }) => {
       store.getState().markSaved(snapshot);
       queryClient.setQueryData(planningKeys.features(plan.id), result);
-      queryClient.setQueryData(planningKeys.plan(plan.id), { ...plan, layers });
+      queryClient.setQueryData<PlanDetail>(planningKeys.plan(plan.id), (old) => ({
+        ...(old ?? plan),
+        layers,
+      }));
       const current = store.getState().selectedId;
       const feature = result.features.find((f) => f.id === current);
       if (feature) setAuthoritative({ key: JSON.stringify(feature.geometry), value: feature });
@@ -244,13 +252,19 @@ export function Workspace({
   );
   const blocker = useBlocker(
     ({ currentLocation, nextLocation }) =>
-      (dirty || save.isPending || boundaryDirty || saveBoundary.isPending) &&
+      (dirty ||
+        save.isPending ||
+        boundaryDirty ||
+        saveBoundary.isPending ||
+        goals.dirty ||
+        goals.saving) &&
       currentLocation.pathname !== nextLocation.pathname,
   );
   const saveRef = useRef(() => {});
   saveRef.current = () => {
     if (!save.isPending && dirty) save.mutate();
     if (!saveBoundary.isPending && boundaryDirty && boundaryValid) saveBoundary.mutate();
+    if (!goals.saving && goals.dirty) goals.save();
   };
 
   // Saved on the fly: shortly after the design stops changing, and on every change of focus.
@@ -262,9 +276,17 @@ export function Workspace({
     save: () => save.mutate(),
   });
 
+  useAutosave({
+    enabled: !goals.saving && blocker.state !== "blocked",
+    dirty: goals.dirty,
+    signature: goals.signature,
+    failedSignature: goals.failedSignature,
+    save: goals.save,
+  });
+
   useEffect(() => {
     const beforeUnload = (event: BeforeUnloadEvent) => {
-      if (dirty || boundaryDirty) {
+      if (dirty || boundaryDirty || goals.dirty) {
         event.preventDefault();
         event.returnValue = "";
       }
@@ -298,7 +320,7 @@ export function Workspace({
       window.removeEventListener("beforeunload", beforeUnload);
       window.removeEventListener("keydown", key);
     };
-  }, [dirty, boundaryDirty, save.isPending, store, draft, focus]);
+  }, [dirty, boundaryDirty, goals.dirty, save.isPending, store, draft, focus]);
 
   // The site border is a registry layer; "show the boundary as context" is its visibility.
   const boundaryShown = focus === "boundary" || !hidden.has("boundary");
@@ -330,6 +352,7 @@ export function Workspace({
       saveBoundary.mutate();
     }
     if (dirty && !save.isPending) save.mutate();
+    if (goals.dirty && !goals.saving) goals.save();
     setTool("select");
     store.getState().select(null);
     setPlaced(null);
@@ -367,11 +390,11 @@ export function Workspace({
     selected,
     onRotate: drawing.rotate,
   };
-  const progress = progressOf(state.document);
+  const progress = progressOf(state.document, goals.goals);
   const saveState = saveStateOf({
-    saving: save.isPending || saveBoundary.isPending,
-    dirty: dirty || (boundaryDirty && boundaryValid),
-    failed: save.isError && failedSignature === currentSignature,
+    saving: save.isPending || saveBoundary.isPending || goals.saving,
+    dirty: dirty || (boundaryDirty && boundaryValid) || goals.dirty,
+    failed: (save.isError && failedSignature === currentSignature) || goals.failed,
   });
   const placedFeature = placed ? features.find((f) => f.id === placed.id) : undefined;
   const paletteName = types.find((t) => t.id === elementId)?.name ?? "element";
@@ -400,7 +423,7 @@ export function Workspace({
           }}
           disabled={
             save.isPending ||
-            (!dirty && !(boundaryDirty && boundaryValid)) ||
+            (!dirty && !(boundaryDirty && boundaryValid) && !goals.dirty) ||
             saveBoundary.isPending
           }
         >
@@ -417,6 +440,11 @@ export function Workspace({
       {save.isError && (
         <p role="alert">
           Could not save: {message(save.error)} Your draft is still here. Retry saving.
+        </p>
+      )}
+      {goals.failed && (
+        <p role="alert">
+          Could not save your goals: {message(goals.error)} They are still here. Retry saving.
         </p>
       )}
       {drawing.error && <p role="alert">{drawing.error}</p>}
@@ -446,6 +474,16 @@ export function Workspace({
               onDone={() => setPlaced(null)}
             />
           )}
+          {focus !== "goals" && (
+            <GoalsReminder goals={goals.goals} labelOf={labelOf} onOpen={() => go("goals")} />
+          )}
+          {focus === "goals" && (
+            <GoalsPanel
+              goals={goals.goals}
+              onChange={goals.setGoals}
+              onContinue={() => go("boundary")}
+            />
+          )}
           {focus === "boundary" ? (
             <BoundaryPanel
               draft={draft}
@@ -455,7 +493,7 @@ export function Workspace({
               onContinue={() => go("sectors")}
             />
           ) : (
-            <HistoryButtons state={state} disabled={disabled} />
+            focus !== "goals" && <HistoryButtons state={state} disabled={disabled} />
           )}
           {focus === "sectors" && (
             <SectorsPanel
@@ -509,22 +547,24 @@ export function Workspace({
               });
             }}
           />
-          <AdvancedTools
-            state={state}
-            disabled={disabled}
-            tool={tool}
-            choose={choose}
-            activeLayer={activeLayer}
-            setActiveLayer={setActiveLayer}
-            selected={selected}
-            measurement={measurement}
-            confirmed={authoritative?.key === selectedGeometryKey}
-            confirming={confirmMeasurement.isPending}
-            confirmError={confirmMeasurement.isError ? message(confirmMeasurement.error) : null}
-            onConfirm={() => {
-              if (selected) confirmMeasurement.mutate(selected);
-            }}
-          />
+          {focus !== "goals" && (
+            <AdvancedTools
+              state={state}
+              disabled={disabled}
+              tool={tool}
+              choose={choose}
+              activeLayer={activeLayer}
+              setActiveLayer={setActiveLayer}
+              selected={selected}
+              measurement={measurement}
+              confirmed={authoritative?.key === selectedGeometryKey}
+              confirming={confirmMeasurement.isPending}
+              confirmError={confirmMeasurement.isError ? message(confirmMeasurement.error) : null}
+              onConfirm={() => {
+                if (selected) confirmMeasurement.mutate(selected);
+              }}
+            />
+          )}
         </aside>
         <div className="site-map__canvas editor-canvas">
           <MapView

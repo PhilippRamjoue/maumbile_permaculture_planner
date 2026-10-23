@@ -40,6 +40,30 @@ class ElementTypeRead(BaseModel):
 
 
 # ── plans ──────────────────────────────────────────────────────────────────────────────────
+GoalPriority = Literal[
+    "water",
+    "food",
+    "income",
+    "habitat",
+    "beauty",
+    "shelter",
+    "education",
+    "low_maintenance",
+]
+
+
+class PlanGoals(BaseModel):
+    """What the owner wants from the land: the starting point of a permaculture design."""
+
+    priorities: list[GoalPriority] = Field(default_factory=list, max_length=8)
+    vision: str = Field(default="", max_length=2000)
+
+    @model_validator(mode="after")
+    def _unique(self) -> PlanGoals:
+        self.priorities = list(dict.fromkeys(self.priorities))
+        return self
+
+
 class PlanCreate(BaseModel):
     name: str = Field(min_length=1, max_length=200)
     description: str | None = Field(default=None, max_length=5000)
@@ -48,6 +72,8 @@ class PlanCreate(BaseModel):
 class PlanUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=200)
     description: str | None = Field(default=None, max_length=5000)
+    # Omitted -> untouched; null -> cleared.
+    goals: PlanGoals | None = None
 
 
 class PlanRead(BaseModel):
@@ -57,6 +83,7 @@ class PlanRead(BaseModel):
     site_id: uuid.UUID
     name: str
     description: str | None
+    goals: PlanGoals | None
     created_at: datetime
     updated_at: datetime
 

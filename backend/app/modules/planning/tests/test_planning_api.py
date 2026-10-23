@@ -523,6 +523,28 @@ async def test_plan_name_rejects_null_but_description_can_be_cleared(
     assert response.json()["name"] == plan["name"]
 
 
+async def test_plan_goals_are_optional_validated_and_clearable(
+    api: AsyncClient, plan: dict[str, Any]
+) -> None:
+    url = f"{API}/plans/{plan['id']}"
+    assert plan["goals"] is None
+    goals = {"priorities": ["water", "food", "water"], "vision": "A shady food forest."}
+    response = await api.patch(url, json={"goals": goals})
+    assert response.status_code == 200
+    assert response.json()["goals"] == {
+        "priorities": ["water", "food"],
+        "vision": "A shady food forest.",
+    }
+    # Other edits leave the goals alone, and they come back on the detail read.
+    assert (await api.patch(url, json={"name": "Renamed"})).json()["goals"]["vision"]
+    assert (await api.get(url)).json()["goals"]["priorities"] == ["water", "food"]
+    # Unknown priorities and over-long text are rejected; null clears.
+    assert (await api.patch(url, json={"goals": {"priorities": ["gold"]}})).status_code == 422
+    assert (await api.patch(url, json={"goals": {"vision": "x" * 2001}})).status_code == 422
+    cleared = await api.patch(url, json={"goals": None})
+    assert cleared.status_code == 200 and cleared.json()["goals"] is None
+
+
 async def test_batch_conflict_after_precheck_rolls_back_every_write(
     api: AsyncClient, site: dict[str, Any], plan: dict[str, Any], monkeypatch: pytest.MonkeyPatch
 ) -> None:
