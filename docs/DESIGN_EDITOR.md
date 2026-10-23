@@ -85,6 +85,33 @@ Editing is disabled during a save. Failures retain the local document and expose
 - Vertex drag, midpoint insertion, coordinate deletion and rotation were already enabled; each finishes with
   one store upsert, i.e. one undo step. "Zoom to boundary" (`ZoomToBoundaryButton`) sits over the map.
 
+## Owner-testing UX pass (Oct 2026)
+
+Fixes from the owner's first run on a real plot in Tanzania:
+
+- **Imagery over-zoom.** Esri World Imagery serves a "Map data not yet available" placeholder (HTTP 200)
+  past z18 over rural East Africa, which MapLibre cannot detect. `map/layers/zoomLimits.ts` holds one
+  `IMAGERY_MAX_ZOOM = 18`: both raster sources (setup basemap, per-site imagery) declare it as `maxzoom`, so
+  MapLibre upscales the deepest real tile; `MAX_FIT_ZOOM` (same value) caps every automatic fit. The setup map
+  opens at ~z16 on the coordinate typed in step 1 (`focusPoint` in the setup store) or on a lone corner.
+- **Sectors were invisible while selected.** A wedge's tip was the site centroid at full float precision, and
+  Terra Draw refuses to select a shape with more than 8 decimals ("This geometry cannot be edited"); a
+  just-added sector is selected, so only Terra Draw drew it and nothing appeared. `sectorWedge` rounds the tip
+  and `roundGeometry` (`editorModes.ts`) rounds older geometry before it reaches the editor.
+- **Sector management.** `focus/SectorOverview.tsx`: a show/hide switch per kind (state lives in the
+  workspace and applies in every focus via `createFocusView`), and a list to select/delete each sector, with
+  several per kind. "Add the sun's path (today)" adds a sun sector from `sunPath`. Editing a sector's kind or
+  bearings keeps its generated name and colour in step (`syncSectorLook`).
+- **Functions by default.** `element_types.default_properties` (migration `0007_element_type_defaults`,
+  additive) holds each palette entry's typical `needs`/`yields`; placing an element copies them, so a tree
+  (needs water) links to a tank (yields water) at once. The Functions step can top older elements up without
+  overwriting choices. `seed.ELEMENT_TYPE_CATALOG` is the live catalog; migration 0007 holds a frozen copy and
+  a test keeps them equal, so a catalog change ships with a new migration.
+- **Clarity.** Boundary has a primary "Looks good → Sectors & terrain"; setup's "Create site" is a sticky
+  button that says what is missing. `focus/SaveStatus.tsx` shows Saved / Unsaved / Saving / Not saved, says
+  the design autosaves and links to Design plans, and `PlacedNotice` confirms "X added" with a
+  place-another button. Not yet done: element icons/widgets on the map and in exports.
+
 ## Verification and limits
 
 - Store tests cover geometry/properties/deletion undo/redo, dirty state and deletion payloads.
