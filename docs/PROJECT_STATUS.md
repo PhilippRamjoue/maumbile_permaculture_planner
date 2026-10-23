@@ -36,7 +36,7 @@ API is versioned under `/api/v1`; OpenAPI at `/docs`. Alembic chain:
 (single head). Existing terrain is lazily recomputed after the new migration; site/design data is retained.
 
 **Tests:** backend 208 passing + one opt-in live test (pytest; unit + PostGIS integration via
-Testcontainers + the migration chain), frontend 232 (Vitest; MapLibre + fetch are faked).
+Testcontainers + the migration chain), frontend 246 (Vitest; MapLibre + fetch are faked).
 CI (`.github/workflows/ci.yml`) runs lint/type checks, backend formatting, API contract drift checks,
 both suites, the frontend build, and Chromium acceptance tests against a disposable Compose stack.
 
@@ -45,9 +45,15 @@ both suites, the frontend build, and Chromium acceptance tests against a disposa
 - **WP12** (Coolify deployment) is implemented: see [`DEPLOY.md`](DEPLOY.md). Remaining WP12 items: optional Sentry and a live Coolify deploy of the real instance (needs a server and domain).
 - **Map-reliability pass** is **done** (satellite setup basemap; precise corner placement, drag, snap,
   select, delete, undo/redo, zoom-to-boundary; zoom-stable drawing). See `frontend/README.md`.
-- **Guided focus-mode shell** — the remaining piece: reshape the editor into focus modes
-  (Boundary → Sectors&terrain → Zones → Elements → Functions) as filtered views over one saved design.
-  See [`UX_GUIDED_MODES.md`](UX_GUIDED_MODES.md).
+- **Guided focus-mode shell** is **done**: the editor is a focus switcher
+  (Boundary → Sectors&terrain → Zones → Elements → Functions) over one saved design — only the current
+  mode's feature types are editable, the others render as faint, toggleable context, with a suggested
+  order and progress rail but free navigation and autosave. See
+  `frontend/src/features/design-editor/focus/` and [`UX_GUIDED_MODES.md`](UX_GUIDED_MODES.md).
+
+All planned feature work is now implemented. Remaining is a real Coolify deploy (needs a server +
+domain) and ongoing polish — see [`UX_GUIDED_MODES.md`](UX_GUIDED_MODES.md) for refinements (e.g. mid-ring
+corner insertion, edge snapping, deeper focus-mode integration tests).
 
 `frontend/` now includes Terra Draw and Turf. See [`DESIGN_EDITOR.md`](DESIGN_EDITOR.md) for controls,
 save semantics and remaining editor refinements.
