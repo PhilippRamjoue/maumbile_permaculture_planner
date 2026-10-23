@@ -853,3 +853,26 @@ h1 {
   gap: 0.4rem;
   text-align: left;
 }
+
+.btn--wide {
+  display: block;
+  width: 100%;
+  margin: 0.4rem 0;
+  padding: 0.65rem 0.9rem;
+  font-weight: 600;
+}
+.form__actions--sticky {
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
+  padding: 0.6rem 0;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+}
+.form__actions--sticky .btn--wide {
+  margin: 0;
+}
+.form__actions-hint {
+  flex-basis: 100%;
+  margin: 0;
+}

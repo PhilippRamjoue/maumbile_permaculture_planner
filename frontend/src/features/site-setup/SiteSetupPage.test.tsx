@@ -220,6 +220,7 @@ describe("site setup flow", () => {
 
     expect(screen.getByTestId("boundary-status")).toHaveTextContent(/crosses itself/i);
     expect(screen.getByRole("button", { name: "Create site" })).toBeDisabled();
+    expect(screen.getByTestId("create-hint")).toHaveTextContent(/fix the problem/i);
     await waitFor(() => {
       const source = map.sources.get("draft-boundary") as {
         data: { features: { properties: { state: string } }[] };

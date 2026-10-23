@@ -425,6 +425,7 @@ export function Workspace({
               saving={saveBoundary.isPending}
               error={saveBoundary.isError ? message(saveBoundary.error) : null}
               onSave={() => saveBoundary.mutate()}
+              onContinue={() => go("sectors")}
             />
           ) : (
             <HistoryButtons state={state} disabled={disabled} />
