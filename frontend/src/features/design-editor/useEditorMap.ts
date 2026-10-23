@@ -17,6 +17,7 @@ import {
 } from "./editorModes";
 import { measureGeometry, type Measurement } from "./measure";
 import type { EditorDocument, EditorStore } from "./store";
+import { typicalFunctions } from "./focus/functions";
 import { CONTEXT_OPACITY, OPEN_VIEW, renderableFeatures, type FocusView } from "./focus/view";
 import { useStore } from "zustand";
 
@@ -130,6 +131,8 @@ export function useEditorMap(
         name: palette?.name ?? featureType,
         style: palette?.default_style ?? {},
       };
+      // Typical needs / yields of the palette entry, so connections work without extra clicks.
+      Object.assign(properties, typicalFunctions(palette));
       if (featureType === "zone") properties.zone_number = current.view.defaults.zoneNumber;
       if (featureType === "sector")
         Object.assign(properties, { sector_kind: "wind", bearing_from: 0, bearing_to: 90 });

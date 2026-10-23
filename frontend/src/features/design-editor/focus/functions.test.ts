@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type { DesignFeature } from "../../../entities/planning";
+import type { DesignFeature, ElementType } from "../../../entities/planning";
 import {
   anchorOf,
   connectionLines,
@@ -9,6 +9,8 @@ import {
   normalizeFunction,
   permacultureCheck,
   toggleFunction,
+  typicalFunctions,
+  withTypicalFunctions,
 } from "./functions";
 
 interface ElOpts {
@@ -139,5 +141,66 @@ describe("connections between elements", () => {
       [0, 0],
       [10, 10],
     ]);
+  });
+});
+
+describe("typical functions of palette entries", () => {
+  const type = (id: number, name: string, defaults: Record<string, unknown>): ElementType =>
+    ({
+      id,
+      key: name.toLowerCase().replace(" ", "_"),
+      name,
+      default_properties: defaults,
+    }) as unknown as ElementType;
+  const tree = type(1, "Tree", { needs: ["water"], yields: ["shade", "windbreak"] });
+  const tank = type(2, "Water tank", { needs: [], yields: ["water"] });
+  const zone = type(3, "Zone", {});
+  const types = [tree, tank, zone];
+  const withType = (id: number | null, opts: ElOpts = {}): DesignFeature => ({
+    ...el(opts),
+    element_type_id: id,
+  });
+
+  it("starts a new element with its entry's needs and yields", () => {
+    expect(typicalFunctions(tree)).toEqual({ needs: ["water"], yields: ["shade", "windbreak"] });
+    expect(typicalFunctions(zone)).toEqual({});
+    expect(typicalFunctions(undefined)).toEqual({});
+  });
+
+  it("links a placed tree to a placed water tank with no manual steps", () => {
+    const placed = (entry: ElementType, id: string) => ({
+      ...el({ id }),
+      properties: { name: entry.name, ...typicalFunctions(entry) },
+    });
+    const a = placed(tree, "tree");
+    const b = placed(tank, "tank");
+
+    expect(connectionsOf(a, [a, b]).map((c) => [c.fn, c.other.id, c.direction])).toEqual([
+      ["water", "tank", "supplies"],
+    ]);
+    expect(permacultureCheck([a, b]).unmet).toEqual([]);
+    expect(connectionLines(a, [a, b])).toHaveLength(1);
+  });
+
+  it("fills in what an older element lacks, by type id or by its name", () => {
+    const byId = withType(1, { name: "My mango" });
+    expect(functionsOf(withTypicalFunctions(byId, types), "needs")).toEqual(["water"]);
+
+    const byName = withType(null, { name: "Water Tank" });
+    expect(functionsOf(withTypicalFunctions(byName, types), "yields")).toEqual(["water"]);
+  });
+
+  it("never overwrites needs or yields the user chose", () => {
+    const chosen = withType(1, { needs: ["shade"], yields: [] });
+    const filled = withTypicalFunctions(chosen, types);
+    expect(functionsOf(filled, "needs")).toEqual(["shade"]);
+    expect(functionsOf(filled, "yields")).toEqual(["shade", "windbreak"]);
+  });
+
+  it("returns the same element when there is nothing to add", () => {
+    const done = withType(1, { needs: ["water"], yields: ["food"] });
+    expect(withTypicalFunctions(done, types)).toBe(done);
+    const unknown = withType(null, { name: "Unknown thing" });
+    expect(withTypicalFunctions(unknown, types)).toBe(unknown);
   });
 });

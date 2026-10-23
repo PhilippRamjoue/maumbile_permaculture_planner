@@ -470,7 +470,7 @@ export function Workspace({
               elements={own}
             />
           )}
-          {focus === "functions" && <FunctionsPanel props={panel} elements={own} />}
+          {focus === "functions" && <FunctionsPanel props={panel} elements={own} types={types} />}
           <ContextToggles
             current={focus}
             hidden={hidden}

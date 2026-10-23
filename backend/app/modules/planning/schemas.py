@@ -35,6 +35,7 @@ class ElementTypeRead(BaseModel):
     geometry_type: Literal["point", "line", "polygon"]
     icon: str | None
     default_style: dict[str, Any]
+    default_properties: dict[str, Any]
     sort_order: int
 
 

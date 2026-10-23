@@ -42,6 +42,10 @@ class ElementType(Base):
     default_style: Mapped[dict[str, Any]] = mapped_column(
         JSONB, nullable=False, server_default=text("'{}'::jsonb")
     )
+    # Properties a feature placed from this entry starts with, e.g. its typical `needs` / `yields`.
+    default_properties: Mapped[dict[str, Any]] = mapped_column(
+        JSONB, nullable=False, server_default=text("'{}'::jsonb")
+    )
     sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
 

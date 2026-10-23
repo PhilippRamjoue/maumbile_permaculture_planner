@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-import type { DesignFeature } from "../../../entities/planning";
+import type { DesignFeature, ElementType } from "../../../entities/planning";
 import { FeatureList, type PanelProps } from "./common";
 import {
   FUNCTION_PRESETS,
@@ -10,12 +10,14 @@ import {
   normalizeFunction,
   permacultureCheck,
   toggleFunction,
+  typeOfElement,
+  withTypicalFunctions,
   type FunctionKey,
 } from "./functions";
 
 const LABELS: Record<FunctionKey, { title: string; hint: string }> = {
-  needs: { title: "Needs", hint: "What does it need to thrive or work?" },
-  yields: { title: "Gives", hint: "What does it provide?" },
+  needs: { title: "Needs", hint: "What does it need to thrive or work? A tree needs water." },
+  yields: { title: "Gives", hint: "What does it provide? A water tank gives water." },
 };
 
 /** Needs or yields of one element: tap-to-toggle suggestions plus your own words. */
@@ -190,14 +192,37 @@ export function CheckReport({
 export function FunctionsPanel({
   props,
   elements,
+  types,
 }: {
   props: PanelProps;
   elements: readonly DesignFeature[];
+  types: readonly ElementType[];
 }) {
   const { state, pick, disabled, selected } = props;
   const name = selected ? String(selected.properties.name ?? selected.feature_type) : "";
+  // Elements placed from the palette start with their typical needs and gifts; older ones, or ones
+  // that were cleared, can be topped up here without overwriting anything chosen by hand.
+  const fillable = elements.filter((e) => withTypicalFunctions(e, types) !== e);
+  const typeName = (e: DesignFeature) => typeOfElement(e, types)?.name ?? "element";
+  const selectedFillable = selected && withTypicalFunctions(selected, types) !== selected;
   return (
     <>
+      <p className="muted">
+        Say what each element <strong>gives</strong> (water, shade, food…) and what it{" "}
+        <strong>needs</strong>. When one element gives what another needs, they are linked — pick an
+        element to see the links.
+      </p>
+      {fillable.length > 0 && (
+        <button
+          type="button"
+          className="btn"
+          disabled={disabled}
+          onClick={() => fillable.forEach((e) => state.upsert(withTypicalFunctions(e, types)))}
+        >
+          Fill in typical needs &amp; gifts for {fillable.length} element
+          {fillable.length === 1 ? "" : "s"}
+        </button>
+      )}
       <FeatureList
         title="Elements"
         features={elements}
@@ -208,6 +233,15 @@ export function FunctionsPanel({
       {selected ? (
         <fieldset disabled={disabled} className="editor-properties">
           <legend>{name}</legend>
+          {selectedFillable && selected && (
+            <button
+              type="button"
+              className="btn"
+              onClick={() => state.upsert(withTypicalFunctions(selected, types))}
+            >
+              Use the typical needs &amp; gifts of a {typeName(selected).toLowerCase()}
+            </button>
+          )}
           <FunctionPicker element={selected} kind="needs" onChange={state.upsert} />
           <FunctionPicker element={selected} kind="yields" onChange={state.upsert} />
           <Links element={selected} features={elements} onPick={pick} />
