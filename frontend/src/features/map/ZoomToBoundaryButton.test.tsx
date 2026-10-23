@@ -4,6 +4,7 @@ import type { Map as MapLibreMap } from "maplibre-gl";
 import { describe, expect, it } from "vitest";
 
 import { FAKE_MAP_SIZE, FakeMap } from "../../shared/testing/fakeMaplibre";
+import { MAX_FIT_ZOOM } from "./layers/zoomLimits";
 import { ZoomToBoundaryButton } from "./ZoomToBoundaryButton";
 
 const bounds: [number, number, number, number] = [36.8, -1.201, 36.801, -1.2];
@@ -27,6 +28,15 @@ describe("ZoomToBoundaryButton", () => {
       expect(at.y).toBeGreaterThan(0);
       expect(at.y).toBeLessThan(FAKE_MAP_SIZE.height);
     }
+  });
+
+  it("never zooms deeper than the imagery has real tiles for", async () => {
+    const map = new FakeMap({ center: [30, 5], zoom: 3 });
+    render(<ZoomToBoundaryButton map={map as unknown as MapLibreMap} bounds={bounds} />);
+
+    await userEvent.click(screen.getByRole("button", { name: "Zoom to boundary" }));
+
+    expect(map.getZoom()).toBeLessThanOrEqual(MAX_FIT_ZOOM);
   });
 
   it("is disabled until there is a map and a boundary", () => {

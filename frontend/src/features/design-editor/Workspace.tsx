@@ -17,6 +17,7 @@ import { useMapLayerStore } from "../map/store";
 import { siteKeys, sitesApi } from "../../entities/siteQueries";
 import { terrainKeys, useTerrain } from "../../entities/terrainQueries";
 import { ExportMenu } from "../export";
+import { MAX_FIT_ZOOM } from "../map/layers/zoomLimits";
 import { MapView } from "../map/MapView";
 import { ZoomToBoundaryButton } from "../map/ZoomToBoundaryButton";
 import { ImageryAttribution } from "../map/ImageryAttribution";
@@ -206,7 +207,7 @@ export function Workspace({
     if (!map || framed.current) return;
     framed.current = true;
     map.resize();
-    map.fitBounds(site.bbox, { padding: 48, maxZoom: 19, duration: 0 });
+    map.fitBounds(site.bbox, { padding: 48, maxZoom: MAX_FIT_ZOOM, duration: 0 });
   }, [map, site.bbox]);
 
   const finishTool = useCallback((next: Tool) => setTool(next), []);

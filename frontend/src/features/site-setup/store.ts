@@ -27,6 +27,11 @@ interface SetupState {
   /** Which number comes first in pasted text. */
   order: CoordinateOrder;
   rows: DraftRow[];
+  /**
+   * A coordinate the user typed to find their land (step 1). The setup map opens there, close
+   * enough to recognise the plot, until real corners exist to frame instead.
+   */
+  focusPoint: LngLat | null;
   /** The corner chosen on the map or in the table (delete / highlight target). */
   selectedRowId: number | null;
   /** Earlier values of `rows`, oldest first. */
@@ -41,6 +46,7 @@ interface SetupState {
 
   setStep(step: SetupStep): void;
   setCountry(code: string | null): void;
+  setFocusPoint(point: LngLat | null): void;
   setName(name: string): void;
   setOrder(order: CoordinateOrder): void;
   /** Appends points. The map re-frames itself on any change to the entered points. */
@@ -70,6 +76,7 @@ const initial = (countryCode: string | null = null) => ({
   name: "",
   order: "lat-lng" as CoordinateOrder,
   rows: [] as DraftRow[],
+  focusPoint: null as LngLat | null,
   selectedRowId: null as number | null,
   past: [] as DraftRow[][],
   future: [] as DraftRow[][],
@@ -100,6 +107,7 @@ export const useSetupStore = create<SetupState>((set) => ({
   ...initial(),
   setStep: (step) => set({ step }),
   setCountry: (countryCode) => set({ countryCode }),
+  setFocusPoint: (focusPoint) => set({ focusPoint }),
   setName: (name) => set({ name }),
   setOrder: (order) => set({ order }),
   addPoints: (points) =>

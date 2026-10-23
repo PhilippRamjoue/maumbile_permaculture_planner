@@ -1,7 +1,8 @@
-import { useId, useState, type FormEvent } from "react";
+import { useEffect, useId, useState, type FormEvent } from "react";
 
 import { countryName, FEATURED_COUNTRIES, OTHER_COUNTRIES, suggestCountry } from "./countries";
 import { parseCoordinateText } from "./geometry";
+import { useSetupStore } from "./store";
 
 interface CountryStepProps {
   countryCode: string | null;
@@ -18,6 +19,14 @@ export function CountryStep({ countryCode, onCountryChange, onContinue }: Countr
   const parsed = probe.trim() === "" ? null : parseCoordinateText(probe, "lat-lng");
   const probePoint = parsed && parsed.errors.length === 0 ? parsed.points[0] : undefined;
   const suggestion = probePoint ? suggestCountry(probePoint) : null;
+
+  // The map in step 2 opens on this coordinate, so you can find your land before adding corners.
+  const [probeLng, probeLat] = probePoint ?? [];
+  useEffect(() => {
+    useSetupStore
+      .getState()
+      .setFocusPoint(probeLng === undefined || probeLat === undefined ? null : [probeLng, probeLat]);
+  }, [probeLng, probeLat]);
 
   function submit(event: FormEvent) {
     event.preventDefault();
@@ -57,7 +66,7 @@ export function CountryStep({ countryCode, onCountryChange, onContinue }: Countr
       </div>
 
       <div className="field">
-        <label htmlFor={probeId}>Not sure? Paste one coordinate from your land (optional)</label>
+        <label htmlFor={probeId}>Paste one coordinate from your land (optional) — the map will open there</label>
         <input
           id={probeId}
           value={probe}

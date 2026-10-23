@@ -7,6 +7,7 @@ import { FakeMap } from "../../shared/testing/fakeMaplibre";
 import { imageryMeta, site, user } from "../../shared/testing/fixtures";
 import { mockApi, problem, type MockHandler } from "../../shared/testing/mockApi";
 import { renderApp } from "../../shared/testing/renderApp";
+import { IMAGERY_MAX_ZOOM, MAX_FIT_ZOOM } from "../map/layers/zoomLimits";
 
 vi.mock(
   "maplibre-gl",
@@ -107,6 +108,31 @@ describe("site setup flow", () => {
 
     await userEvent.click(screen.getByRole("button", { name: "Use Kenya" }));
     expect(screen.getByLabelText("Country")).toHaveValue("KE");
+  });
+
+  it("opens the map near a coordinate given in step 1, not at country zoom", async () => {
+    mockApi(handlers());
+    renderApp("/sites/new");
+    await userEvent.type(await screen.findByLabelText(/paste one coordinate/i), "-3.3, 36.7");
+    await userEvent.selectOptions(screen.getByLabelText("Country"), "TZ");
+    await userEvent.click(screen.getByRole("button", { name: "Continue" }));
+    await screen.findByRole("heading", { name: /step 2 of 2/i });
+
+    const map = await setupMap();
+    expect(map.getZoom()).toBeGreaterThanOrEqual(15);
+    expect(map.getZoom()).toBeLessThanOrEqual(MAX_FIT_ZOOM);
+    expect(map.getCenter().lng).toBeCloseTo(36.7, 3);
+    expect(map.getCenter().lat).toBeCloseTo(-3.3, 3);
+  });
+
+  it("over-zooms the setup basemap instead of requesting tiles past Esri's coverage", async () => {
+    mockApi(handlers());
+    renderApp("/sites/new");
+    await chooseKenya();
+
+    const map = await setupMap();
+    await waitFor(() => expect(map.sources.has("setup-basemap")).toBe(true));
+    expect(map.sources.get("setup-basemap")).toMatchObject({ maxzoom: IMAGERY_MAX_ZOOM });
   });
 
   it("frames the map on the chosen country and adds a point per map click", async () => {
