@@ -1,5 +1,4 @@
-import type { Page } from "@playwright/test";
-
+import { step, register, makeSite } from "./helpers";
 import { expect, test } from "./map-fixture";
 
 test.skip(!process.env.E2E, "set E2E=1 with the stack running to enable");
@@ -7,38 +6,6 @@ test.skip(!process.env.E2E, "set E2E=1 with the stack running to enable");
 // The editor is a guided focus-mode shell: each mode (Boundary, Sectors & terrain, Zones,
 // Elements, Functions) edits one family of features over one saved design. These specs drive it
 // through that shell — switch focus, use the mode's own tools — and were rewritten for it.
-
-/** The rail step button for a focus mode (scoped so it never matches the "Next: …" nudge). */
-const step = (page: Page, name: string) =>
-  page.locator(".focus-rail__steps").getByRole("button", { name });
-
-async function register(page: Page, tag: string) {
-  const email = `${tag}-${Date.now()}@example.org`;
-  const password = "e2e-editor-password-123";
-  expect((await page.request.post("/api/v1/auth/register", { data: { email, password } })).ok()).toBe(
-    true,
-  );
-  expect((await page.request.post("/api/v1/auth/login", { data: { email, password } })).ok()).toBe(
-    true,
-  );
-}
-
-async function makeSite(page: Page, name: string) {
-  const response = await page.request.post("/api/v1/sites", {
-    data: {
-      name,
-      country_code: "KE",
-      coordinates: [
-        [36.8, -1.2],
-        [36.801, -1.2],
-        [36.801, -1.201],
-        [36.8, -1.201],
-      ],
-    },
-  });
-  expect(response.ok()).toBe(true);
-  return response.json();
-}
 
 test("draws a zone and places an element across focus modes, then saves and reloads", async ({
   page,
@@ -137,12 +104,14 @@ test("keeps the draft after a save failure and warns before leaving", async ({ p
   await expect(page.getByLabel("Feature name")).toHaveValue("Mango");
 
   // A failed save keeps the draft in place; a retry succeeds.
-  await page.route(/\/features:batch$/, (route) =>
-    route.fulfill({
-      status: 503,
-      contentType: "application/problem+json",
-      body: JSON.stringify({ title: "Temporarily unavailable" }),
-    }),
+  await page.route(
+    /\/features:batch$/,
+    (route) =>
+      route.fulfill({
+        status: 503,
+        contentType: "application/problem+json",
+        body: JSON.stringify({ title: "Temporarily unavailable" }),
+      }),
     { times: 1 },
   );
   await page.getByRole("button", { name: "Save design" }).click();
