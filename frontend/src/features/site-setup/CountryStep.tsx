@@ -1,6 +1,12 @@
 import { useEffect, useId, useState, type FormEvent } from "react";
 
-import { countryName, FEATURED_COUNTRIES, OTHER_COUNTRIES, suggestCountry } from "./countries";
+import {
+  countryContains,
+  countryName,
+  FEATURED_COUNTRIES,
+  OTHER_COUNTRIES,
+  suggestCountry,
+} from "./countries";
 import { parseCoordinateText } from "./geometry";
 import { useSetupStore } from "./store";
 
@@ -18,7 +24,10 @@ export function CountryStep({ countryCode, onCountryChange, onContinue }: Countr
 
   const parsed = probe.trim() === "" ? null : parseCoordinateText(probe, "lat-lng");
   const probePoint = parsed && parsed.errors.length === 0 ? parsed.points[0] : undefined;
-  const suggestion = probePoint ? suggestCountry(probePoint) : null;
+  // Country boxes overlap (Kenya and Tanzania share a border region): a coordinate inside the
+  // country already chosen is never second-guessed.
+  const fitsChosen = probePoint && countryCode ? countryContains(countryCode, probePoint) : null;
+  const suggestion = probePoint && fitsChosen !== true ? suggestCountry(probePoint) : null;
 
   // The map in step 2 opens on this coordinate, so you can find your land before adding corners.
   const [probeLng, probeLat] = probePoint ?? [];
@@ -79,7 +88,11 @@ export function CountryStep({ countryCode, onCountryChange, onContinue }: Countr
           inputMode="decimal"
           autoComplete="off"
         />
-        {suggestion ? (
+        {probePoint && fitsChosen === true && countryCode ? (
+          <p role="status" className="field__hint">
+            ✓ That is inside {countryName(countryCode)}.
+          </p>
+        ) : suggestion ? (
           <p role="status" className="field__hint">
             That looks like {countryName(suggestion)}.{" "}
             {suggestion === countryCode ? (

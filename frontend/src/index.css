@@ -841,6 +841,7 @@ h1 {
   flex-direction: column;
   flex-wrap: nowrap;
   max-height: 16rem;
+  overflow-x: hidden;
 }
 .sector-overview__item {
   display: flex;
@@ -848,10 +849,14 @@ h1 {
 }
 .sector-overview__item > .btn:first-child {
   flex: 1;
+  min-width: 0;
   display: flex;
   align-items: center;
   gap: 0.4rem;
   text-align: left;
+}
+.sector-overview__item small {
+  display: block;
 }
 
 .btn--wide {
@@ -875,4 +880,38 @@ h1 {
 .form__actions-hint {
   flex-basis: 100%;
   margin: 0;
+}
+
+.save-status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.1rem 0.7rem;
+}
+.save-status__state {
+  font-weight: 600;
+}
+.save-status[data-state="saved"] .save-status__state {
+  color: #1b5e20;
+}
+.save-status[data-state="unsaved"] .save-status__state,
+.save-status[data-state="saving"] .save-status__state {
+  color: #8a5a00;
+}
+.save-status[data-state="failed"] .save-status__state {
+  color: #b00020;
+}
+.save-status__note {
+  font-size: 0.85rem;
+}
+.placed-notice {
+  margin: 0.6rem 0;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid #2f855a;
+  border-radius: 0.4rem;
+  background: #e8f5ec;
+  color: #174a28;
+}
+.placed-notice p {
+  margin: 0 0 0.5rem;
 }

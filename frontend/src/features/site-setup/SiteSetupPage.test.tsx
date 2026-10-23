@@ -135,6 +135,17 @@ describe("site setup flow", () => {
     expect(map.sources.get("setup-basemap")).toMatchObject({ maxzoom: IMAGERY_MAX_ZOOM });
   });
 
+  it("does not contradict a chosen country whose box contains the coordinate", async () => {
+    mockApi(handlers());
+    renderApp("/sites/new");
+    await userEvent.selectOptions(await screen.findByLabelText("Country"), "TZ");
+    // Near Arusha: inside Tanzania, but also inside Kenya's rough box.
+    await userEvent.type(screen.getByLabelText(/paste one coordinate/i), "-3.3, 36.7");
+
+    expect(await screen.findByText(/inside tanzania/i)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Use Kenya/ })).not.toBeInTheDocument();
+  });
+
   it("frames the map on the chosen country and adds a point per map click", async () => {
     mockApi(handlers());
     renderApp("/sites/new");
