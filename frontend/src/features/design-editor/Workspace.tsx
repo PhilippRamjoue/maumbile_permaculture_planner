@@ -198,6 +198,17 @@ export function Workspace({
   });
   const boundaryUi = useBoundaryEditing(map, focus === "boundary", draft, saveBoundary.isPending);
 
+  // Open framed on the land. MapView sets its initial bounds at construction, but the canvas can
+  // still be laying out then, which leaves the map at world zoom; resizing and fitting once, as
+  // soon as the map is ready, guarantees the editor opens on the site instead of the whole globe.
+  const framed = useRef(false);
+  useEffect(() => {
+    if (!map || framed.current) return;
+    framed.current = true;
+    map.resize();
+    map.fitBounds(site.bbox, { padding: 48, maxZoom: 19, duration: 0 });
+  }, [map, site.bbox]);
+
   const finishTool = useCallback((next: Tool) => setTool(next), []);
   const drawing = useEditorMap(
     map,
