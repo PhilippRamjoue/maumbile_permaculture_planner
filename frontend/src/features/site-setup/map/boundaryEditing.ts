@@ -15,8 +15,10 @@ import {
 export interface BoundaryEditingHost {
   /** The corners currently on the map. */
   vertices(): readonly BoundaryVertex[];
-  /** The user clicked empty map. */
-  onAdd(point: LngLat): void;
+  /** The user clicked empty map. Leave out for a boundary that can be adjusted but not extended. */
+  onAdd?(point: LngLat): void;
+  /** Cursor over empty map; defaults to the setup flow's "click to add" crosshair. */
+  idleCursor?: string;
   /** A corner was pressed or clicked. */
   onSelect(id: number): void;
   /** A corner is being dragged to `point` (same `gesture` for the whole drag). */
@@ -57,6 +59,7 @@ export function attachBoundaryEditing(map: MapLibreMap, host: BoundaryEditingHos
   let gestures = 0;
 
   const project = (point: LngLat): Pixel => map.project(point);
+  const idle = host.idleCursor ?? "crosshair";
   const cursor = (value: string) => {
     map.getCanvas().style.cursor = value;
   };
@@ -87,7 +90,7 @@ export function attachBoundaryEditing(map: MapLibreMap, host: BoundaryEditingHos
       if (id === hover) return;
       hover = id;
       host.onHover(id);
-      cursor(id === null ? "crosshair" : "grab");
+      cursor(id === null ? idle : "grab");
       return;
     }
     if (!drag.moved) {
@@ -110,7 +113,7 @@ export function attachBoundaryEditing(map: MapLibreMap, host: BoundaryEditingHos
     drag = null;
     map.dragPan.enable();
     host.onSnap(null);
-    cursor(hover === null ? "crosshair" : "grab");
+    cursor(hover === null ? idle : "grab");
     if (wasDrag) {
       // The click that ends a drag must not also add a corner.
       afterDrag = true;
@@ -122,7 +125,7 @@ export function attachBoundaryEditing(map: MapLibreMap, host: BoundaryEditingHos
     if (afterDrag) return;
     const hit = nearestVertex(event.point, host.vertices(), project, reach(event));
     if (hit) host.onSelect(hit.id);
-    else host.onAdd(normalizeLngLat([event.lngLat.lng, event.lngLat.lat]));
+    else host.onAdd?.(normalizeLngLat([event.lngLat.lng, event.lngLat.lat]));
   };
 
   map.on("mousedown", press);

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { Polygon } from "geojson";
-import type { Map as MapLibreMap, MapMouseEvent } from "maplibre-gl";
+import type { ExpressionSpecification, Map as MapLibreMap, MapMouseEvent } from "maplibre-gl";
 import { TerraDraw } from "terra-draw";
 import { TerraDrawMapLibreGLAdapter } from "terra-draw-maplibre-gl-adapter";
 import type { DesignFeature, ElementType } from "../../entities/planning";
@@ -16,18 +16,38 @@ import {
   type FeatureHit,
 } from "./editorModes";
 import { measureGeometry, type Measurement } from "./measure";
-import type { EditorStore } from "./store";
+import type { EditorDocument, EditorStore } from "./store";
+import { CONTEXT_OPACITY, OPEN_VIEW, renderableFeatures, type FocusView } from "./focus/view";
 import { useStore } from "zustand";
 
 export type Tool =
   "select" | "zone" | "sector" | "element" | "path" | "measure-line" | "measure-area";
-const numberStyle = (style: unknown, key: string, fallback: number, min: number, max: number) => {
-  const value =
-    typeof style === "object" && style !== null
-      ? Number((style as Record<string, unknown>)[key])
-      : NaN;
-  return Number.isFinite(value) ? Math.max(min, Math.min(max, value)) : fallback;
-};
+
+const flag = (name: string): ExpressionSpecification => ["==", ["get", name], true];
+/** `normal`, or `faint` for features drawn as context rather than as the focus. */
+const byContext = (normal: number, faint: number): ExpressionSpecification => [
+  "case",
+  flag("_context"),
+  faint,
+  normal,
+];
+
+/**
+ * The feature Terra Draw edits right now: the selected one, when the focus lets its shape be
+ * reshaped and it is drawn at all. Every other feature is drawn by the renderer below.
+ */
+function editedFeature(
+  document: EditorDocument,
+  selectedId: string | null,
+  tool: Tool,
+  saving: boolean,
+  view: FocusView,
+) {
+  if (tool !== "select" || saving || !view.geometryEditable) return undefined;
+  const selected = document.features.find((f) => f.id === selectedId);
+  if (!selected || !view.isEditable(selected) || !view.isShown(selected)) return undefined;
+  return document.layers.find((l) => l.id === selected.layer_id)?.visible ? selected : undefined;
+}
 
 export function useEditorMap(
   map: MapLibreMap | null,
@@ -43,13 +63,15 @@ export function useEditorMap(
   overlays?: unknown,
   // The site boundary: zones and paths snap onto its corners.
   boundary?: Polygon,
+  // The focus mode: what can be picked and edited, what is drawn faintly, what is hidden.
+  view: FocusView = OPEN_VIEW,
 ) {
   const [live, setLive] = useState<Measurement | null>(null);
   const [error, setError] = useState("");
   const drawRef = useRef<TerraDraw | null>(null);
   const syncing = useRef(false);
-  const options = useRef({ tool, element, activeLayer, saving, setTool });
-  options.current = { tool, element, activeLayer, saving, setTool };
+  const options = useRef({ tool, element, activeLayer, saving, setTool, view });
+  options.current = { tool, element, activeLayer, saving, setTool, view };
   const boundaryRef = useRef(boundary);
   boundaryRef.current = boundary;
   const document = useStore(store, (s) => s.document);
@@ -64,7 +86,12 @@ export function useEditorMap(
         prefixId: "editor-draw",
       }),
       modes: createEditorModes(() =>
-        snapTargets(store.getState().document, store.getState().selectedId, boundaryRef.current),
+        snapTargets(
+          store.getState().document,
+          store.getState().selectedId,
+          boundaryRef.current,
+          options.current.view.isShown,
+        ),
       ),
     });
     draw.start();
@@ -103,7 +130,7 @@ export function useEditorMap(
         name: palette?.name ?? featureType,
         style: palette?.default_style ?? {},
       };
-      if (featureType === "zone") properties.zone_number = 1;
+      if (featureType === "zone") properties.zone_number = current.view.defaults.zoneNumber;
       if (featureType === "sector")
         Object.assign(properties, { sector_kind: "wind", bearing_from: 0, bearing_to: 90 });
       const color = palette?.default_style.fill ?? palette?.default_style.stroke;
@@ -137,10 +164,15 @@ export function useEditorMap(
         return;
       }
       // A few pixels of slack: paths and outlines are thinner than a fingertip or a shaky click.
+      // Only the focus mode's own features can be picked; faint context is look-only.
+      const editableIds = new Set(
+        current.document.features.filter(options.current.view.isEditable).map((f) => f.id),
+      );
       const hits: FeatureHit[] = map
         .queryRenderedFeatures(pickBox(event.point), { layers: ids })
         .flatMap((found) =>
-          typeof found.properties._editor_id === "string"
+          typeof found.properties._editor_id === "string" &&
+          editableIds.has(found.properties._editor_id)
             ? [{ id: found.properties._editor_id, geometryType: found.geometry.type }]
             : [],
         );
@@ -171,9 +203,8 @@ export function useEditorMap(
       draw.setMode("select");
       draw.clear();
       if (saving) return;
-      const selected = document.features.find((f) => f.id === selectedId);
-      const visible = document.layers.find((l) => l.id === selected?.layer_id)?.visible;
-      if (tool === "select" && selected && visible) {
+      const selected = editedFeature(document, selectedId, tool, saving, view);
+      if (selected) {
         const results = draw.addFeatures([
           {
             type: "Feature",
@@ -210,32 +241,22 @@ export function useEditorMap(
     } finally {
       syncing.current = false;
     }
-  }, [map, document, selectedId, tool, element, saving, activeLayer]);
+  }, [map, document, selectedId, tool, element, saving, activeLayer, view]);
 
   useEffect(() => {
     if (!map) return;
     const sourceIds: string[] = [];
     const layerIds: string[] = [];
+    const drawing = editedFeature(document, selectedId, tool, saving, view);
     for (const layer of [...document.layers].sort((a, b) => a.sort_order - b.sort_order)) {
       const id = `design-${layer.id}`;
       sourceIds.push(id);
-      const features = document.features
-        .filter(
-          (f) => f.layer_id === layer.id && !(tool === "select" && !saving && f.id === selectedId),
-        )
-        .map((f) => ({
-          ...f,
-          properties: {
-            ...f.properties,
-            _editor_id: f.id,
-            _width: numberStyle(f.properties.style, "stroke_width", 3, 1, 12),
-            _radius: numberStyle(f.properties.style, "radius", 8, 3, 24),
-            _opacity: numberStyle(f.properties.style, "fill_opacity", 0.3, 0, 1),
-            color: /^#[0-9a-f]{6}$/i.test(String(f.properties.color))
-              ? f.properties.color
-              : "#2f855a",
-          },
-        }));
+      const features = renderableFeatures(
+        document.features.filter((f) => f.layer_id === layer.id),
+        view,
+        selectedId,
+        drawing?.id ?? null,
+      );
       map.addSource(id, {
         type: "geojson",
         promoteId: "_editor_id",
@@ -252,7 +273,10 @@ export function useEditorMap(
             type: "fill",
             filter: ["==", "$type", "Polygon"],
             layout: { visibility },
-            paint: { "fill-color": ["get", "color"], "fill-opacity": ["get", "_opacity"] },
+            paint: {
+              "fill-color": ["get", "color"],
+              "fill-opacity": ["*", ["get", "_opacity"], byContext(1, CONTEXT_OPACITY)],
+            },
           });
         else if (kind === "line")
           map.addLayer({
@@ -261,7 +285,16 @@ export function useEditorMap(
             type: "line",
             filter: ["!=", "$type", "Point"],
             layout: { visibility },
-            paint: { "line-color": ["get", "color"], "line-width": ["get", "_width"] },
+            paint: {
+              "line-color": ["get", "color"],
+              "line-width": [
+                "case",
+                flag("_selected"),
+                ["+", ["get", "_width"], 2],
+                ["get", "_width"],
+              ],
+              "line-opacity": byContext(1, CONTEXT_OPACITY),
+            },
           });
         else
           map.addLayer({
@@ -273,16 +306,34 @@ export function useEditorMap(
             paint: {
               "circle-color": ["get", "color"],
               "circle-radius": ["get", "_radius"],
-              "circle-stroke-color": "#ffffff",
-              "circle-stroke-width": 2,
+              "circle-opacity": byContext(1, CONTEXT_OPACITY),
+              "circle-stroke-color": ["case", flag("_selected"), "#ffd23f", "#ffffff"],
+              "circle-stroke-width": ["case", flag("_selected"), 4, 2],
+              "circle-stroke-opacity": byContext(1, CONTEXT_OPACITY),
             },
           });
       }
     }
-    // Keep editing handles above the document layers.
+    if (view.connections.length > 0) {
+      const id = "design-connections";
+      sourceIds.push(id);
+      layerIds.push(`${id}-line`);
+      map.addSource(id, {
+        type: "geojson",
+        data: { type: "FeatureCollection", features: [...view.connections] },
+      });
+      map.addLayer({
+        id: `${id}-line`,
+        source: id,
+        type: "line",
+        paint: { "line-color": "#ffd23f", "line-width": 3, "line-dasharray": [2, 1.5] },
+      });
+    }
+    // Keep editing handles (and the border's corner handles, in the boundary focus) above the
+    // document layers.
     map
       .getStyle()
-      .layers?.filter((l) => l.id.startsWith("editor-draw"))
+      .layers?.filter((l) => l.id.startsWith("editor-draw") || l.id.startsWith("draft-boundary"))
       .forEach((l) => map.moveLayer(l.id));
     return () => {
       try {
@@ -292,7 +343,7 @@ export function useEditorMap(
         /* map already removed during route teardown */
       }
     };
-  }, [map, document, selectedId, tool, saving, imagery, overlays]);
+  }, [map, document, selectedId, tool, saving, imagery, overlays, view]);
 
   const rotate = (angle: number) => {
     const draw = drawRef.current;

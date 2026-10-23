@@ -35,7 +35,14 @@ export interface Page<T> {
   offset: number;
 }
 
-/** Body of `POST /sites` (`SiteCreate`): `coordinates` is a ring of [lng, lat], closed or closable. */
+/** Body of `PATCH /sites/{id}` (`SiteUpdate`); replacing `coordinates` recomputes centroid, bbox, area and UTM. */
+export interface SiteUpdateRequest {
+  name?: string;
+  country_code?: string;
+  coordinates?: [number, number][];
+}
+
+/** Body of `POST /sites`(`SiteCreate`): `coordinates` is a ring of [lng, lat], closed or closable. */
 export interface SiteCreateRequest {
   name: string;
   country_code?: string;
