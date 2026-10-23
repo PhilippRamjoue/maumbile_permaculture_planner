@@ -82,7 +82,46 @@ export function sectorProblem(spec: Pick<SectorSpec, "from" | "to" | "radiusM">)
   return null;
 }
 
-const kindLabel = (kind: SectorKind) => kind[0].toUpperCase() + kind.slice(1);
+export const kindLabel = (kind: SectorKind) => kind[0].toUpperCase() + kind.slice(1);
+
+const autoName = (kind: SectorKind, from: number, to: number) =>
+  `${kindLabel(kind)} ${from}°–${to}°`;
+
+/** The kind of a sector feature; hand-drawn or old sectors without one count as wind. */
+export function sectorKindOf(feature: Pick<DesignFeature, "properties">): SectorKind {
+  const kind = feature.properties.sector_kind;
+  return SECTOR_KINDS.find((k) => k === kind) ?? "wind";
+}
+
+/** "Wind · 100° → 45° (305° wide)": what a sector is, in one line for the overview list. */
+export function sectorSummary(feature: DesignFeature): string {
+  const { bearing_from: from, bearing_to: to } = feature.properties;
+  const kind = kindLabel(sectorKindOf(feature));
+  if (typeof from !== "number" || typeof to !== "number") return kind;
+  return `${kind} · ${from}° → ${to}° (${sectorSpan(from, to)}° wide)`;
+}
+
+/**
+ * Keeps a sector's generated name ("Sun 315°–45°") and colour in step with its kind and bearings
+ * when those are edited. A name or colour the user chose themselves is left alone.
+ */
+export function syncSectorLook(before: DesignFeature, after: DesignFeature): DesignFeature {
+  const properties = { ...after.properties };
+  const wasKind = sectorKindOf(before);
+  const kind = sectorKindOf(after);
+  if (properties.color === SECTOR_COLORS[wasKind]) properties.color = SECTOR_COLORS[kind];
+  const { bearing_from: from, bearing_to: to } = before.properties;
+  if (
+    typeof from === "number" &&
+    typeof to === "number" &&
+    typeof properties.bearing_from === "number" &&
+    typeof properties.bearing_to === "number" &&
+    properties.name === autoName(wasKind, from, to)
+  ) {
+    properties.name = autoName(kind, properties.bearing_from, properties.bearing_to);
+  }
+  return { ...after, properties };
+}
 
 /** A persistable `sector` feature: the wedge plus the bearings it was drawn from. */
 export function sectorFeature(spec: SectorSpec, id: string, layerId: string): DesignFeature {
@@ -96,7 +135,7 @@ export function sectorFeature(spec: SectorSpec, id: string, layerId: string): De
     element_type_id: null,
     geometry: sectorWedge(spec.origin, from, to, spec.radiusM),
     properties: {
-      name: `${kindLabel(spec.kind)} ${from}°–${to}°`,
+      name: autoName(spec.kind, from, to),
       style: {},
       color: SECTOR_COLORS[spec.kind],
       sector_kind: spec.kind,
@@ -165,6 +204,22 @@ export function sunPath(latitude: number, day: number): SunPath | null {
   return throughNorth
     ? { sunrise, sunset, from: sunset, to: sunrise }
     : { sunrise, sunset, from: sunrise, to: sunset };
+}
+
+/** A sun sector covering the sun's path across the sky on `date`, or `null` in polar day/night. */
+export function sunPathFeature(
+  origin: [number, number],
+  radiusM: number,
+  layerId: string,
+  id: string,
+  date: Date,
+): DesignFeature | null {
+  const day = dayOfYear(
+    `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`,
+  );
+  const path = day === null ? null : sunPath(origin[1], day);
+  if (!path) return null;
+  return sectorFeature({ kind: "sun", from: path.from, to: path.to, origin, radiusM }, id, layerId);
 }
 
 /** Default wedge radius for a site: half its longer side, rounded to 10 m (at least 20 m). */

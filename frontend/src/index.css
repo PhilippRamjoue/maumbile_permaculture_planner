@@ -814,3 +814,42 @@ h1 {
 .function-links li {
   margin: 0.3rem 0;
 }
+
+.sector-overview__kinds {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.9rem;
+  margin: 0 0 0.5rem;
+}
+.sector-overview__kind {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+.sector-overview__kind input {
+  width: auto;
+}
+.sector-overview__swatch {
+  display: inline-block;
+  flex: none;
+  width: 0.8rem;
+  height: 0.8rem;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 0, 0, 0.35);
+}
+.sector-overview__list {
+  flex-direction: column;
+  flex-wrap: nowrap;
+  max-height: 16rem;
+}
+.sector-overview__item {
+  display: flex;
+  gap: 0.25rem;
+}
+.sector-overview__item > .btn:first-child {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  text-align: left;
+}

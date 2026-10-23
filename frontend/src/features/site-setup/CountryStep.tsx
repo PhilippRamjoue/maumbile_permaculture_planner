@@ -25,7 +25,9 @@ export function CountryStep({ countryCode, onCountryChange, onContinue }: Countr
   useEffect(() => {
     useSetupStore
       .getState()
-      .setFocusPoint(probeLng === undefined || probeLat === undefined ? null : [probeLng, probeLat]);
+      .setFocusPoint(
+        probeLng === undefined || probeLat === undefined ? null : [probeLng, probeLat],
+      );
   }, [probeLng, probeLat]);
 
   function submit(event: FormEvent) {
@@ -66,7 +68,9 @@ export function CountryStep({ countryCode, onCountryChange, onContinue }: Countr
       </div>
 
       <div className="field">
-        <label htmlFor={probeId}>Paste one coordinate from your land (optional) — the map will open there</label>
+        <label htmlFor={probeId}>
+          Paste one coordinate from your land (optional) — the map will open there
+        </label>
         <input
           id={probeId}
           value={probe}

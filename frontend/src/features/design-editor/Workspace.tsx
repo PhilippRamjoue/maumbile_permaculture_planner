@@ -23,6 +23,7 @@ import { ZoomToBoundaryButton } from "../map/ZoomToBoundaryButton";
 import { ImageryAttribution } from "../map/ImageryAttribution";
 import { useImageryMeta } from "../map/imageryMeta";
 import { persistDesign, planningApi, planningKeys } from "./api";
+import type { SectorKind } from "./sectors";
 import { createEditorStore, signature } from "./store";
 import { measureGeometry, type Measurement } from "./measure";
 import { useEditorMap, type Tool } from "./useEditorMap";
@@ -121,6 +122,9 @@ export function Workspace({
   );
   const [zoneNumber, setZoneNumber] = useState(1);
   const [hidden, setHidden] = useState<ReadonlySet<ContextGroup>>(() => new Set());
+  const [hiddenSectorKinds, setHiddenSectorKinds] = useState<ReadonlySet<SectorKind>>(
+    () => new Set(),
+  );
   const [saved, setSaved] = useState(false);
   const [failedSignature, setFailedSignature] = useState<string | null>(null);
   const [authoritative, setAuthoritative] = useState<{ key: string; value: Measurement } | null>(
@@ -145,8 +149,8 @@ export function Workspace({
     [focus, selected, own],
   );
   const view = useMemo(
-    () => createFocusView(focus, hidden, connections, zoneNumber),
-    [focus, hidden, connections, zoneNumber],
+    () => createFocusView(focus, hidden, connections, zoneNumber, hiddenSectorKinds),
+    [focus, hidden, connections, zoneNumber, hiddenSectorKinds],
   );
   // Re-adding the border layer restacks the registry layers over the design layers; the editor
   // map effect re-adds the design layers when this changes.
@@ -431,6 +435,16 @@ export function Workspace({
               site={site}
               sectors={own}
               sectorsLayerId={sectorsLayer?.id}
+              hiddenKinds={hiddenSectorKinds}
+              onToggleKind={(kind, shown) =>
+                setHiddenSectorKinds((previous) => {
+                  if (previous.has(kind) === !shown) return previous;
+                  const next = new Set(previous);
+                  if (shown) next.delete(kind);
+                  else next.add(kind);
+                  return next;
+                })
+              }
               onAdd={(feature) => {
                 setTool("select");
                 setSaved(false);

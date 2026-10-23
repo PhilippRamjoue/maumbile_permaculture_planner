@@ -1,6 +1,7 @@
 import type { Feature, LineString } from "geojson";
 
 import type { DesignFeature } from "../../../entities/planning";
+import { sectorKindOf, type SectorKind } from "../sectors";
 import { isEditable, isShown, focusMode, type ContextGroup, type FocusId } from "./modes";
 
 /**
@@ -38,15 +39,25 @@ export function createFocusView(
   hidden: ReadonlySet<ContextGroup>,
   connections: readonly Feature<LineString>[] = [],
   zoneNumber = 1,
+  hiddenSectorKinds: ReadonlySet<SectorKind> = new Set(),
 ): FocusView {
   return {
     mode,
     isEditable: (feature) => isEditable(mode, feature),
-    isShown: (feature) => isShown(mode, hidden, feature),
+    // A sector kind switched off in the Sectors step stays off in every step.
+    isShown: (feature) =>
+      isShown(mode, hidden, feature) &&
+      !(feature.feature_type === "sector" && hiddenSectorKinds.has(sectorKindOf(feature))),
     geometryEditable: focusMode(mode).geometryEditable,
     connections,
     defaults: { zoneNumber },
-    key: JSON.stringify([mode, [...hidden].sort(), connections, zoneNumber]),
+    key: JSON.stringify([
+      mode,
+      [...hidden].sort(),
+      connections,
+      zoneNumber,
+      [...hiddenSectorKinds].sort(),
+    ]),
   };
 }
 
