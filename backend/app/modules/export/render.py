@@ -27,7 +27,7 @@ from app.modules.planning.icons import GLYPHS
 DPI = 200
 PAGE_W, PAGE_H = 2339, 1654  # A4 landscape at 200 dpi
 MARGIN = 60
-HEADER_H = 150
+HEADER_H = 180
 FOOTER_H = 80
 LEGEND_W = 520
 GAP = 30
@@ -128,7 +128,7 @@ def _legend_label(f: ExportFeature, et: ExportElementType | None) -> str:
     if f.feature_type == "zone":
         return f"Zone {f.properties.get('zone_number', '?')}"
     if f.feature_type == "sector":
-        return f"Sector: {f.properties.get('sector_kind', 'other')}"
+        return f"Sector: {str(f.properties.get('sector_kind', 'other')).capitalize()}"
     if et is not None:
         return et.name
     return "Note" if f.feature_type == "annotation" else f.feature_type.capitalize()
@@ -219,6 +219,27 @@ def _fit(
     while len(text) > 1 and draw.textlength(text + "…", font=_font(size)) > max_w:
         text = text[:-1]
     return text.rstrip() + "…", size
+
+
+def _wrap(
+    draw: ImageDraw.ImageDraw, text: str, size: int, max_w: float, max_lines: int
+) -> list[str]:
+    """Break ``text`` into at most ``max_lines`` lines that fit ``max_w``; the last one is
+    ellipsised when the text does not all fit."""
+    lines: list[str] = []
+    current = ""
+    words = text.split()
+    for i, word in enumerate(words):
+        candidate = f"{current} {word}".strip()
+        if draw.textlength(candidate, font=_font(size)) <= max_w:
+            current = candidate
+            continue
+        if len(lines) == max_lines - 1:
+            rest = " ".join([current, *words[i:]]).strip()
+            return [*lines, _fit(draw, rest, size, max_w, size)[0]]
+        lines.append(current)
+        current = word
+    return [*lines, current] if current else lines
 
 
 # ── map drawing ────────────────────────────────────────────────────────────────────────────
@@ -486,8 +507,8 @@ def _draw_header(draw: ImageDraw.ImageDraw, doc: PlanDocument) -> None:
     draw.text((MARGIN, MARGIN + 78), sub, font=_font(sub_size), fill=MUTED)
     goals = goals_line(doc.goals)
     if goals:
-        goals, goals_size = _fit(draw, goals, 26, width, 20)
-        draw.text((MARGIN, MARGIN + 110), goals, font=_font(goals_size), fill=INK)
+        for i, line in enumerate(_wrap(draw, goals, 26, width, 2)):
+            draw.text((MARGIN, MARGIN + 110 + i * 32), line, font=_font(26), fill=INK)
 
 
 def _draw_footer(draw: ImageDraw.ImageDraw, scale_text: str) -> None:

@@ -10,7 +10,7 @@ from datetime import UTC, datetime
 from io import BytesIO
 from typing import Any
 
-from PIL import Image
+from PIL import Image, ImageDraw
 
 from app.modules.export import render
 from app.modules.export.document import (
@@ -194,6 +194,12 @@ def test_goals_are_printed_in_the_header_and_exported_as_data() -> None:
     with_goals = document([], goals=goals)
     assert plan_to_geojson(plain)["plan"]["goals"] is None
     assert plan_to_geojson(with_goals)["plan"]["goals"] == goals
+    # A long vision wraps onto a second line instead of being cut off at the first.
+    long = {"priorities": ["water"], "vision": "A shady family garden with fruit trees. " * 6}
+    probe = Image.new("RGB", (10, 10))
+    wrapped = render._wrap(ImageDraw.Draw(probe), render.goals_line(long) or "", 26, 800, 2)
+    assert len(wrapped) == 2 and wrapped[1].endswith("…")
+    assert render._wrap(ImageDraw.Draw(probe), "Goals: Water", 26, 2000, 2) == ["Goals: Water"]
     # The line takes ink in the band under the sub-title that is empty without goals.
     band = (render.MARGIN, render.MARGIN + 122, render.PAGE_W // 2, render.MARGIN + 142)
     assert render.render_plan_image(with_goals).crop(band).getbbox() is not None

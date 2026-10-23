@@ -43,6 +43,19 @@ def _ellipse(cx: float, cy: float, rx: float, ry: float, n: int = 16) -> list[tu
     )
 
 
+def _egg(cx: float, cy: float, rx: float, ry: float, n: int = 18) -> list[tuple[float, float]]:
+    # Wider at the bottom than at the top.
+    return _round(
+        [
+            (
+                cx + rx * math.cos(2 * math.pi * i / n) * (1 + 0.2 * math.sin(2 * math.pi * i / n)),
+                cy + ry * math.sin(2 * math.pi * i / n),
+            )
+            for i in range(n)
+        ]
+    )
+
+
 def _teardrop() -> list[tuple[float, float]]:
     # A point at the top, then the lower round part from the right side through the bottom.
     arc = [
@@ -76,8 +89,8 @@ GLYPHS: dict[str, Glyph] = {
     "shrub": [_dot(7.5, 15, 4), _dot(16.5, 15, 4), _dot(12, 10, 4.5), _line((4, 20), (20, 20))],
     "sprout": [
         _line((12, 21), (12, 11)),
-        _shape((12, 15), (5, 14), (6, 8), (12, 12), fill=True),
-        _shape((12, 12), (18, 7), (19.5, 13), (12, 16), fill=True),
+        _shape((12, 15), (6, 16), (4, 9), (10, 9), fill=True),
+        _shape((12, 12), (14, 6), (20, 5), (19, 11), fill=True),
     ],
     "bed": [
         _shape((4, 6), (20, 6), (20, 18), (4, 18)),
@@ -96,7 +109,12 @@ GLYPHS: dict[str, Glyph] = {
         _line((12, 5), (12, 20)),
         _line((4, 13), (20, 13)),
     ],
-    "egg": [_shape(*_ellipse(12, 13, 5.5, 7.5), fill=True)],
+    "egg": [
+        _shape(*_egg(12, 13, 5.5, 7.5)),
+        _dot(10, 11, 1),
+        _dot(14, 14, 1),
+        _dot(10.5, 16.5, 1),
+    ],
     "outhouse": [
         _shape((6, 4), (18, 4), (18, 21), (6, 21)),
         _line((6, 8), (18, 8)),
