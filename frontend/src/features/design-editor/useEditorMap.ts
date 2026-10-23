@@ -17,6 +17,7 @@ import {
   verticesOf,
   type FeatureHit,
 } from "./editorModes";
+import { BADGE_PIXEL_RATIO, parseBadgeName, renderBadge } from "./icons";
 import { measureGeometry, type Measurement } from "./measure";
 import type { EditorDocument, EditorStore } from "./store";
 import { typicalFunctions } from "./focus/functions";
@@ -248,6 +249,24 @@ export function useEditorMap(
     }
   }, [map, document, selectedId, tool, element, saving, activeLayer, view]);
 
+  // Icon markers are drawn on demand: the layers ask for an image by name (glyph and colour),
+  // which is made once and kept by the map.
+  useEffect(() => {
+    if (!map) return;
+    map.setMissingStyleImageResolver((id) => {
+      const badge = parseBadgeName(id);
+      const image = badge && renderBadge(badge.key, badge.color);
+      if (image && !map.hasImage(id)) map.addImage(id, image, { pixelRatio: BADGE_PIXEL_RATIO });
+    });
+    return () => {
+      try {
+        map.setMissingStyleImageResolver(null);
+      } catch {
+        /* map already removed during route teardown */
+      }
+    };
+  }, [map]);
+
   useEffect(() => {
     if (!map) return;
     const sourceIds: string[] = [];
@@ -267,7 +286,7 @@ export function useEditorMap(
         promoteId: "_editor_id",
         data: { type: "FeatureCollection", features },
       });
-      for (const kind of ["fill", "line", "circle"] as const) {
+      for (const kind of ["fill", "line", "circle", "ring", "symbol"] as const) {
         const layerId = `${id}-${kind}`;
         layerIds.push(layerId);
         const visibility = layer.visible ? "visible" : "none";
@@ -301,12 +320,49 @@ export function useEditorMap(
               "line-opacity": byContext(1, CONTEXT_OPACITY),
             },
           });
+        else if (kind === "symbol")
+          // Footprints and points marked with an icon: one badge at the middle of the shape.
+          map.addLayer({
+            id: layerId,
+            source: id,
+            type: "symbol",
+            filter: ["!=", ["get", "_icon"], ""],
+            layout: {
+              visibility,
+              "icon-image": ["get", "_icon"],
+              "icon-size": ["case", ["==", ["geometry-type"], "Point"], 1, 0.85],
+              "icon-allow-overlap": true,
+              "icon-ignore-placement": true,
+            },
+            paint: { "icon-opacity": byContext(1, CONTEXT_OPACITY) },
+          });
+        else if (kind === "ring")
+          // The selection ring around an icon, drawn under the badge.
+          map.addLayer({
+            id: layerId,
+            source: id,
+            type: "circle",
+            filter: [
+              "all",
+              ["==", ["geometry-type"], "Point"],
+              ["!=", ["get", "_icon"], ""],
+              flag("_selected"),
+            ],
+            layout: { visibility },
+            paint: {
+              "circle-radius": 19,
+              "circle-color": "#ffd23f",
+              "circle-opacity": 0.35,
+              "circle-stroke-color": "#ffd23f",
+              "circle-stroke-width": 3,
+            },
+          });
         else
           map.addLayer({
             id: layerId,
             source: id,
             type: "circle",
-            filter: ["==", "$type", "Point"],
+            filter: ["all", ["==", ["geometry-type"], "Point"], ["==", ["get", "_icon"], ""]],
             layout: { visibility },
             paint: {
               "circle-color": ["get", "color"],

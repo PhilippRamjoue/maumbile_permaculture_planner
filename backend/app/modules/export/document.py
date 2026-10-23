@@ -24,6 +24,8 @@ class ExportElementType:
     feature_type: str
     geometry_type: str
     default_style: dict[str, Any]
+    # A glyph key of ``planning.icons`` (None: drawn as a styled line or area).
+    icon: str | None = None
 
 
 @dataclass(frozen=True)

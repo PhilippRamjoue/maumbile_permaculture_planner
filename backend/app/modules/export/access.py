@@ -67,7 +67,7 @@ class PlanReader:
             ],
             element_types={
                 t.id: ExportElementType(
-                    t.id, t.key, t.name, t.feature_type, t.geometry_type, t.default_style
+                    t.id, t.key, t.name, t.feature_type, t.geometry_type, t.default_style, t.icon
                 )
                 for t in types
             },

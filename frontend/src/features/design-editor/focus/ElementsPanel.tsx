@@ -1,6 +1,12 @@
 import type { DesignFeature, ElementType } from "../../../entities/planning";
 import { FeatureProperties } from "../FeatureProperties";
+import { GlyphIcon } from "../GlyphIcon";
 import { FeatureList, ToolButton, type PanelProps } from "./common";
+
+const paletteColor = (type: ElementType | undefined) => {
+  const color = type?.default_style.fill ?? type?.default_style.stroke;
+  return typeof color === "string" ? color : "#2f855a";
+};
 
 /** Elements focus: choose a thing from the palette and place it; paths are drawn as lines. */
 export function ElementsPanel({
@@ -17,6 +23,7 @@ export function ElementsPanel({
   elements: readonly DesignFeature[];
 }) {
   const { state, tool, choose, pick, disabled, selected, onRotate } = props;
+  const chosen = types.find((t) => t.id === elementId);
   const categories = [...new Set(types.map((t) => t.category))];
   return (
     <>
@@ -24,25 +31,28 @@ export function ElementsPanel({
         <legend>Elements</legend>
         <label>
           Element palette
-          <select
-            value={elementId}
-            onChange={(event) => {
-              setElementId(Number(event.target.value));
-              choose("element");
-            }}
-          >
-            {categories.map((category) => (
-              <optgroup key={category} label={category}>
-                {types
-                  .filter((t) => t.category === category)
-                  .map((type) => (
-                    <option key={type.id} value={type.id}>
-                      {type.name}
-                    </option>
-                  ))}
-              </optgroup>
-            ))}
-          </select>
+          <span className="palette-choice">
+            <GlyphIcon icon={chosen?.icon} color={paletteColor(chosen)} size={28} />
+            <select
+              value={elementId}
+              onChange={(event) => {
+                setElementId(Number(event.target.value));
+                choose("element");
+              }}
+            >
+              {categories.map((category) => (
+                <optgroup key={category} label={category}>
+                  {types
+                    .filter((t) => t.category === category)
+                    .map((type) => (
+                      <option key={type.id} value={type.id}>
+                        {type.name}
+                      </option>
+                    ))}
+                </optgroup>
+              ))}
+            </select>
+          </span>
         </label>
         <div className="editor-tools">
           <ToolButton tool="select" current={tool} label="Select / edit" choose={choose} />

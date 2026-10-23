@@ -225,7 +225,8 @@ const WHEN_EMPTY: Record<FocusId, string> = {
   functions: "Pick an element and note what it needs and what it gives.",
 };
 const WHEN_DONE: Record<FocusId, string> = {
-  goals: "Your goals are saved. Look back at them whenever you are unsure what to do next.",
+  goals:
+    "Your goals stay with the design. Look back at them whenever you are unsure what to do next.",
   boundary: "Your border is saved and used by every step.",
   sectors: "Good start. Sectors stay visible as faint context in the other steps.",
   zones: "Zones are saved. They stay visible as context while you place elements.",

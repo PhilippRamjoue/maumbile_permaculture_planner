@@ -24,6 +24,7 @@ export function useAutosave({
   failedSignature,
   save,
   delayMs = AUTOSAVE_DELAY_MS,
+  waitWhileTyping = true,
 }: {
   enabled: boolean;
   dirty: boolean;
@@ -33,6 +34,8 @@ export function useAutosave({
   failedSignature: string | null;
   save(): void;
   delayMs?: number;
+  /** Hold the save while a field has the keyboard; off for saves that never disable the form. */
+  waitWhileTyping?: boolean;
 }) {
   const saveRef = useRef(save);
   saveRef.current = save;
@@ -41,10 +44,10 @@ export function useAutosave({
     if (!enabled || !dirty || signature === failedSignature) return;
     let timer: ReturnType<typeof setTimeout>;
     const tick = () => {
-      if (isTyping()) timer = setTimeout(tick, delayMs);
+      if (waitWhileTyping && isTyping()) timer = setTimeout(tick, delayMs);
       else saveRef.current();
     };
     timer = setTimeout(tick, delayMs);
     return () => clearTimeout(timer);
-  }, [enabled, dirty, signature, failedSignature, delayMs]);
+  }, [enabled, dirty, signature, failedSignature, delayMs, waitWhileTyping]);
 }

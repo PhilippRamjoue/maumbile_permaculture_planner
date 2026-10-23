@@ -1,4 +1,5 @@
 import type { DesignFeature, ElementType, PlanLayer } from "../../entities/planning";
+import { glyphFor } from "./icons";
 import { kindLabel, sectorKindOf, SECTOR_COLORS } from "./sectors";
 
 export type LegendShape = "point" | "line" | "polygon";
@@ -10,6 +11,8 @@ export interface LegendEntry {
   color: string;
   shape: LegendShape;
   group: "Zones" | "Sectors" | "Elements";
+  /** Glyph key of the element type, when it is marked with an icon on the map. */
+  icon?: string;
   /** Number of features of this kind in the plan. */
   count: number;
 }
@@ -68,6 +71,7 @@ export function buildLegend(
         color: HEX.test(own) ? own : typeof fill === "string" ? fill : "#2f855a",
         shape: shapeOf(feature),
         group: "Elements",
+        ...(glyphFor(type?.icon) ? { icon: type!.icon! } : {}),
       };
     }
     const existing = entries.get(entry.key);

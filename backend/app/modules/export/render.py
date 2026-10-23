@@ -22,6 +22,7 @@ from PIL.PngImagePlugin import PngInfo
 from shapely.geometry import shape
 
 from app.modules.export.document import ExportElementType, ExportFeature, PlanDocument
+from app.modules.planning.icons import GLYPHS
 
 DPI = 200
 PAGE_W, PAGE_H = 2339, 1654  # A4 landscape at 200 dpi
@@ -97,6 +98,7 @@ class LegendEntry:
     label: str
     kind: str  # point | line | polygon
     style: Style
+    icon: str | None = None
 
 
 _TYPE_ORDER = {"zone": 0, "sector": 1, "element": 2, "path": 3, "annotation": 4}
@@ -104,6 +106,12 @@ _TYPE_ORDER = {"zone": 0, "sector": 1, "element": 2, "path": 3, "annotation": 4}
 
 def _geometry_kind(geometry: dict[str, Any]) -> str:
     return {"Point": "point", "LineString": "line"}.get(str(geometry.get("type")), "polygon")
+
+
+def icon_for(element_type: ExportElementType | None) -> str | None:
+    """The glyph a feature of this palette entry is marked with, if it has one."""
+    icon = element_type.icon if element_type else None
+    return icon if icon in GLYPHS else None
 
 
 def _legend_key(f: ExportFeature, et: ExportElementType | None) -> tuple[Any, ...]:
@@ -133,7 +141,9 @@ def build_legend(doc: PlanDocument, features: Sequence[ExportFeature]) -> list[L
         et = doc.element_types.get(f.element_type_id) if f.element_type_id is not None else None
         key = _legend_key(f, et)
         if key not in seen:
-            entry = LegendEntry(_legend_label(f, et), _geometry_kind(f.geometry), style_for(f, et))
+            entry = LegendEntry(
+                _legend_label(f, et), _geometry_kind(f.geometry), style_for(f, et), icon_for(et)
+            )
             seen[key] = (_TYPE_ORDER.get(f.feature_type, 9), entry)
     return [e for _, e in sorted(seen.values(), key=lambda t: (t[0], t[1].label))]
 
@@ -227,6 +237,66 @@ def _fill_polygon(img: Image.Image, rings: list[list[XY]], color: Color, opacity
     img.paste(color, (x0, y0, x1, y1), mask)
 
 
+ICON_RADIUS = 22  # badge radius in page pixels; smaller footprints get a smaller badge
+ICON_RADIUS_MIN = 12
+
+
+def _ink_on(color: Color) -> Color:
+    """Dark ink on light colours, white on dark ones, so a glyph reads on its badge."""
+    luminance = 0.299 * color[0] + 0.587 * color[1] + 0.114 * color[2]
+    return INK if luminance > 150 else (255, 255, 255)
+
+
+def _draw_glyph(
+    draw: ImageDraw.ImageDraw, key: str, cx: float, cy: float, size: float, ink: Color
+) -> None:
+    """Draw glyph ``key`` centred on (cx, cy), its 24-unit grid spanning ``size`` pixels."""
+    k = size / 24
+    ox, oy = cx - size / 2, cy - size / 2
+    stroke = max(round(2 * k), 2)
+    cap = stroke / 2
+    for op in GLYPHS[key]:
+        fill = bool(op["fill"])
+        if "circle" in op:
+            x, y, r = op["circle"]
+            box = (ox + (x - r) * k, oy + (y - r) * k, ox + (x + r) * k, oy + (y + r) * k)
+            draw.ellipse(
+                box, fill=ink if fill else None, outline=None if fill else ink, width=stroke
+            )
+            continue
+        points = [(ox + x * k, oy + y * k) for x, y in op["path"]]
+        if op["closed"]:
+            if fill:
+                draw.polygon(points, fill=ink)
+            points = [*points, points[0]]
+        draw.line(points, fill=ink, width=stroke, joint="curve")
+        for x, y in points:  # round caps and joins
+            draw.ellipse((x - cap, y - cap, x + cap, y + cap), fill=ink)
+
+
+def _draw_badge(
+    draw: ImageDraw.ImageDraw, key: str, cx: float, cy: float, radius: float, color: Color
+) -> None:
+    """A coloured disc with a dark rim and the glyph in contrasting ink: legible in colour and in
+    a black-and-white print."""
+    rim = max(radius * 0.09, 2)
+    draw.ellipse(
+        (cx - radius, cy - radius, cx + radius, cy + radius),
+        fill=color,
+        outline=INK,
+        width=round(rim),
+    )
+    _draw_glyph(draw, key, cx, cy, radius * 1.3, _ink_on(color))
+
+
+@dataclass(frozen=True)
+class _Icon:
+    xy: XY  # supersampled map pixels
+    radius: float
+    key: str
+    color: Color
+
+
 @dataclass(frozen=True)
 class _Label:
     xy: XY  # final (not supersampled) pixels, relative to the map frame
@@ -241,6 +311,8 @@ def _draw_feature(
     style: Style,
     project: Project,
     labels: list[_Label],
+    icons: list[_Icon],
+    icon: str | None = None,
 ) -> None:
     ss = SUPERSAMPLE
     kind = f.geometry.get("type")
@@ -249,7 +321,13 @@ def _draw_feature(
     if kind == "Point":
         x, y = project(*f.geometry["coordinates"][:2])
         r = style.radius * STROKE_SCALE * ss * 0.75
-        draw.ellipse((x - r, y - r, x + r, y + r), fill=style.color, outline=PAPER, width=2 * ss)
+        if icon:
+            r = ICON_RADIUS * ss
+            icons.append(_Icon((x, y), r, icon, style.color))
+        else:
+            draw.ellipse(
+                (x - r, y - r, x + r, y + r), fill=style.color, outline=PAPER, width=2 * ss
+            )
         anchor = ((x + r) / ss + 6, y / ss), "lm"
     else:
         rings = [[project(*p) for p in ring] for ring in _rings(f.geometry)]
@@ -262,6 +340,15 @@ def _draw_feature(
             c = shape(f.geometry).representative_point()
             cx, cy = project(c.x, c.y)
             anchor = (cx / ss, cy / ss), "mm"
+            if icon:
+                # A badge scaled to the footprint, with the name moved just below it.
+                span = min(
+                    max(p[0] for p in rings[0]) - min(p[0] for p in rings[0]),
+                    max(p[1] for p in rings[0]) - min(p[1] for p in rings[0]),
+                )
+                r = min(max(span * 0.2, ICON_RADIUS_MIN * ss), ICON_RADIUS * ss)
+                icons.append(_Icon((cx, cy), r, icon, style.color))
+                anchor = (cx / ss, (cy + r) / ss + 4), "mt"
         else:
             pts = rings[0]
             segments = _dashes(pts, 8 * width, 5 * width) if style.dashed else iter([pts])
@@ -318,7 +405,9 @@ def _draw_north_arrow(canvas: ImageDraw.ImageDraw, x: float, y: float) -> None:
 def _draw_swatch(draw: ImageDraw.ImageDraw, entry: LegendEntry, x: int, y: int) -> None:
     s = entry.style
     cy = y + 20
-    if entry.kind == "point":
+    if entry.icon:
+        _draw_badge(draw, entry.icon, x + 28, cy, 21, s.color)
+    elif entry.kind == "point":
         draw.ellipse((x + 16, cy - 12, x + 40, cy + 12), fill=s.color, outline=INK, width=1)
     elif entry.kind == "line":
         w = max(round(s.stroke_width * 1.2), 2)
@@ -491,6 +580,7 @@ def render_plan_image(doc: PlanDocument) -> Image.Image:
     map_img = Image.new("RGB", (fw * ss, fh * ss), LAND)
     draw = ImageDraw.Draw(map_img)
     labels: list[_Label] = []
+    icons: list[_Icon] = []
 
     ring = [project(*p) for p in _rings(doc.boundary)[0]]
     _fill_polygon(map_img, [ring], (255, 255, 255), 1.0)
@@ -498,7 +588,9 @@ def render_plan_image(doc: PlanDocument) -> Image.Image:
         draw.line(seg, fill=(51, 51, 51), width=3 * ss, joint="curve")
     for f in drawn:
         et = doc.element_types.get(f.element_type_id) if f.element_type_id is not None else None
-        _draw_feature(draw, map_img, f, style_for(f, et), project, labels)
+        _draw_feature(draw, map_img, f, style_for(f, et), project, labels, icons, icon_for(et))
+    for badge in icons:  # over every fill and line, so footprints never bury their own icon
+        _draw_badge(draw, badge.key, *badge.xy, badge.radius, badge.color)
 
     page = Image.new("RGB", (PAGE_W, PAGE_H), PAPER)
     page.paste(map_img.resize((fw, fh), Image.Resampling.LANCZOS), (fx, fy))

@@ -10,6 +10,7 @@ const layers = [
 const tank = {
   id: 7,
   name: "Water tank",
+  icon: null,
   default_style: { fill: "#0d47a1" },
 } as unknown as ElementType;
 const POINT: DesignFeature["geometry"] = { type: "Point", coordinates: [36, -1] };
@@ -81,5 +82,16 @@ describe("buildLegend", () => {
     const entries = buildLegend(features, [tank], layers, (f) => f.feature_type !== "sector");
     expect(entries).toHaveLength(1);
     expect(entries[0]).toMatchObject({ label: "Water tank", color: "#0d47a1" });
+    expect(entries[0]!.icon).toBeUndefined(); // this type has no icon key
+  });
+
+  it("carries the icon of a marked element type", () => {
+    const marked = { ...tank, icon: "tank" } as ElementType;
+    const entries = buildLegend(
+      [feat("element", {}, { element_type_id: 7, geometry: POINT })],
+      [marked],
+      layers,
+    );
+    expect(entries[0]!.icon).toBe("tank");
   });
 });

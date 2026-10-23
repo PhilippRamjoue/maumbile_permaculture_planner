@@ -19,6 +19,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from app.modules.export.schemas import ShareCreated, ShareStatus  # noqa: E402
 from app.modules.imagery.providers import EsriWorldImageryProvider  # noqa: E402
 from app.modules.imagery.schemas import ImageryMeta  # noqa: E402
+from app.modules.planning.icons import GLYPHS  # noqa: E402
 from app.modules.planning.schemas import GoalPriority, PlanGoals  # noqa: E402
 from app.modules.terrain.schemas import (  # noqa: E402
     ContourCollection,
@@ -132,6 +133,22 @@ def goals_declaration() -> str:
     )
 
 
+def icons_declaration() -> str:
+    body = ",\n".join(
+        f"  {json.dumps(key)}: {json.dumps(ops, separators=(',', ':'))}"
+        for key, ops in GLYPHS.items()
+    )
+    return (
+        HEADER
+        + "export type GlyphOp =\n"
+        + "  | { path: [number, number][]; closed: boolean; fill: boolean }\n"
+        + "  | { circle: [number, number, number]; fill: boolean };\n\n"
+        + "/** Glyphs on a 24 x 24 grid: strokes with round caps plus a few solid shapes. */\n"
+        + "export type Glyph = GlyphOp[];\n\n"
+        + f"export const GLYPHS: Record<string, Glyph> = {{\n{body},\n}};\n"
+    )
+
+
 def outputs() -> dict[Path, str]:
     declaration = HEADER + ts_interface("ImageryMeta", ImageryMeta.model_json_schema())
     provider = EsriWorldImageryProvider()
@@ -156,6 +173,7 @@ def outputs() -> dict[Path, str]:
         )
         + "\n",
         FRONTEND / "entities/generated/plan.ts": goals_declaration(),
+        FRONTEND / "entities/generated/icons.ts": icons_declaration(),
         FRONTEND / "entities/generated/terrain.ts": terrain_declaration(),
         FRONTEND / "shared/testing/terrain-contract.json": json.dumps(
             terrain_fixture().model_dump(mode="json"), indent=2, ensure_ascii=False

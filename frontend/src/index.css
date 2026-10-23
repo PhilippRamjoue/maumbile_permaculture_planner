@@ -1019,3 +1019,20 @@ h1 {
   background: var(--swatch);
   box-shadow: 0 0 0 1px #213b28;
 }
+
+/* ---- element icons ---- */
+.palette-choice {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.palette-choice select {
+  flex: 1;
+  min-width: 0;
+}
+.glyph-icon {
+  flex: none;
+}
+.map-legend .glyph-icon {
+  margin: 0 0.1rem;
+}

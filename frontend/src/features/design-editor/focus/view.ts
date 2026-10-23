@@ -1,6 +1,7 @@
 import type { Feature, LineString } from "geojson";
 
 import type { DesignFeature } from "../../../entities/planning";
+import { badgeName } from "../icons";
 import { sectorKindOf, type SectorKind } from "../sectors";
 import { isEditable, isShown, focusMode, type ContextGroup, type FocusId } from "./modes";
 
@@ -19,6 +20,8 @@ export interface FocusView {
   connections: readonly Feature<LineString>[];
   /** Values stamped on a newly drawn feature. */
   defaults: { zoneNumber: number };
+  /** The icon (a glyph key) a feature is marked with on the map, if it has one. */
+  iconOf(feature: DesignFeature): string | null;
   /** Changes whenever the rendering of the view would; used as an effect dependency. */
   key: string;
 }
@@ -31,6 +34,7 @@ export const OPEN_VIEW: FocusView = {
   geometryEditable: true,
   connections: [],
   defaults: { zoneNumber: 1 },
+  iconOf: () => null,
   key: "open",
 };
 
@@ -40,6 +44,7 @@ export function createFocusView(
   connections: readonly Feature<LineString>[] = [],
   zoneNumber = 1,
   hiddenSectorKinds: ReadonlySet<SectorKind> = new Set(),
+  iconOf: (feature: DesignFeature) => string | null = () => null,
 ): FocusView {
   return {
     mode,
@@ -51,6 +56,7 @@ export function createFocusView(
     geometryEditable: focusMode(mode).geometryEditable,
     connections,
     defaults: { zoneNumber },
+    iconOf,
     key: JSON.stringify([
       mode,
       [...hidden].sort(),
@@ -60,6 +66,9 @@ export function createFocusView(
     ]),
   };
 }
+
+const iconName = (key: string | null, color: unknown) =>
+  key ? badgeName(key, /^#[0-9a-f]{6}$/i.test(String(color)) ? String(color) : "#2f855a") : "";
 
 /** How faint context features are drawn, as a share of their normal opacity. */
 export const CONTEXT_OPACITY = 0.4;
@@ -96,6 +105,8 @@ export function renderableFeatures(
         _radius: numberStyle(f.properties.style, "radius", 8, 3, 24),
         _opacity: numberStyle(f.properties.style, "fill_opacity", 0.3, 0, 1),
         color: /^#[0-9a-f]{6}$/i.test(String(f.properties.color)) ? f.properties.color : "#2f855a",
+        // `glyph|<key>|<colour>`, the name of the marker image; empty when the feature has none.
+        _icon: iconName(view.iconOf(f), f.properties.color),
       },
     }));
 }

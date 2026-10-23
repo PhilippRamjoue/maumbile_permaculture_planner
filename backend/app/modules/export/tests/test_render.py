@@ -200,6 +200,43 @@ def test_goals_are_printed_in_the_header_and_exported_as_data() -> None:
     assert render.render_plan_image(plain).crop(band).convert("L").getextrema() == (255, 255)
 
 
+def test_icons_replace_dots_and_stay_legible_in_greyscale() -> None:
+    from app.modules.planning.icons import GLYPHS, ICON_BY_TYPE
+
+    # Every glyph named by the catalog exists, and every glyph is used.
+    assert {k for k in ICON_BY_TYPE.values() if k} == set(GLYPHS)
+
+    lng, lat = LNG0 + 0.001, LAT0 + 0.001
+    point = {"type": "Point", "coordinates": [lng, lat]}
+    tank = ExportElementType(
+        9, "water_tank", "Water tank", "element", "point", {"fill": "#0d47a1"}, "tank"
+    )
+    plain = ExportElementType(
+        10, "water_tank", "Water tank", "element", "point", {"fill": "#0d47a1"}, None
+    )
+    marked = document([feature(LAYER_ELEMENTS, "element", point, element_type_id=9)])
+    marked = PlanDocument(**{**marked.__dict__, "element_types": {9: tank}})
+    unmarked = PlanDocument(**{**marked.__dict__, "element_types": {9: plain}})
+    assert [e.icon for e in render.build_legend(marked, render.drawn_features(marked))] == ["tank"]
+
+    frame = render.plan_frame(marked)
+    px, py = frame.project(lng, lat)
+    cx, cy = px / render.SUPERSAMPLE, py / render.SUPERSAMPLE
+    r = render.ICON_RADIUS
+    box = (
+        round(frame.x + cx - r),
+        round(frame.y + cy - r),
+        round(frame.x + cx + r),
+        round(frame.y + cy + r),
+    )
+    with_icon = render.render_plan_image(marked).crop(box).convert("L")
+    without = render.render_plan_image(unmarked).crop(box).convert("L")
+    # The badge has dark ink (rim and glyph strokes) and a light glyph on the dark fill.
+    shades = list(with_icon.tobytes())
+    assert min(shades) < 80 and max(shades) > 200
+    assert with_icon.tobytes() != without.tobytes()
+
+
 def test_legend_lists_each_kind_once_with_readable_labels() -> None:
     doc = sample()
     labels = [e.label for e in render.build_legend(doc, render.drawn_features(doc))]

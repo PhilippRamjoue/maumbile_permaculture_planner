@@ -8,6 +8,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from app.modules.planning.icons import ICON_BY_TYPE
+
 
 def _fill(color: str, opacity: float = 0.4) -> dict[str, Any]:
     return {"fill": color, "fill_opacity": opacity, "stroke": color}
@@ -111,13 +113,15 @@ ELEMENT_TYPES: tuple[dict[str, Any], ...] = tuple(
     for i, (key, name, category, feature_type, geometry_type, icon, style) in enumerate(_ROWS)
 )
 
-# The current catalog: ``default_style`` plus ``default_properties`` (needs / yields) per key.
-# ``0007_element_type_defaults`` holds a frozen copy; a test keeps the two in step, so a change
-# here ships together with a new migration.
+# The current catalog: ``default_style``, ``default_properties`` (needs / yields) and the map
+# ``icon`` (a glyph key from ``planning.icons``, None for lines and overlays) per key.
+# ``0007_element_type_defaults`` and ``0009_element_type_icons`` hold frozen copies; a test keeps
+# them in step, so a change here ships together with a new migration.
 ELEMENT_TYPE_CATALOG: dict[str, dict[str, Any]] = {
     row["key"]: {
         "default_style": row["default_style"],
         "default_properties": _FUNCTIONS.get(row["key"], {}),
+        "icon": ICON_BY_TYPE[row["key"]],
     }
     for row in ELEMENT_TYPES
 }

@@ -1,5 +1,6 @@
 import { useState } from "react";
 
+import { GlyphIcon } from "./GlyphIcon";
 import type { LegendEntry } from "./legend";
 
 const STORAGE_KEY = "permaculture.legend.open";
@@ -14,6 +15,7 @@ const readOpen = () => {
 
 /** A small colour key for the shapes on the map. */
 function Swatch({ entry }: { entry: LegendEntry }) {
+  if (entry.icon) return <GlyphIcon icon={entry.icon} color={entry.color} size={22} />;
   return (
     <span
       className="map-legend__swatch"

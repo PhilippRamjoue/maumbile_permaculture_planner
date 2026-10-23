@@ -110,7 +110,7 @@ Fixes from the owner's first run on a real plot in Tanzania:
 - **Clarity.** Boundary has a primary "Looks good → Sectors & terrain"; setup's "Create site" is a sticky
   button that says what is missing. `focus/SaveStatus.tsx` shows Saved / Unsaved / Saving / Not saved, says
   the design autosaves and links to Design plans, and `PlacedNotice` confirms "X added" with a
-  place-another button. Not yet done: element icons/widgets on the map and in exports.
+  place-another button. Element icons are done: see "Element icons" below.
 
 ## Goals step (grounding the design in what the owner wants)
 
@@ -140,6 +140,30 @@ sector kind and element type with the colour of its first feature, in that order
 layers or switched off by the current focus are left out, so it explains exactly what the map shows.
 `MapLegend.tsx` renders it. The PNG/PDF export has its own server-side legend of the same kinds
 (`export/render.py`, see `EXPORT.md`) and now also prints the plan's goals under the title.
+
+## Element icons
+
+Point and footprint elements are marked with a simple glyph instead of a plain dot, on the map, in
+the palette, in the legend and in the PNG/PDF export.
+
+- **One definition.** `backend/app/modules/planning/icons.py` holds the glyphs (strokes and a few solid
+  shapes on a 24 x 24 grid; hand-made, so no icon font, no licence, no external fetch) and the
+  palette-entry to glyph mapping. `generate_frontend_contracts.py` emits them as
+  `frontend/src/entities/generated/icons.ts`; Pillow draws the same geometry for the export.
+- **Catalog.** `element_types.icon` (column already existed, nothing used it) now names a glyph, `NULL` for
+  lines (swale, stream, fence, hedge, windbreak, path, road) and overlays (zone, sector), which stay styled
+  lines and areas. Migration `0009_element_type_icons` (data only) sets it; `seed.ELEMENT_TYPE_CATALOG` is the
+  live source and the catalog test compares the icon too.
+- **Map.** `renderableFeatures` stamps `_icon` (`glyph|<key>|<colour>`) on features whose type has a glyph.
+  A `symbol` layer draws the badge (point, or the middle of a footprint), a `circle` ring marks a selected
+  icon point, and plain dots remain for point types without a glyph. Badges are drawn on a canvas on demand
+  through `map.setMissingStyleImageResolver` (`icons.ts`), one per glyph and colour, with a white halo and dark
+  rim so they read on satellite imagery. A footprint being reshaped is drawn by Terra Draw, without its badge.
+- **Palette, legend.** `GlyphIcon` (inline SVG) previews the chosen entry beside the palette and is the
+  legend swatch for marked types.
+- **Export.** `render.py` draws each badge after all fills and lines (radius 22 px, smaller on small
+  footprints, ink chosen for contrast, dark rim for black-and-white prints); a footprint's name moves below
+  its badge; legend rows use the badge too.
 
 ## Verification and limits
 

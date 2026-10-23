@@ -17,6 +17,7 @@ import { useMapLayerStore } from "../map/store";
 import { siteKeys, sitesApi } from "../../entities/siteQueries";
 import { terrainKeys, useTerrain } from "../../entities/terrainQueries";
 import { ExportMenu } from "../export";
+import { glyphFor } from "./icons";
 import { buildLegend } from "./legend";
 import { MapLegend } from "./MapLegend";
 import { MAX_FIT_ZOOM } from "../map/layers/zoomLimits";
@@ -156,9 +157,16 @@ export function Workspace({
     () => (focus === "functions" ? connectionLines(selected, own) : []),
     [focus, selected, own],
   );
+  const iconOf = useCallback(
+    (feature: DesignFeature) => {
+      const icon = types.find((t) => t.id === feature.element_type_id)?.icon;
+      return glyphFor(icon) ? icon! : null;
+    },
+    [types],
+  );
   const view = useMemo(
-    () => createFocusView(focus, hidden, connections, zoneNumber, hiddenSectorKinds),
-    [focus, hidden, connections, zoneNumber, hiddenSectorKinds],
+    () => createFocusView(focus, hidden, connections, zoneNumber, hiddenSectorKinds, iconOf),
+    [focus, hidden, connections, zoneNumber, hiddenSectorKinds, iconOf],
   );
   // Re-adding the border layer restacks the registry layers over the design layers; the editor
   // map effect re-adds the design layers when this changes.
@@ -288,6 +296,8 @@ export function Workspace({
     signature: goals.signature,
     failedSignature: goals.failedSignature,
     save: goals.save,
+    // Saving goals leaves the form enabled, so it may happen while the vision is being typed.
+    waitWhileTyping: false,
   });
 
   useEffect(() => {

@@ -92,6 +92,7 @@ async def test_migrated_catalog_matches_the_seed(api: AsyncClient) -> None:
     for key, entry in ELEMENT_TYPE_CATALOG.items():
         assert by_key[key]["default_style"] == entry["default_style"], key
         assert by_key[key]["default_properties"] == entry["default_properties"], key
+        assert by_key[key]["icon"] == entry["icon"], key
 
 
 # ── plans & layers ─────────────────────────────────────────────────────────────────────────

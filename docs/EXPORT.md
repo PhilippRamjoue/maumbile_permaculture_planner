@@ -29,7 +29,7 @@ Errors follow the planning module: 404 for a missing/deleted plan or an invalid 
   `render.py` (pure functions over `PlanDocument`). It shows the site boundary, features of
   **visible** layers (top layer drawn on top; polygons under lines under points), feature names,
   a north arrow, a scale bar, the printed scale ratio (`1:N` when printed on A4), a legend of what
-  is drawn (zone numbers, sector kinds, element types), the owner's goals (priorities and vision, when
+  is drawn (zone numbers, sector kinds, element types, with the same icon badge as the map for marked types), the owner's goals (priorities and vision, when
   set) under the title, and an attribution/footer line. The map is
   drawn in a local equirectangular projection centred on the plan (error well below 0.1 % at parcel
   scale; tested against haversine and by measuring a drawn 100 m square in pixels). The PDF is one
