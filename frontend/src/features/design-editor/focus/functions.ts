@@ -77,7 +77,8 @@ export function typicalFunctions(
   type: Pick<ElementType, "default_properties"> | undefined,
 ): Partial<Record<FunctionKey, string[]>> {
   if (!type) return {};
-  const holder = { properties: type.default_properties };
+  // An older server has no `default_properties` yet; then nothing is pre-filled.
+  const holder = { properties: type.default_properties ?? {} };
   const needs = functionsOf(holder, "needs");
   const yields = functionsOf(holder, "yields");
   return needs.length > 0 || yields.length > 0 ? { needs, yields } : {};

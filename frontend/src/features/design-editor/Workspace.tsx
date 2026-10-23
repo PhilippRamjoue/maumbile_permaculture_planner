@@ -50,6 +50,7 @@ import {
   type ContextGroup,
   type FocusId,
 } from "./focus/modes";
+import { PlacedNotice, SaveStatus, saveStateOf } from "./focus/SaveStatus";
 import { SectorsPanel } from "./focus/SectorsPanel";
 import { useAutosave } from "./focus/useAutosave";
 import { useBoundaryEditing } from "./focus/useBoundaryEditing";
@@ -125,7 +126,7 @@ export function Workspace({
   const [hiddenSectorKinds, setHiddenSectorKinds] = useState<ReadonlySet<SectorKind>>(
     () => new Set(),
   );
-  const [saved, setSaved] = useState(false);
+  const [placed, setPlaced] = useState<{ id: string; tool: Tool } | null>(null);
   const [failedSignature, setFailedSignature] = useState<string | null>(null);
   const [authoritative, setAuthoritative] = useState<{ key: string; value: Measurement } | null>(
     null,
@@ -182,7 +183,6 @@ export function Workspace({
       const feature = result.features.find((f) => f.id === current);
       if (feature) setAuthoritative({ key: JSON.stringify(feature.geometry), value: feature });
       setFailedSignature(null);
-      setSaved(true);
     },
   });
 
@@ -214,7 +214,21 @@ export function Workspace({
     map.fitBounds(site.bbox, { padding: 48, maxZoom: MAX_FIT_ZOOM, duration: 0 });
   }, [map, site.bbox]);
 
-  const finishTool = useCallback((next: Tool) => setTool(next), []);
+  // Drawing a feature ends with the select tool; remember what was just made so the panel can
+  // confirm it and offer to make another.
+  const toolRef = useRef(tool);
+  toolRef.current = tool;
+  const finishTool = useCallback(
+    (next: Tool) => {
+      const previous = toolRef.current;
+      const id = store.getState().selectedId;
+      if (previous !== "select" && !previous.startsWith("measure") && id) {
+        setPlaced({ id, tool: previous });
+      }
+      setTool(next);
+    },
+    [store],
+  );
   const drawing = useEditorMap(
     map,
     store,
@@ -299,11 +313,12 @@ export function Workspace({
       return;
     setTool(next);
     store.getState().select(null);
-    setSaved(false);
+    setPlaced(null);
     const layer = state.document.layers.find((l) => l.name === layerNameFor(next) && l.visible);
     if (layer) setActiveLayer(layer.id);
   };
   const pick = (id: string) => {
+    setPlaced((previous) => (previous?.id === id ? previous : null));
     setTool("select");
     store.getState().select(id);
   };
@@ -317,7 +332,7 @@ export function Workspace({
     if (dirty && !save.isPending) save.mutate();
     setTool("select");
     store.getState().select(null);
-    setSaved(false);
+    setPlaced(null);
     setParams(
       (previous) => {
         const nextParams = new URLSearchParams(previous);
@@ -353,6 +368,17 @@ export function Workspace({
     onRotate: drawing.rotate,
   };
   const progress = progressOf(state.document);
+  const saveState = saveStateOf({
+    saving: save.isPending || saveBoundary.isPending,
+    dirty: dirty || (boundaryDirty && boundaryValid),
+    failed: save.isError && failedSignature === currentSignature,
+  });
+  const placedFeature = placed ? features.find((f) => f.id === placed.id) : undefined;
+  const paletteName = types.find((t) => t.id === elementId)?.name ?? "element";
+  const anotherLabel =
+    placed?.tool === "element"
+      ? `Place another ${paletteName.toLowerCase()}`
+      : `Draw another ${placed?.tool ?? "feature"}`;
   const hint = tool.startsWith("measure")
     ? "Measurement only — this drawing is not saved"
     : tool === "select"
@@ -380,15 +406,7 @@ export function Workspace({
         >
           {save.isPending ? "Saving…" : "Save design"}
         </button>
-        <span role="status">
-          {save.isPending
-            ? "Saving design…"
-            : dirty
-              ? "Unsaved changes"
-              : saved
-                ? "All changes saved"
-                : "Design loaded"}
-        </span>
+        <SaveStatus state={saveState} plansPath={`/sites/${site.id}/design`} />
       </header>
       <FocusRail
         current={focus}
@@ -419,6 +437,15 @@ export function Workspace({
             <h2>{mode.question}</h2>
             <p className="muted">{mode.help}</p>
           </section>
+          {placed && placedFeature && tool === "select" && (
+            <PlacedNotice
+              name={String(placedFeature.properties.name ?? placedFeature.feature_type)}
+              saveState={saveState}
+              anotherLabel={anotherLabel}
+              onAnother={() => choose(placed.tool)}
+              onDone={() => setPlaced(null)}
+            />
+          )}
           {focus === "boundary" ? (
             <BoundaryPanel
               draft={draft}
@@ -448,7 +475,6 @@ export function Workspace({
               }
               onAdd={(feature) => {
                 setTool("select");
-                setSaved(false);
                 state.upsert(feature);
               }}
             />
