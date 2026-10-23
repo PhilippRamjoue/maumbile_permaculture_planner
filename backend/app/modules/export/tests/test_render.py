@@ -70,6 +70,7 @@ def document(features: list[ExportFeature], **kw: Any) -> PlanDocument:
         layers=[LAYER_ZONES, LAYER_ELEMENTS, LAYER_HIDDEN],
         features=features,
         element_types={t.id: t for t in (POND, TREE, SWALE, FENCE)},
+        goals=kw.pop("goals", None),
     )
 
 
@@ -182,6 +183,21 @@ def test_draw_order_puts_top_layer_and_points_last() -> None:
     # then lines, then points.
     assert [f.geometry["type"] for f in drawn] == ["Polygon", "LineString", "Point", "Polygon"]
     assert drawn[-1].feature_type == "zone"
+
+
+def test_goals_are_printed_in_the_header_and_exported_as_data() -> None:
+    assert render.goals_line(None) is None
+    assert render.goals_line({"priorities": [], "vision": " "}) is None
+    goals = {"priorities": ["water", "food"], "vision": "A shady\nfamily garden"}
+    assert render.goals_line(goals) == "Goals: Water · Food  |  A shady family garden"
+    plain = document([], goals=None)
+    with_goals = document([], goals=goals)
+    assert plan_to_geojson(plain)["plan"]["goals"] is None
+    assert plan_to_geojson(with_goals)["plan"]["goals"] == goals
+    # The line takes ink in the band under the sub-title that is empty without goals.
+    band = (render.MARGIN, render.MARGIN + 122, render.PAGE_W // 2, render.MARGIN + 142)
+    assert render.render_plan_image(with_goals).crop(band).getbbox() is not None
+    assert render.render_plan_image(plain).crop(band).convert("L").getextrema() == (255, 255)
 
 
 def test_legend_lists_each_kind_once_with_readable_labels() -> None:

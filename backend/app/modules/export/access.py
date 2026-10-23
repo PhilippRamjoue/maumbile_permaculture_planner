@@ -47,6 +47,7 @@ class PlanReader:
             plan_id=plan.id,
             name=plan.name,
             description=plan.description,
+            goals=plan.goals,
             updated_at=plan.updated_at,
             site_name=site.name,
             boundary=shape_to_geojson(to_shape(site.boundary)),

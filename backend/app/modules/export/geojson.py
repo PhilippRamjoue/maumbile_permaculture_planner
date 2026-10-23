@@ -23,6 +23,7 @@ def plan_to_geojson(doc: PlanDocument) -> dict[str, Any]:
             "id": str(doc.plan_id),
             "name": doc.name,
             "description": doc.description,
+            "goals": doc.goals,
             "site_name": doc.site_name,
             "updated_at": doc.updated_at.isoformat(),
             "crs": CRS_NOTE,

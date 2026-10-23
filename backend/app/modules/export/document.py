@@ -51,3 +51,5 @@ class PlanDocument:
     layers: list[ExportLayer]
     features: list[ExportFeature]
     element_types: dict[int, ExportElementType] = field(default_factory=dict)
+    # ``{"priorities": [...], "vision": "..."}`` as stored on the plan, if the owner set any.
+    goals: dict[str, Any] | None = None

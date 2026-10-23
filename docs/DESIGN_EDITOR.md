@@ -132,6 +132,15 @@ a plan that already has drawn work does not.
 - Water-first nudges: water is the first and larger toggle with a short explanation; the Sectors nudge
   names water flow and the Elements nudge suggests a tank, pond or well before the house.
 
+## Map legend
+
+A toggleable **Legend** button sits beside "Zoom to boundary" over the editor map (open/closed is
+remembered per browser). `legend.ts` builds it from the plan's own features: one entry per zone number,
+sector kind and element type with the colour of its first feature, in that order. Features on hidden
+layers or switched off by the current focus are left out, so it explains exactly what the map shows.
+`MapLegend.tsx` renders it. The PNG/PDF export has its own server-side legend of the same kinds
+(`export/render.py`, see `EXPORT.md`) and now also prints the plan's goals under the title.
+
 ## Verification and limits
 
 - Store tests cover geometry/properties/deletion undo/redo, dirty state and deletion payloads.

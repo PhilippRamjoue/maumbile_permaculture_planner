@@ -17,6 +17,8 @@ import { useMapLayerStore } from "../map/store";
 import { siteKeys, sitesApi } from "../../entities/siteQueries";
 import { terrainKeys, useTerrain } from "../../entities/terrainQueries";
 import { ExportMenu } from "../export";
+import { buildLegend } from "./legend";
+import { MapLegend } from "./MapLegend";
 import { MAX_FIT_ZOOM } from "../map/layers/zoomLimits";
 import { MapView } from "../map/MapView";
 import { ZoomToBoundaryButton } from "../map/ZoomToBoundaryButton";
@@ -160,6 +162,10 @@ export function Workspace({
   );
   // Re-adding the border layer restacks the registry layers over the design layers; the editor
   // map effect re-adds the design layers when this changes.
+  const legend = useMemo(
+    () => buildLegend(features, types, state.document.layers, view.isShown),
+    [features, types, state.document.layers, view],
+  );
   const overlays = useMemo(
     () => ({ terrain: terrain.data, border: focus === "boundary" }),
     [terrain.data, focus],
@@ -577,6 +583,7 @@ export function Workspace({
           />
           <div className="map-tools map-tools--bottom">
             <ZoomToBoundaryButton map={map} bounds={site.bbox} />
+            <MapLegend entries={legend} />
           </div>
           <div className="editor-map-hint" role="status">
             {hint}

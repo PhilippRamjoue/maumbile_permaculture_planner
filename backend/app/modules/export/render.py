@@ -360,6 +360,32 @@ def _draw_legend(
         )
 
 
+GOAL_LABELS = {
+    "water": "Water",
+    "food": "Food",
+    "income": "Income",
+    "habitat": "Habitat & biodiversity",
+    "beauty": "Beauty",
+    "shelter": "Shelter & privacy",
+    "education": "Learning & sharing",
+    "low_maintenance": "Low maintenance",
+}
+
+
+def goals_line(goals: dict[str, Any] | None) -> str | None:
+    """The owner's goals as one printed line, or None when they set none."""
+    if not goals:
+        return None
+    priorities = [GOAL_LABELS.get(str(k), str(k)) for k in goals.get("priorities") or []]
+    vision = " ".join(str(goals.get("vision") or "").split())
+    parts = []
+    if priorities:
+        parts.append(" · ".join(priorities))
+    if vision:
+        parts.append(vision)
+    return "Goals: " + "  |  ".join(parts) if parts else None
+
+
 def _draw_header(draw: ImageDraw.ImageDraw, doc: PlanDocument) -> None:
     width = PAGE_W - 2 * MARGIN
     title, size = _fit(draw, doc.name, 60, width, 32)
@@ -369,6 +395,10 @@ def _draw_header(draw: ImageDraw.ImageDraw, doc: PlanDocument) -> None:
         sub += "  ·  " + " ".join(doc.description.split())
     sub, sub_size = _fit(draw, sub, 30, width, 22)
     draw.text((MARGIN, MARGIN + 78), sub, font=_font(sub_size), fill=MUTED)
+    goals = goals_line(doc.goals)
+    if goals:
+        goals, goals_size = _fit(draw, goals, 26, width, 20)
+        draw.text((MARGIN, MARGIN + 110), goals, font=_font(goals_size), fill=INK)
 
 
 def _draw_footer(draw: ImageDraw.ImageDraw, scale_text: str) -> None:
