@@ -3,6 +3,7 @@ import { TerraDraw, TerraDrawExtend, type TerraDrawMouseEvent } from "terra-draw
 import { describe, expect, it } from "vitest";
 
 import type { DesignFeature, PlanLayer } from "../../entities/planning";
+import { sectorFeature, sectorWedge } from "./sectors";
 import { FakeMap, type FakePoint } from "../../shared/testing/fakeMaplibre";
 import {
   SNAP_REACH_PX,
@@ -10,6 +11,7 @@ import {
   isOnCorner,
   pickBox,
   pickFeature,
+  roundGeometry,
   snapTargets,
   snapToTargets,
   verticesOf,
@@ -365,5 +367,33 @@ describe("editor modes in Terra Draw", () => {
     };
     expect(mode.flags.polygon.feature.coordinates.deletable).toBe(true);
     expect(mode.flags.polygon.feature.coordinates.snappable).toBeTruthy();
+  });
+});
+
+describe("selecting a sector in Terra Draw", () => {
+  // The site centroid has far more decimals than the editor stores.
+  const centroid: [number, number] = [36.588374728697275, -3.326970021640812];
+  const id = "22222222-2222-4222-8222-222222222222";
+  const add = (draw: TerraDraw, geometry: Polygon) =>
+    draw.addFeatures([{ type: "Feature", id, geometry, properties: { mode: "polygon" } }])[0];
+
+  const editorDraw = () => editor().draw;
+
+  it("accepts a sun wedge drawn from the site centroid", () => {
+    const sun = sectorFeature(
+      { kind: "sun", from: 102.4, to: 257.6, origin: centroid, radiusM: 60 },
+      id,
+      "layer",
+    );
+    expect(add(editorDraw(), sun.geometry as Polygon)).toMatchObject({ valid: true });
+  });
+
+  it("accepts an older, unrounded wedge once it is rounded for the editor", () => {
+    const unrounded = sectorWedge(centroid, 102.4, 257.6, 60);
+    unrounded.coordinates[0][0] = centroid; // as saved before the tip was rounded
+    unrounded.coordinates[0][unrounded.coordinates[0].length - 1] = centroid;
+
+    expect(add(editorDraw(), unrounded)).toMatchObject({ valid: false });
+    expect(add(editorDraw(), roundGeometry(unrounded))).toMatchObject({ valid: true });
   });
 });

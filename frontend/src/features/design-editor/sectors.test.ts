@@ -245,3 +245,16 @@ describe("keeping a sector look in step with its kind and bearings", () => {
     expect(sectorKindOf({ properties: { sector_kind: "sun" } })).toBe("sun");
   });
 });
+
+describe("wedge coordinates are storable by the map editor", () => {
+  const decimals = (n: number) => (String(n).split(".")[1] ?? "").length;
+
+  it("rounds the tip too, even for an unrounded site centroid", () => {
+    const wedge = sectorWedge([36.588374728697275, -3.326970021640812], 102, 258, 60);
+    for (const [lng, lat] of wedge.coordinates[0]) {
+      expect(decimals(lng)).toBeLessThanOrEqual(8);
+      expect(decimals(lat)).toBeLessThanOrEqual(8);
+    }
+    expect(wedge.coordinates[0][0]).toEqual(wedge.coordinates[0].at(-1));
+  });
+});

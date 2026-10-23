@@ -21,6 +21,30 @@ export const DRAW_REACH_PX = 20;
 /** A corner being placed or dragged jumps onto another feature's corner this close to it. */
 export const SNAP_REACH_PX = 12;
 
+/** Decimal places the map editor stores; it rejects a shape with more (see `coordinatePrecision`). */
+export const COORDINATE_PRECISION = 8;
+
+const roundPosition = (position: Position): Position =>
+  position.map((n) => Number(n.toFixed(COORDINATE_PRECISION)));
+
+/**
+ * The geometry with every coordinate rounded to the editor's precision (about a millimetre).
+ * Shapes made elsewhere — a wedge from an older save, an imported file — may carry more decimals,
+ * and the editor would refuse to select them, leaving them invisible while selected.
+ */
+export function roundGeometry<G extends Geometry>(geometry: G): G {
+  switch (geometry.type) {
+    case "Point":
+      return { ...geometry, coordinates: roundPosition(geometry.coordinates) };
+    case "LineString":
+      return { ...geometry, coordinates: geometry.coordinates.map(roundPosition) };
+    case "Polygon":
+      return { ...geometry, coordinates: geometry.coordinates.map((r) => r.map(roundPosition)) };
+    default:
+      return geometry;
+  }
+}
+
 /** Every vertex of a geometry. */
 export function verticesOf(geometry: Geometry): Position[] {
   switch (geometry.type) {

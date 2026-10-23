@@ -7,10 +7,12 @@ import type { DesignFeature, ElementType } from "../../entities/planning";
 import type { ImageryMeta } from "../../entities/imagery";
 import {
   createEditorModes,
+  COORDINATE_PRECISION,
   geometryMode,
   isOnCorner,
   pickBox,
   pickFeature,
+  roundGeometry,
   snapTargets,
   verticesOf,
   type FeatureHit,
@@ -83,7 +85,7 @@ export function useEditorMap(
     const draw = new TerraDraw({
       adapter: new TerraDrawMapLibreGLAdapter({
         map,
-        coordinatePrecision: 8,
+        coordinatePrecision: COORDINATE_PRECISION,
         prefixId: "editor-draw",
       }),
       modes: createEditorModes(() =>
@@ -212,7 +214,7 @@ export function useEditorMap(
           {
             type: "Feature",
             id: selected.id,
-            geometry: selected.geometry,
+            geometry: roundGeometry(selected.geometry),
             properties: { mode: geometryMode(selected) },
           },
         ]);

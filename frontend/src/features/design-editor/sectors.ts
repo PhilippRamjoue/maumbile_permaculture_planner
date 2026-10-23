@@ -27,7 +27,7 @@ export function normalizeBearing(bearing: number): number {
 
 /** Degrees swept clockwise from `from` to `to`; 0 when both bearings are the same. */
 export function sectorSpan(from: number, to: number): number {
-  return (normalizeBearing(to) - normalizeBearing(from) + 360) % 360;
+  return round((normalizeBearing(to) - normalizeBearing(from) + 360) % 360, 1);
 }
 
 /** The point `distanceM` metres from `origin` along `bearing` (flat-earth: fine at site scale). */
@@ -58,11 +58,14 @@ export function sectorWedge(
   const start = normalizeBearing(from);
   const span = sectorSpan(from, to);
   const steps = Math.max(1, Math.ceil(span / ARC_STEP_DEG));
-  const ring: [number, number][] = [origin];
+  // The tip is rounded like every arc point: the map editor refuses (and so never draws) a
+  // selected shape with more decimals than it stores, and a site centroid has many.
+  const tip: [number, number] = [round(origin[0], 8), round(origin[1], 8)];
+  const ring: [number, number][] = [tip];
   for (let i = 0; i <= steps; i++) {
     ring.push(offsetPoint(origin, start + (span * i) / steps, radiusM));
   }
-  ring.push(origin);
+  ring.push(tip);
   return { type: "Polygon", coordinates: [ring] };
 }
 
