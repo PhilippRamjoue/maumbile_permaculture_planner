@@ -6,6 +6,7 @@ import { imageryLayer, imageryTileUrl } from "./imageryLayer";
 import { createLayerRegistry } from "./registry";
 import { siteBoundaryLayer } from "./siteBoundaryLayer";
 import type { MapLayerDefinition } from "./types";
+import { IMAGERY_MAX_ZOOM } from "./zoomLimits";
 
 describe("layer registry", () => {
   const dummy = (id: string): MapLayerDefinition => ({
@@ -35,7 +36,7 @@ describe("imagery layer", () => {
     const spec = imageryLayer.build({ site, imagery: imageryMeta })!;
     const source = spec.sources.imagery;
 
-    expect(source).toMatchObject({ type: "raster", tileSize: 256, maxzoom: 19 });
+    expect(source).toMatchObject({ type: "raster", tileSize: 256, maxzoom: IMAGERY_MAX_ZOOM });
     expect((source as { tiles: string[] }).tiles).toEqual([
       `http://localhost:3000/api/v1/sites/${site.id}/imagery/{z}/{x}/{y}.png`,
     ]);
@@ -49,6 +50,13 @@ describe("imagery layer", () => {
   it("uses the provider's max zoom from the meta", () => {
     const spec = imageryLayer.build({ site, imagery: { ...imageryMeta, max_zoom: 14 } })!;
     expect(spec.sources.imagery).toMatchObject({ maxzoom: 14 });
+  });
+
+  it("over-zooms instead of requesting tiles past real coverage, even if the provider claims more", () => {
+    // The backend says Esri goes to z19, but there it serves a placeholder image with HTTP 200.
+    const spec = imageryLayer.build({ site, imagery: { ...imageryMeta, max_zoom: 19 } })!;
+    expect(spec.sources.imagery).toMatchObject({ maxzoom: IMAGERY_MAX_ZOOM });
+    expect(IMAGERY_MAX_ZOOM).toBeLessThanOrEqual(18);
   });
 
   it("still shows tiles while the meta is loading", () => {

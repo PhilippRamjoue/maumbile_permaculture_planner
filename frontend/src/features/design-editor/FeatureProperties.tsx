@@ -1,5 +1,5 @@
 import type { DesignFeature, PlanLayer } from "../../entities/planning";
-import { redrawSector } from "./sectors";
+import { SECTOR_KINDS, redrawSector, syncSectorLook } from "./sectors";
 
 export function FeatureProperties({
   selected,
@@ -81,9 +81,16 @@ export function FeatureProperties({
             Sector kind
             <select
               value={String(selected.properties.sector_kind ?? "wind")}
-              onChange={(event) => patchProperties({ sector_kind: event.target.value })}
+              onChange={(event) =>
+                onChange(
+                  syncSectorLook(selected, {
+                    ...selected,
+                    properties: { ...selected.properties, sector_kind: event.target.value },
+                  }),
+                )
+              }
             >
-              {["sun", "wind", "fire", "view", "water", "wildlife", "noise"].map((kind) => (
+              {SECTOR_KINDS.map((kind) => (
                 <option key={kind}>{kind}</option>
               ))}
             </select>
@@ -101,10 +108,13 @@ export function FeatureProperties({
                   const value = Number(event.target.value);
                   if (value >= 0 && value < 360)
                     onChange(
-                      redrawSector({
-                        ...selected,
-                        properties: { ...selected.properties, [key]: value },
-                      }),
+                      syncSectorLook(
+                        selected,
+                        redrawSector({
+                          ...selected,
+                          properties: { ...selected.properties, [key]: value },
+                        }),
+                      ),
                     );
                 }}
               />

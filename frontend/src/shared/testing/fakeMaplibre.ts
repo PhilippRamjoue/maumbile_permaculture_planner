@@ -124,6 +124,9 @@ export class FakeMap {
   getContainer() {
     return { clientWidth: FAKE_MAP_SIZE.width, clientHeight: FAKE_MAP_SIZE.height };
   }
+  resize() {
+    return this;
+  }
   getZoom() {
     return this.zoom;
   }

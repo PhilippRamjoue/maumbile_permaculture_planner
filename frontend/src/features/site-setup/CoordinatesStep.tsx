@@ -152,13 +152,22 @@ export function CoordinatesStep() {
           </p>
         ) : null}
 
-        <div className="form__actions">
+        <div className="form__actions form__actions--sticky">
+          <button type="submit" className="btn btn--primary btn--wide" disabled={!canSubmit}>
+            {create.isPending ? "Creating…" : "Create site"}
+          </button>
           <button type="button" className="btn" onClick={() => store().setStep("country")}>
             Back
           </button>
-          <button type="submit" className="btn btn--primary" disabled={!canSubmit}>
-            {create.isPending ? "Creating…" : "Create site"}
-          </button>
+          {!canSubmit && !create.isPending ? (
+            <p className="muted form__actions-hint" data-testid="create-hint">
+              {validation.status === "valid"
+                ? "Give your site a name to continue."
+                : points.length < 3
+                  ? "Add the corners of your land (at least 3) to continue."
+                  : "Fix the problem with the boundary shown above to continue."}
+            </p>
+          ) : null}
         </div>
       </form>
 

@@ -1,6 +1,7 @@
 import type { Map as MapLibreMap } from "maplibre-gl";
 
 import type { BBox } from "../../entities/site";
+import { MAX_FIT_ZOOM } from "./layers/zoomLimits";
 
 interface ZoomToBoundaryButtonProps {
   map: MapLibreMap | null;
@@ -8,8 +9,6 @@ interface ZoomToBoundaryButtonProps {
   bounds: BBox | null;
   padding?: number;
 }
-
-const MAX_FIT_ZOOM = 19;
 
 /**
  * "Zoom to my boundary": the way back after panning or zooming away from the land. Place it in a

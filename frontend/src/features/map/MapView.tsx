@@ -17,6 +17,7 @@ import { LayerSynchronizer } from "./layers/applyLayers";
 import { layerRegistry } from "./layers/defaultRegistry";
 import type { LayerRegistry } from "./layers/registry";
 import type { MapLayerContext } from "./layers/types";
+import { MAX_FIT_ZOOM } from "./layers/zoomLimits";
 import { isLayerVisible, useMapLayerStore } from "./store";
 
 // MapLibre 6 ships a separate module worker. Let Vite bundle it as a real JS asset so
@@ -37,7 +38,6 @@ interface MapViewProps {
 }
 
 const FIT_PADDING = 48;
-const MAX_FIT_ZOOM = 19;
 
 /** The imagery proxy is behind the session cookie: make sure tile requests carry it. */
 function transformRequest(url: string): RequestParameters {

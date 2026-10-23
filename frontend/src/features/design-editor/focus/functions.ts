@@ -1,6 +1,6 @@
 import type { Feature, LineString, Position } from "geojson";
 
-import type { DesignFeature } from "../../../entities/planning";
+import type { DesignFeature, ElementType } from "../../../entities/planning";
 
 /**
  * Functions and connections of an element. They are plain lists of function names in the element's
@@ -67,6 +67,56 @@ export function toggleFunction(
   if (on && current.length >= MAX_FUNCTIONS) return feature;
   const next = on ? [...current, name] : current.filter((n) => n !== name);
   return { ...feature, properties: { ...feature.properties, [key]: next } };
+}
+
+/**
+ * The `needs` / `yields` a palette entry starts with, ready to merge into a new element's
+ * properties. Empty for entries without functions (zones, sectors, notes).
+ */
+export function typicalFunctions(
+  type: Pick<ElementType, "default_properties"> | undefined,
+): Partial<Record<FunctionKey, string[]>> {
+  if (!type) return {};
+  // An older server has no `default_properties` yet; then nothing is pre-filled.
+  const holder = { properties: type.default_properties ?? {} };
+  const needs = functionsOf(holder, "needs");
+  const yields = functionsOf(holder, "yields");
+  return needs.length > 0 || yields.length > 0 ? { needs, yields } : {};
+}
+
+/**
+ * The palette entry an element was made from: by its type id, else (for elements placed before
+ * types were recorded) by a matching name such as "Tree".
+ */
+export function typeOfElement(
+  element: DesignFeature,
+  types: readonly ElementType[],
+): ElementType | undefined {
+  const byId = types.find((t) => t.id === element.element_type_id);
+  if (byId) return byId;
+  const name = String(element.properties.name ?? "")
+    .trim()
+    .toLowerCase();
+  return name ? types.find((t) => t.name.toLowerCase() === name) : undefined;
+}
+
+/**
+ * The element with its typical needs / yields filled in where it has none of its own. Anything
+ * already chosen is kept; unchanged (same object) when there is nothing to add.
+ */
+export function withTypicalFunctions(
+  element: DesignFeature,
+  types: readonly ElementType[],
+): DesignFeature {
+  const typical = typicalFunctions(typeOfElement(element, types));
+  const fill = (key: FunctionKey) =>
+    functionsOf(element, key).length === 0 && (typical[key]?.length ?? 0) > 0
+      ? { [key]: typical[key] }
+      : {};
+  const additions = { ...fill("needs"), ...fill("yields") };
+  return Object.keys(additions).length === 0
+    ? element
+    : { ...element, properties: { ...element.properties, ...additions } };
 }
 
 const carriesFunctions = (f: DesignFeature) =>

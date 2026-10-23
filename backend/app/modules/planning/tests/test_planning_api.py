@@ -12,6 +12,8 @@ from httpx import AsyncClient
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine
 
+from app.modules.planning.seed import ELEMENT_TYPE_CATALOG
+
 pytestmark = pytest.mark.integration
 
 API = "/api/v1"
@@ -66,6 +68,30 @@ async def test_element_types_are_seeded(api: AsyncClient) -> None:
     assert by_key["swale"]["geometry_type"] == "line"
     assert by_key["zone"]["feature_type"] == "zone"
     assert isinstance(by_key["house"]["default_style"], dict)
+
+
+async def test_element_types_carry_default_functions_and_colours(api: AsyncClient) -> None:
+    by_key = {e["key"]: e for e in (await api.get(f"{API}/element-types")).json()}
+
+    # A tree needs water and a tank gives it, so that link exists as soon as both are placed.
+    assert "water" in by_key["tree"]["default_properties"]["needs"]
+    assert {"shade", "windbreak", "habitat"} <= set(by_key["tree"]["default_properties"]["yields"])
+    for key in ("water_tank", "pond", "swale", "well"):
+        assert "water" in by_key[key]["default_properties"]["yields"], key
+    assert by_key["house"]["default_properties"]["needs"] == []
+
+    assert by_key["tree"]["default_style"]["fill"].startswith("#")
+    assert by_key["path"]["default_style"]["stroke"] == "#8d6e63"  # brown
+    assert by_key["water_tank"]["default_style"]["fill"] == "#0d47a1"  # dark blue
+    assert by_key["zone"]["default_properties"] == {}
+
+
+async def test_migrated_catalog_matches_the_seed(api: AsyncClient) -> None:
+    """The seed is the live catalog; a change to it must come with a new migration."""
+    by_key = {e["key"]: e for e in (await api.get(f"{API}/element-types")).json()}
+    for key, entry in ELEMENT_TYPE_CATALOG.items():
+        assert by_key[key]["default_style"] == entry["default_style"], key
+        assert by_key[key]["default_properties"] == entry["default_properties"], key
 
 
 # ── plans & layers ─────────────────────────────────────────────────────────────────────────

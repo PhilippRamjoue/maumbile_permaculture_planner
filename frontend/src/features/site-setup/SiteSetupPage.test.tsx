@@ -7,6 +7,7 @@ import { FakeMap } from "../../shared/testing/fakeMaplibre";
 import { imageryMeta, site, user } from "../../shared/testing/fixtures";
 import { mockApi, problem, type MockHandler } from "../../shared/testing/mockApi";
 import { renderApp } from "../../shared/testing/renderApp";
+import { IMAGERY_MAX_ZOOM, MAX_FIT_ZOOM } from "../map/layers/zoomLimits";
 
 vi.mock(
   "maplibre-gl",
@@ -109,6 +110,42 @@ describe("site setup flow", () => {
     expect(screen.getByLabelText("Country")).toHaveValue("KE");
   });
 
+  it("opens the map near a coordinate given in step 1, not at country zoom", async () => {
+    mockApi(handlers());
+    renderApp("/sites/new");
+    await userEvent.type(await screen.findByLabelText(/paste one coordinate/i), "-3.3, 36.7");
+    await userEvent.selectOptions(screen.getByLabelText("Country"), "TZ");
+    await userEvent.click(screen.getByRole("button", { name: "Continue" }));
+    await screen.findByRole("heading", { name: /step 2 of 2/i });
+
+    const map = await setupMap();
+    expect(map.getZoom()).toBeGreaterThanOrEqual(15);
+    expect(map.getZoom()).toBeLessThanOrEqual(MAX_FIT_ZOOM);
+    expect(map.getCenter().lng).toBeCloseTo(36.7, 3);
+    expect(map.getCenter().lat).toBeCloseTo(-3.3, 3);
+  });
+
+  it("over-zooms the setup basemap instead of requesting tiles past Esri's coverage", async () => {
+    mockApi(handlers());
+    renderApp("/sites/new");
+    await chooseKenya();
+
+    const map = await setupMap();
+    await waitFor(() => expect(map.sources.has("setup-basemap")).toBe(true));
+    expect(map.sources.get("setup-basemap")).toMatchObject({ maxzoom: IMAGERY_MAX_ZOOM });
+  });
+
+  it("does not contradict a chosen country whose box contains the coordinate", async () => {
+    mockApi(handlers());
+    renderApp("/sites/new");
+    await userEvent.selectOptions(await screen.findByLabelText("Country"), "TZ");
+    // Near Arusha: inside Tanzania, but also inside Kenya's rough box.
+    await userEvent.type(screen.getByLabelText(/paste one coordinate/i), "-3.3, 36.7");
+
+    expect(await screen.findByText(/inside tanzania/i)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Use Kenya/ })).not.toBeInTheDocument();
+  });
+
   it("frames the map on the chosen country and adds a point per map click", async () => {
     mockApi(handlers());
     renderApp("/sites/new");
@@ -194,6 +231,7 @@ describe("site setup flow", () => {
 
     expect(screen.getByTestId("boundary-status")).toHaveTextContent(/crosses itself/i);
     expect(screen.getByRole("button", { name: "Create site" })).toBeDisabled();
+    expect(screen.getByTestId("create-hint")).toHaveTextContent(/fix the problem/i);
     await waitFor(() => {
       const source = map.sources.get("draft-boundary") as {
         data: { features: { properties: { state: string } }[] };

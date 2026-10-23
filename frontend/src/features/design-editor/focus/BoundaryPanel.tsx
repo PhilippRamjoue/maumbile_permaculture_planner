@@ -18,11 +18,14 @@ export function BoundaryPanel({
   saving,
   error,
   onSave,
+  onContinue,
 }: {
   draft: BoundaryDraftStore;
   saving: boolean;
   error: string | null;
   onSave(): void;
+  /** Move on to the next step (leaving this step saves a valid, changed border). */
+  onContinue(): void;
 }) {
   const state = useStore(draft);
   const validation = validateDraft(state.vertices);
@@ -36,6 +39,19 @@ export function BoundaryPanel({
       <p>
         {state.vertices.length} corners
         {validation.status === "valid" ? ` · ${formatArea(validation.areaM2)}` : ""}
+      </p>
+      <button
+        type="button"
+        className="btn btn--primary btn--wide"
+        disabled={validation.status !== "valid" || saving}
+        onClick={onContinue}
+      >
+        Looks good → Sectors &amp; terrain
+      </button>
+      <p className="muted">
+        {validation.status === "valid"
+          ? "Happy with the border? Continue. You can come back and adjust it any time."
+          : "Fix the border first, then you can continue."}
       </p>
       <p className="muted">
         Drag a corner to nudge it; it snaps onto another corner when close. Click a corner to select
@@ -76,7 +92,7 @@ export function BoundaryPanel({
       <div className="editor-tools">
         <button
           type="button"
-          className="btn btn--primary"
+          className="btn"
           disabled={!dirty || validation.status !== "valid" || saving}
           onClick={onSave}
         >

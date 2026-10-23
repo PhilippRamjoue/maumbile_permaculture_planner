@@ -1,5 +1,6 @@
 import { createLayerRegistry } from "../../map/layers/registry";
 import type { MapLayerDefinition } from "../../map/layers/types";
+import { IMAGERY_MAX_ZOOM } from "../../map/layers/zoomLimits";
 import { draftBoundaryLayer } from "./draftBoundaryLayer";
 
 export const SETUP_BASEMAP_LAYER_ID = "setup-basemap";
@@ -35,7 +36,8 @@ export const setupBasemapLayer: MapLayerDefinition = {
           type: "raster",
           tiles: [SETUP_BASEMAP_URL],
           tileSize: 256,
-          maxzoom: 19,
+          // Over-zoom past Esri's real coverage instead of fetching its placeholder tiles.
+          maxzoom: IMAGERY_MAX_ZOOM,
         },
       },
       layers: [{ id: SETUP_BASEMAP_LAYER_ID, type: "raster", source: SETUP_BASEMAP_LAYER_ID }],

@@ -50,5 +50,7 @@ export interface ElementType {
   geometry_type: "point" | "line" | "polygon";
   icon: string | null;
   default_style: Record<string, string | number | boolean>;
+  /** Properties a placed element starts with, notably its typical `needs` and `yields`. */
+  default_properties: Record<string, unknown>;
   sort_order: number;
 }

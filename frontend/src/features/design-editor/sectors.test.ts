@@ -6,11 +6,15 @@ import {
   normalizeBearing,
   offsetPoint,
   redrawSector,
+  SECTOR_COLORS,
   sectorFeature,
+  sectorKindOf,
   sectorProblem,
   sectorSpan,
   sectorWedge,
   sunPath,
+  sunPathFeature,
+  syncSectorLook,
 } from "./sectors";
 
 const nairobi: [number, number] = [36.82, -1.29];
@@ -164,5 +168,93 @@ describe("sun path", () => {
 
   it("is undefined during polar day", () => {
     expect(sunPath(80, juneSolstice)).toBeNull();
+  });
+});
+
+describe("sun sector for an equatorial site in Tanzania", () => {
+  const origin: [number, number] = [36.588, -3.327];
+
+  it("draws a real wedge on every day of the year, whichever way the sun passes", () => {
+    for (let day = 1; day <= 365; day += 7) {
+      const path = sunPath(origin[1], day)!;
+      const feature = sectorFeature(
+        { kind: "sun", from: path.from, to: path.to, origin, radiusM: 60 },
+        "id",
+        "layer",
+      );
+      const ring = (feature.geometry as GeoJSON.Polygon).coordinates[0];
+      expect(ring.length).toBeGreaterThan(10);
+      expect(sectorSpan(path.from, path.to)).toBeGreaterThan(120);
+      expect(sectorSpan(path.from, path.to)).toBeLessThan(240);
+      expect(feature.properties.sector_kind).toBe("sun");
+    }
+  });
+
+  it("builds a one-click sun sector for a date", () => {
+    // 23 October: the sun is south of this site at noon, rising south of east.
+    const feature = sunPathFeature(origin, 60, "layer", "id", new Date(2026, 9, 23))!;
+    expect(feature.properties).toMatchObject({ sector_kind: "sun", color: SECTOR_COLORS.sun });
+    expect(feature.properties.bearing_from).toBeCloseTo(102.4, 0);
+    expect(feature.properties.bearing_to).toBeCloseTo(257.6, 0);
+  });
+
+  it("has no sun sector when the sun never rises or sets", () => {
+    expect(sunPathFeature([0, 80], 60, "layer", "id", new Date(2026, 5, 21))).toBeNull();
+  });
+});
+
+describe("keeping a sector look in step with its kind and bearings", () => {
+  const sun = sectorFeature(
+    { kind: "sun", from: 315, to: 45, origin: [36.8, -1.2], radiusM: 50 },
+    "id",
+    "layer",
+  );
+
+  it("recolours and renames a generated sector when its kind changes", () => {
+    const after = syncSectorLook(sun, {
+      ...sun,
+      properties: { ...sun.properties, sector_kind: "wind" },
+    });
+    expect(after.properties.color).toBe(SECTOR_COLORS.wind);
+    expect(after.properties.name).toBe("Wind 315°–45°");
+  });
+
+  it("renames a generated sector when its bearings change", () => {
+    const edited = redrawSector({
+      ...sun,
+      properties: { ...sun.properties, bearing_from: 100 },
+    });
+    expect(syncSectorLook(sun, edited).properties.name).toBe("Sun 100°–45°");
+  });
+
+  it("leaves a name and colour the user chose alone", () => {
+    const custom = {
+      ...sun,
+      properties: { ...sun.properties, name: "Hot afternoon sun", color: "#123456" },
+    };
+    const after = syncSectorLook(custom, {
+      ...custom,
+      properties: { ...custom.properties, sector_kind: "fire" },
+    });
+    expect(after.properties.name).toBe("Hot afternoon sun");
+    expect(after.properties.color).toBe("#123456");
+  });
+
+  it("treats a sector without a kind as wind", () => {
+    expect(sectorKindOf({ properties: {} })).toBe("wind");
+    expect(sectorKindOf({ properties: { sector_kind: "sun" } })).toBe("sun");
+  });
+});
+
+describe("wedge coordinates are storable by the map editor", () => {
+  const decimals = (n: number) => (String(n).split(".")[1] ?? "").length;
+
+  it("rounds the tip too, even for an unrounded site centroid", () => {
+    const wedge = sectorWedge([36.588374728697275, -3.326970021640812], 102, 258, 60);
+    for (const [lng, lat] of wedge.coordinates[0]) {
+      expect(decimals(lng)).toBeLessThanOrEqual(8);
+      expect(decimals(lat)).toBeLessThanOrEqual(8);
+    }
+    expect(wedge.coordinates[0][0]).toEqual(wedge.coordinates[0].at(-1));
   });
 });

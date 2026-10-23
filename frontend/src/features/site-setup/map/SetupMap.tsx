@@ -1,8 +1,9 @@
 import type { Map as MapLibreMap } from "maplibre-gl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import type { Site } from "../../../entities/site";
+import type { BBox, Site } from "../../../entities/site";
 import { MapView } from "../../map/MapView";
+import { MAX_FIT_ZOOM, POINT_FOCUS_ZOOM } from "../../map/layers/zoomLimits";
 import { ZoomToBoundaryButton } from "../../map/ZoomToBoundaryButton";
 import { countryBBox } from "../countries";
 import { bboxOf, cellToPoint, pointToCell, type LngLat } from "../geometry";
@@ -10,6 +11,7 @@ import { attachBoundaryEditing } from "./boundaryEditing";
 import { DRAFT_BOUNDARY_LAYER_ID, type DraftBoundaryUi } from "./draftBoundaryLayer";
 import { isComfortablyFramed } from "./framing";
 import { setupLayerRegistry } from "./setupRegistry";
+import { useSetupStore } from "../store";
 import type { BoundaryVertex } from "./vertexHit";
 
 interface SetupMapProps {
@@ -25,7 +27,6 @@ interface SetupMapProps {
 }
 
 const FIT_PADDING = 64;
-const MAX_FIT_ZOOM = 19;
 const DRAFT_SITE_ID = "draft";
 
 /**
@@ -33,7 +34,7 @@ const DRAFT_SITE_ID = "draft";
  * constant (the map instance is created once, framed on the country); only `boundary` changes, which
  * re-syncs the layers. See `draftBoundaryLayer` for how the corners travel.
  */
-function draftSite(countryCode: string | null, points: LngLat[]): Site {
+function draftSite(countryCode: string | null, points: LngLat[], focus: LngLat | null): Site {
   const [lng, lat] = points[0] ?? [0, 0];
   return {
     id: DRAFT_SITE_ID,
@@ -42,12 +43,19 @@ function draftSite(countryCode: string | null, points: LngLat[]): Site {
     country_code: countryCode,
     boundary: { type: "Polygon", coordinates: [points] },
     centroid: { type: "Point", coordinates: [lng, lat] },
-    bbox: countryBBox(countryCode),
+    // A coordinate the user typed beats the whole country: open where they can recognise their land.
+    bbox: focus ? focusBBox(focus) : countryBBox(countryCode),
     area_m2: 0,
     utm_epsg: 0,
     created_at: "",
     updated_at: "",
   };
+}
+
+/** A box of roughly 900 m around a point, which `fitBounds` turns into about z16. */
+function focusBBox([lng, lat]: LngLat): BBox {
+  const half = 0.004;
+  return [lng - half, lat - half, lng + half, lat + half];
 }
 
 /** What a point becomes once stored in a table cell (and so what the map will read back). */
@@ -72,16 +80,20 @@ export function SetupMap({
   const [hoverId, setHoverId] = useState<number | null>(null);
   const [snapId, setSnapId] = useState<number | null>(null);
 
+  const focusPoint = useSetupStore((s) => s.focusPoint);
   const points = useMemo(() => vertices.map((v) => v.point), [vertices]);
-  const live = useRef({ vertices, points, onAddPoint, onSelect, onMovePoint });
-  live.current = { vertices, points, onAddPoint, onSelect, onMovePoint };
+  const live = useRef({ vertices, points, focusPoint, onAddPoint, onSelect, onMovePoint });
+  live.current = { vertices, points, focusPoint, onAddPoint, onSelect, onMovePoint };
   // The corners the map itself just produced. Re-framing a view the user is looking at (they just
   // clicked or dragged there) would make the point they placed slide away from the cursor.
   const expectedSignature = useRef<string | null>(null);
 
   // The map is created once per mount, so the country only frames the first view; `points` and
   // the country change the draft site's content, not its identity.
-  const site = useMemo(() => draftSite(countryCode, points), [countryCode, points]);
+  const site = useMemo(
+    () => draftSite(countryCode, points, focusPoint),
+    [countryCode, points, focusPoint],
+  );
 
   const ui = useMemo(() => {
     const indexOf = (id: number | null) => {
@@ -97,7 +109,13 @@ export function SetupMap({
   }, [vertices, hoverId, selectedId, snapId]);
 
   const fitToPoints = useCallback((target: MapLibreMap) => {
-    const box = bboxOf(live.current.points);
+    const { points: corners } = live.current;
+    if (corners.length === 1) {
+      // One corner has no extent to fit; show it at a zoom where the surroundings are recognisable.
+      target.jumpTo({ center: corners[0], zoom: POINT_FOCUS_ZOOM });
+      return;
+    }
+    const box = bboxOf(corners);
     if (box) target.fitBounds(box, { padding: FIT_PADDING, maxZoom: MAX_FIT_ZOOM, duration: 0 });
   }, []);
   const bounds = useMemo(() => bboxOf(points), [points]);
@@ -132,7 +150,13 @@ export function SetupMap({
         onHover: setHoverId,
         onSnap: setSnapId,
       });
-      fitToPoints(map);
+      // The canvas can still be laying out when MapView builds the map, which leaves it at world
+      // zoom; resize, then frame on the corners, else on the coordinate the user gave, so they
+      // land near their plot rather than at country zoom.
+      map.resize();
+      const { points: corners, focusPoint: focus } = live.current;
+      if (corners.length > 0) fitToPoints(map);
+      else if (focus) map.jumpTo({ center: focus, zoom: POINT_FOCUS_ZOOM });
     },
     [fitToPoints],
   );

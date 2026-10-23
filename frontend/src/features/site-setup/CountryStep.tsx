@@ -1,7 +1,14 @@
-import { useId, useState, type FormEvent } from "react";
+import { useEffect, useId, useState, type FormEvent } from "react";
 
-import { countryName, FEATURED_COUNTRIES, OTHER_COUNTRIES, suggestCountry } from "./countries";
+import {
+  countryContains,
+  countryName,
+  FEATURED_COUNTRIES,
+  OTHER_COUNTRIES,
+  suggestCountry,
+} from "./countries";
 import { parseCoordinateText } from "./geometry";
+import { useSetupStore } from "./store";
 
 interface CountryStepProps {
   countryCode: string | null;
@@ -17,7 +24,20 @@ export function CountryStep({ countryCode, onCountryChange, onContinue }: Countr
 
   const parsed = probe.trim() === "" ? null : parseCoordinateText(probe, "lat-lng");
   const probePoint = parsed && parsed.errors.length === 0 ? parsed.points[0] : undefined;
-  const suggestion = probePoint ? suggestCountry(probePoint) : null;
+  // Country boxes overlap (Kenya and Tanzania share a border region): a coordinate inside the
+  // country already chosen is never second-guessed.
+  const fitsChosen = probePoint && countryCode ? countryContains(countryCode, probePoint) : null;
+  const suggestion = probePoint && fitsChosen !== true ? suggestCountry(probePoint) : null;
+
+  // The map in step 2 opens on this coordinate, so you can find your land before adding corners.
+  const [probeLng, probeLat] = probePoint ?? [];
+  useEffect(() => {
+    useSetupStore
+      .getState()
+      .setFocusPoint(
+        probeLng === undefined || probeLat === undefined ? null : [probeLng, probeLat],
+      );
+  }, [probeLng, probeLat]);
 
   function submit(event: FormEvent) {
     event.preventDefault();
@@ -57,7 +77,9 @@ export function CountryStep({ countryCode, onCountryChange, onContinue }: Countr
       </div>
 
       <div className="field">
-        <label htmlFor={probeId}>Not sure? Paste one coordinate from your land (optional)</label>
+        <label htmlFor={probeId}>
+          Paste one coordinate from your land (optional) — the map will open there
+        </label>
         <input
           id={probeId}
           value={probe}
@@ -66,7 +88,11 @@ export function CountryStep({ countryCode, onCountryChange, onContinue }: Countr
           inputMode="decimal"
           autoComplete="off"
         />
-        {suggestion ? (
+        {probePoint && fitsChosen === true && countryCode ? (
+          <p role="status" className="field__hint">
+            ✓ That is inside {countryName(countryCode)}.
+          </p>
+        ) : suggestion ? (
           <p role="status" className="field__hint">
             That looks like {countryName(suggestion)}.{" "}
             {suggestion === countryCode ? (
