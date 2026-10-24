@@ -64,7 +64,7 @@ migration that has been deployed; add a new one.
 Click **Deploy**. Expect 5–10 minutes (image builds). In the deployment log you should see, in order:
 
 1. `db` becomes healthy.
-2. `backend`: Alembic prints `Running upgrade … -> 0006_plan_shares` (the full chain on a fresh
+2. `backend`: Alembic prints `Running upgrade … -> 0009_element_type_icons` (the full chain on a fresh
    database; 0001 enables the PostGIS extension, which the `postgis/postgis` image permits), then
    `Uvicorn running on http://0.0.0.0:8000`.
 3. `backend` and then `frontend` report **healthy**; the resource status turns *Running (healthy)*.
@@ -82,7 +82,7 @@ attribution appear, generate terrain, export a PDF.
 Check migrations explicitly from Coolify's **Terminal** for the backend (or `docker exec`):
 
 ```bash
-/app/.venv/bin/alembic current      # → 0006_plan_shares (head)
+/app/.venv/bin/alembic current      # → 0009_element_type_icons (head)
 /app/.venv/bin/alembic history | head
 ```
 
