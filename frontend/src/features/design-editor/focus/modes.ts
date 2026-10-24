@@ -221,7 +221,7 @@ const WHEN_EMPTY: Record<FocusId, string> = {
   sectors: "Add where the sun, wind and water come from — or skip ahead and come back any time.",
   zones: "Sketch your first zone — or skip ahead and come back any time.",
   elements:
-    "Place your first element. Water first: a tank, pond or well — then the house, beds and trees.",
+    "Place your first element, such as the house, a tree or something that holds water — in any order.",
   functions: "Pick an element and note what it needs and what it gives.",
 };
 const WHEN_DONE: Record<FocusId, string> = {
@@ -241,15 +241,16 @@ export interface NudgeContext {
 }
 
 /**
- * Water first: when the owner named water as a goal, the sectors and elements steps stay on it
- * until the design shows where water comes from and where it is held.
+ * Water, gently: when the owner named water as a goal, the sectors and elements steps wonder aloud
+ * where it comes from and where it could be held, until the design says something about it. It is
+ * a question, never a requirement: nothing is blocked and every other step stays open.
  */
 function waterNudge(current: FocusId, { goals, features = [] }: NudgeContext): string | null {
   if (!goals?.priorities.includes("water")) return null;
   if (current === "sectors" && !features.some(isWaterSector))
-    return "Water is one of your goals: add where water flows in or collects as a water sector.";
+    return "Water matters to you. Where does it come from, and where does it run or collect? Mark it if you know — or move on and come back.";
   if (current === "elements" && !features.some(yieldsWater))
-    return "Water is one of your goals: place a tank, pond, well or swale before the rest.";
+    return "Water matters to you. Where could it be caught or kept — a tank, pond, swale or well? Add what fits, whenever it suits you.";
   return null;
 }
 

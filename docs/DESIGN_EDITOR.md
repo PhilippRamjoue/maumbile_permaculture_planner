@@ -130,9 +130,10 @@ a plan that already has drawn work does not.
   are not part of the feature document, so they never wait for or block the feature save. Other steps show a
   one-line "Your goals: …" reminder with an Edit link.
 - Water-first nudges: water is the first and larger toggle with a short explanation. When water is one of
-  the goals, the rail's nudge in Sectors asks for a water sector until one exists, and in Elements asks for a
-  tank, pond, well or swale (any element or path that yields water) until one is placed (`focus/modes.ts`,
-  `nudgeFor` with a `NudgeContext`). Without the goal the generic nudges apply.
+  the goals, the rail's nudge in Sectors and Elements wonders aloud where water comes from and where it could
+  be held, until a water sector or an element that yields water exists (`focus/modes.ts`, `nudgeFor` with a
+  `NudgeContext`). It is phrased as a question and never blocks anything; without the goal, or once water is
+  on the map, the generic nudges apply.
 
 ## Map legend
 

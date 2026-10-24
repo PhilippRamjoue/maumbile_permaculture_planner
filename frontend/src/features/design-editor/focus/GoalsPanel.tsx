@@ -45,7 +45,7 @@ export function GoalsPanel({
         {button(water!)}
         <p className="goal-water-note">
           Water first: where it comes from, where it goes and how you hold it on the land shapes
-          nearly every other choice. Many designers start here.
+          nearly every other choice. Many designers start here, but start wherever suits you.
         </p>
         <div className="goal-options__rest">{others.map(button)}</div>
       </fieldset>

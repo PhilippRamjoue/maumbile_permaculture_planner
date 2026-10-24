@@ -125,7 +125,7 @@ describe("water-first nudge", () => {
 
   it("stays quiet unless water is a goal", () => {
     const text = nudgeFor("elements", progressOf(doc()), { goals: food, features: [] }).text;
-    expect(text).not.toMatch(/water is one of your goals/i);
+    expect(text).not.toMatch(/water matters to you/i);
     expect(nudgeFor("sectors", progressOf(doc())).text).toMatch(/sun, wind and water/i);
   });
 
@@ -133,7 +133,7 @@ describe("water-first nudge", () => {
     const sectors = [sector("sun"), sector("wind")];
     const progress = progressOf(doc(...sectors));
     expect(nudgeFor("sectors", progress, { goals: water, features: sectors }).text).toMatch(
-      /water sector/i,
+      /where does it come from/i,
     );
     const withWater = [...sectors, sector("water")];
     expect(nudgeFor("sectors", progress, { goals: water, features: withWater }).text).toMatch(
@@ -145,7 +145,7 @@ describe("water-first nudge", () => {
     const house = feat("element", { yields: ["shelter"] });
     const progress = progressOf(doc(house));
     expect(nudgeFor("elements", progress, { goals: water, features: [house] }).text).toMatch(
-      /tank, pond, well or swale/i,
+      /caught or kept/i,
     );
     const tank = feat("element", { yields: ["Water"] });
     expect(nudgeFor("elements", progress, { goals: water, features: [house, tank] }).text).toMatch(
