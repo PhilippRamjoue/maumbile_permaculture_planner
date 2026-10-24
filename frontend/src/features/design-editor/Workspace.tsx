@@ -451,6 +451,7 @@ export function Workspace({
         current={focus}
         progress={progress}
         warnings={{ boundary: boundaryDirty ? "The border has unsaved changes" : undefined }}
+        context={{ goals: goals.goals, features }}
         onChange={go}
       />
       {save.isError && (

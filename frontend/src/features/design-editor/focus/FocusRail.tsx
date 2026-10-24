@@ -6,6 +6,7 @@ import {
   nudgeFor,
   type ContextGroup,
   type FocusId,
+  type NudgeContext,
   type Progress,
 } from "./modes";
 
@@ -18,15 +19,18 @@ export function FocusRail({
   current,
   progress,
   warnings,
+  context,
   onChange,
 }: {
   current: FocusId;
   progress: Progress;
   /** Steps with something that needs attention (e.g. an unsaved border), shown as a marker. */
   warnings: Partial<Record<FocusId, string>>;
+  /** The goals and features the nudge may refer to (e.g. water first). */
+  context?: NudgeContext;
   onChange(next: FocusId): void;
 }) {
-  const nudge = nudgeFor(current, progress);
+  const nudge = nudgeFor(current, progress, context);
   const next = nudge.next ? focusMode(nudge.next) : null;
   return (
     <nav className="focus-rail" aria-label="Design focus">

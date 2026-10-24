@@ -117,3 +117,45 @@ describe("focus modes", () => {
     });
   });
 });
+
+describe("water-first nudge", () => {
+  const water = { priorities: ["water" as const], vision: "" };
+  const food = { priorities: ["food" as const], vision: "" };
+  const sector = (kind: string) => feat("sector", { sector_kind: kind });
+
+  it("stays quiet unless water is a goal", () => {
+    const text = nudgeFor("elements", progressOf(doc()), { goals: food, features: [] }).text;
+    expect(text).not.toMatch(/water is one of your goals/i);
+    expect(nudgeFor("sectors", progressOf(doc())).text).toMatch(/sun, wind and water/i);
+  });
+
+  it("asks for a water sector until there is one", () => {
+    const sectors = [sector("sun"), sector("wind")];
+    const progress = progressOf(doc(...sectors));
+    expect(nudgeFor("sectors", progress, { goals: water, features: sectors }).text).toMatch(
+      /water sector/i,
+    );
+    const withWater = [...sectors, sector("water")];
+    expect(nudgeFor("sectors", progress, { goals: water, features: withWater }).text).toMatch(
+      /context/i,
+    );
+  });
+
+  it("asks for a water source among the elements until one is placed", () => {
+    const house = feat("element", { yields: ["shelter"] });
+    const progress = progressOf(doc(house));
+    expect(nudgeFor("elements", progress, { goals: water, features: [house] }).text).toMatch(
+      /tank, pond, well or swale/i,
+    );
+    const tank = feat("element", { yields: ["Water"] });
+    expect(nudgeFor("elements", progress, { goals: water, features: [house, tank] }).text).toMatch(
+      /Elements are saved/,
+    );
+  });
+
+  it("leaves the other steps alone", () => {
+    expect(nudgeFor("zones", progressOf(doc()), { goals: water, features: [] }).text).toMatch(
+      /first zone/i,
+    );
+  });
+});

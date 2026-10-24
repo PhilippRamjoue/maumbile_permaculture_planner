@@ -155,8 +155,8 @@ def derive_terrain(dem: DemRaster, bbox: BBox, interval_m: float) -> DerivedTerr
         flags.append("ocean")  # sea level / water: nothing to derive
     if valid_elev.size < site_elev.size:
         flags.append("partial_nodata")
-    relief = float(valid_elev.max() - valid_elev.min())
-    max_pct = float(valid_slope.max()) if valid_slope.size else 0.0
+    relief = float(np.max(valid_elev) - np.min(valid_elev))
+    max_pct = float(np.max(valid_slope)) if valid_slope.size else 0.0
     if not ocean and max_pct < FLAT_MAX_PCT:
         flags.append("flat")
 
@@ -175,8 +175,8 @@ def derive_terrain(dem: DemRaster, bbox: BBox, interval_m: float) -> DerivedTerr
     mean_pct = float(valid_slope.mean()) if valid_slope.size else 0.0
     summary: dict[str, Any] = {
         "elevation_m": {
-            "min": round(float(valid_elev.min()), 1),
-            "max": round(float(valid_elev.max()), 1),
+            "min": round(float(np.min(valid_elev)), 1),
+            "max": round(float(np.max(valid_elev)), 1),
             "mean": round(float(valid_elev.mean()), 1),
             "relief": round(relief, 1),
         },

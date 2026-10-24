@@ -234,9 +234,34 @@ const WHEN_DONE: Record<FocusId, string> = {
   functions: "Every element can now be checked against the permaculture principles.",
 };
 
-export function nudgeFor(current: FocusId, progress: Progress): Nudge {
+/** What the nudge may know about the design beyond which steps have content. */
+export interface NudgeContext {
+  goals?: PlanGoals | null;
+  features?: readonly Pick<DesignFeature, "feature_type" | "properties">[];
+}
+
+/**
+ * Water first: when the owner named water as a goal, the sectors and elements steps stay on it
+ * until the design shows where water comes from and where it is held.
+ */
+function waterNudge(current: FocusId, { goals, features = [] }: NudgeContext): string | null {
+  if (!goals?.priorities.includes("water")) return null;
+  if (current === "sectors" && !features.some(isWaterSector))
+    return "Water is one of your goals: add where water flows in or collects as a water sector.";
+  if (current === "elements" && !features.some(yieldsWater))
+    return "Water is one of your goals: place a tank, pond, well or swale before the rest.";
+  return null;
+}
+
+const isWaterSector = (f: Pick<DesignFeature, "feature_type" | "properties">) =>
+  f.feature_type === "sector" && f.properties.sector_kind === "water";
+const yieldsWater = (f: Pick<DesignFeature, "feature_type" | "properties">) =>
+  (f.feature_type === "element" || f.feature_type === "path") &&
+  functionsOf(f, "yields").includes("water");
+
+export function nudgeFor(current: FocusId, progress: Progress, context: NudgeContext = {}): Nudge {
   return {
-    text: (progress[current] ? WHEN_DONE : WHEN_EMPTY)[current],
+    text: waterNudge(current, context) ?? (progress[current] ? WHEN_DONE : WHEN_EMPTY)[current],
     next: suggestNext(current, progress),
   };
 }

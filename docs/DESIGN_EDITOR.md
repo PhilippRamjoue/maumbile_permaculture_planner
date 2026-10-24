@@ -129,8 +129,10 @@ a plan that already has drawn work does not.
   `useAutosave`, flushed on focus change, counted in the save status and the unsaved-changes guard). Goals
   are not part of the feature document, so they never wait for or block the feature save. Other steps show a
   one-line "Your goals: …" reminder with an Edit link.
-- Water-first nudges: water is the first and larger toggle with a short explanation; the Sectors nudge
-  names water flow and the Elements nudge suggests a tank, pond or well before the house.
+- Water-first nudges: water is the first and larger toggle with a short explanation. When water is one of
+  the goals, the rail's nudge in Sectors asks for a water sector until one exists, and in Elements asks for a
+  tank, pond, well or swale (any element or path that yields water) until one is placed (`focus/modes.ts`,
+  `nudgeFor` with a `NudgeContext`). Without the goal the generic nudges apply.
 
 ## Map legend
 
@@ -158,7 +160,8 @@ the palette, in the legend and in the PNG/PDF export.
   A `symbol` layer draws the badge (point, or the middle of a footprint), a `circle` ring marks a selected
   icon point, and plain dots remain for point types without a glyph. Badges are drawn on a canvas on demand
   through `map.setMissingStyleImageResolver` (`icons.ts`), one per glyph and colour, with a white halo and dark
-  rim so they read on satellite imagery. A footprint being reshaped is drawn by Terra Draw, without its badge.
+  rim so they read on satellite imagery. A footprint being reshaped is drawn by Terra Draw, without its badge on purpose: the map only
+  updates on commit, so a badge kept on screen would sit at the old place during a drag.
 - **Palette, legend.** `GlyphIcon` (inline SVG) previews the chosen entry beside the palette and is the
   legend swatch for marked types.
 - **Export.** `render.py` draws each badge after all fills and lines (radius 22 px, smaller on small

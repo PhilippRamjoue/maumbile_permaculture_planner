@@ -58,6 +58,8 @@ jobs:
       APP_SECRET_KEY: ci-only-disposable-secret-01234567890123456789
       POSTGRES_PASSWORD: ci-only-disposable-pw
       APP_COOKIE_SECURE: "false"
+      # Every spec signs in, all from one runner IP within a minute; the default 10 is too tight.
+      APP_LOGIN_RATE_LIMIT_ATTEMPTS: "100"
       E2E: "1"
       E2E_BASE_URL: http://localhost:8080
     steps:
