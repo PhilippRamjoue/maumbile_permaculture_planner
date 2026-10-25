@@ -1,4 +1,4 @@
-"""Generate frontend response types and fixtures (imagery, terrain, share links, plan goals).
+"""Generate frontend response types and fixtures (imagery, terrain, shares, goals, elements).
 
 Run from backend: python scripts/generate_frontend_contracts.py [--check].
 Keep this deliberately scoped; add other response models as their frontend consumers arrive.
@@ -20,7 +20,7 @@ from app.modules.export.schemas import ShareCreated, ShareStatus  # noqa: E402
 from app.modules.imagery.providers import EsriWorldImageryProvider  # noqa: E402
 from app.modules.imagery.schemas import ImageryMeta  # noqa: E402
 from app.modules.planning.icons import GLYPHS  # noqa: E402
-from app.modules.planning.schemas import GoalPriority, PlanGoals  # noqa: E402
+from app.modules.planning.schemas import ElementTypeRead, GoalPriority, PlanGoals  # noqa: E402
 from app.modules.terrain.schemas import (  # noqa: E402
     ContourCollection,
     ContourFeature,
@@ -133,6 +133,10 @@ def goals_declaration() -> str:
     )
 
 
+def elements_declaration() -> str:
+    return HEADER + ts_interface("ElementTypeRead", ElementTypeRead.model_json_schema())
+
+
 def icons_declaration() -> str:
     body = ",\n".join(
         f"  {json.dumps(key)}: {json.dumps(ops, separators=(',', ':'))}"
@@ -173,6 +177,7 @@ def outputs() -> dict[Path, str]:
         )
         + "\n",
         FRONTEND / "entities/generated/plan.ts": goals_declaration(),
+        FRONTEND / "entities/generated/elements.ts": elements_declaration(),
         FRONTEND / "entities/generated/icons.ts": icons_declaration(),
         FRONTEND / "entities/generated/terrain.ts": terrain_declaration(),
         FRONTEND / "shared/testing/terrain-contract.json": json.dumps(
