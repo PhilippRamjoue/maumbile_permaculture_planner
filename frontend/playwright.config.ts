@@ -7,6 +7,9 @@ import { defineConfig } from "@playwright/test";
 export default defineConfig({
   testDir: "./e2e",
   fullyParallel: true,
+  // CI runs on software GL (swiftshader): map rendering and Terra Draw interactions settle slowly and
+  // occasionally miss a frame, so retry there. Locally (real GPU) tests are deterministic.
+  retries: process.env.CI ? 2 : 0,
   reporter: "list",
   projects: [{ name: "chromium", use: { browserName: "chromium" } }],
   use: {
