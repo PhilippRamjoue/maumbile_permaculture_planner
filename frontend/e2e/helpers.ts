@@ -8,11 +8,17 @@ export const step = (page: Page, name: string) =>
 
 /**
  * New plans open in the simple (place-things-only) editor, which has no step rail. These specs drive
- * the full guided flow, so switch into it first; it is a no-op once the rail is already showing.
+ * the full guided flow, so seed the remembered preference before navigating — the editor then opens
+ * guided with the rail, and the normal `initialFocus` applies. Call it before the editor `goto`.
  */
-export async function enterGuided(page: Page) {
-  const toGuided = page.getByRole("button", { name: /guided design/i });
-  if (await toGuided.isVisible().catch(() => false)) await toGuided.click();
+export async function forceGuided(page: Page) {
+  await page.addInitScript(() => {
+    try {
+      window.localStorage.setItem("maumbile.editorLevel", "guided");
+    } catch {
+      /* ignore: storage may be unavailable */
+    }
+  });
 }
 
 export async function register(page: Page, tag: string) {

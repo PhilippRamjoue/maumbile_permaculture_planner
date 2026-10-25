@@ -1,4 +1,4 @@
-import { makePlan, makeSite, register, step } from "./helpers";
+import { forceGuided, makePlan, makeSite, register, step } from "./helpers";
 import { expect, test } from "./map-fixture";
 
 test.skip(!process.env.E2E, "set E2E=1 with the stack running to enable");
@@ -13,6 +13,7 @@ test("the map's Measure control measures a distance live, and the grid toggles w
   await register(page, "maptools");
   const site = await makeSite(page, "Tools plot");
   const planId = await makePlan(page, site.id, "Measuring");
+  await forceGuided(page);
   await page.goto(`/sites/${site.id}/design/${planId}?focus=zones`);
   await expect(step(page, "Zones")).toHaveAttribute("aria-current", "step");
 

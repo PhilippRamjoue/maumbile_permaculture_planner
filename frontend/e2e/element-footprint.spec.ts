@@ -1,7 +1,7 @@
 import type { Page } from "@playwright/test";
 import area from "@turf/area";
 
-import { makePlan, makeSite, register, step } from "./helpers";
+import { forceGuided, makePlan, makeSite, register, step } from "./helpers";
 import { expect, test } from "./map-fixture";
 
 test.skip(!process.env.E2E, "set E2E=1 with the stack running to enable");
@@ -26,6 +26,7 @@ test("one click drops a to-scale footprint; the exact size is editable", async (
   await register(page, "footprint");
   const site = await makeSite(page, "Scale plot");
   const planId = await makePlan(page, site.id, "To scale");
+  await forceGuided(page);
   await page.goto(`/sites/${site.id}/design/${planId}?focus=elements`);
   await expect(page.getByTestId("map-view")).toHaveAttribute("data-map-ready", "true");
   await expect(step(page, "Elements")).toHaveAttribute("aria-current", "step");

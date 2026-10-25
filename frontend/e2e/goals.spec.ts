@@ -1,4 +1,4 @@
-import { makePlan, makeSite, register, step } from "./helpers";
+import { forceGuided, makePlan, makeSite, register, step } from "./helpers";
 import { expect, test } from "./map-fixture";
 
 test.skip(!process.env.E2E, "set E2E=1 with the stack running to enable");
@@ -15,6 +15,8 @@ test("a new plan opens on Goals; goals autosave, survive a reload and are recall
   const planId = await makePlan(page, site.id, "Water first");
   const planUrl = `/api/v1/plans/${planId}`;
 
+  // The editor opens simple (just place things); these assertions drive the full guided flow.
+  await forceGuided(page);
   await page.goto(`/sites/${site.id}/design/${planId}`);
   await expect(step(page, "Goals")).toHaveAttribute("aria-current", "step");
   await expect(page.getByRole("heading", { name: "What do I want from this land?" })).toBeVisible();

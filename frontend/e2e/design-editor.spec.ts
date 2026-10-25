@@ -1,4 +1,4 @@
-import { step, register, makeSite, enterGuided } from "./helpers";
+import { step, register, makeSite, forceGuided } from "./helpers";
 import { expect, test } from "./map-fixture";
 
 test.skip(!process.env.E2E, "set E2E=1 with the stack running to enable");
@@ -18,9 +18,9 @@ test("draws a zone and places an element across focus modes, then saves and relo
   ).json();
   const featuresUrl = `/api/v1/plans/${plan.id}/features`;
 
+  await forceGuided(page);
   await page.goto(`/sites/${site.id}/design/${plan.id}`);
   await expect(page.getByTestId("map-view")).toHaveAttribute("data-map-ready", "true");
-  await enterGuided(page);
   const canvas = page.getByTestId("map-view").locator("canvas.maplibregl-canvas");
   const box = (await canvas.boundingBox())!;
   const click = (x: number, y: number) =>
@@ -91,9 +91,9 @@ test("keeps the draft after a save failure and warns before leaving", async ({ p
     },
   });
 
+  await forceGuided(page);
   await page.goto(`/sites/${site.id}/design/${plan.id}`);
   await expect(page.getByTestId("map-view")).toHaveAttribute("data-map-ready", "true");
-  await enterGuided(page);
   await step(page, "Elements").click();
   await page.getByRole("button", { name: "Tree", exact: true }).click();
   await page.getByLabel("Feature name").fill("Mango");
