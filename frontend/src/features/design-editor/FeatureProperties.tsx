@@ -1,6 +1,12 @@
 import type { DesignFeature, PlanLayer } from "../../entities/planning";
 import { FootprintFields } from "./FootprintFields";
-import { SECTOR_KINDS, redrawSector, syncSectorLook } from "./sectors";
+import {
+  isParametricSector,
+  normalizeBearing,
+  redrawSector,
+  SECTOR_KINDS,
+  syncSectorLook,
+} from "./sectors";
 
 export function FeatureProperties({
   selected,
@@ -20,6 +26,20 @@ export function FeatureProperties({
   if (!selected) return null;
   const patchProperties = (changes: Record<string, unknown>) =>
     onChange({ ...selected, properties: { ...selected.properties, ...changes } });
+  // Reshape a sector from its numbers: redraw the wedge and keep its generated name/colour in step.
+  const redrawSectorWith = (changes: Record<string, unknown>) =>
+    onChange(
+      syncSectorLook(
+        selected,
+        redrawSector({ ...selected, properties: { ...selected.properties, ...changes } }),
+      ),
+    );
+  const rotateSector = (delta: number) =>
+    redrawSectorWith({
+      bearing_from: normalizeBearing(Number(selected.properties.bearing_from ?? 0) + delta),
+      bearing_to: normalizeBearing(Number(selected.properties.bearing_to ?? 0) + delta),
+    });
+  const parametricSector = isParametricSector(selected);
   return (
     <div className="editor-properties">
       <h2>Selected feature</h2>
@@ -108,23 +128,44 @@ export function FeatureProperties({
                 value={Number(selected.properties[key] ?? 0)}
                 onChange={(event) => {
                   const value = Number(event.target.value);
-                  if (value >= 0 && value < 360)
-                    onChange(
-                      syncSectorLook(
-                        selected,
-                        redrawSector({
-                          ...selected,
-                          properties: { ...selected.properties, [key]: value },
-                        }),
-                      ),
-                    );
+                  if (value >= 0 && value < 360) redrawSectorWith({ [key]: value });
                 }}
               />
             </label>
           ))}
+          {parametricSector && (
+            <>
+              <label>
+                Radius (m)
+                <input
+                  type="number"
+                  min={5}
+                  max={100000}
+                  step={1}
+                  value={Number(selected.properties.radius_m ?? 0)}
+                  onChange={(event) => {
+                    const value = Number(event.target.value);
+                    if (value >= 5 && value <= 100000) redrawSectorWith({ radius_m: value });
+                  }}
+                />
+              </label>
+              <div className="editor-tools" role="group" aria-label="Rotate sector">
+                <button type="button" className="btn" onClick={() => rotateSector(-15)}>
+                  Rotate left 15°
+                </button>
+                <button type="button" className="btn" onClick={() => rotateSector(15)}>
+                  Rotate right 15°
+                </button>
+              </div>
+              <p className="muted">
+                This sector is a wedge from one point. Reshape it with its bearings and radius, or
+                rotate it — no need to move each point.
+              </p>
+            </>
+          )}
         </>
       )}
-      {selected.geometry.type !== "Point" && (
+      {selected.geometry.type !== "Point" && !parametricSector && (
         <>
           <button className="btn" onClick={() => onRotate(-15)}>
             Rotate left 15°
