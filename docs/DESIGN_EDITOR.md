@@ -16,9 +16,12 @@ follow-up. The existing planning backend is now exposed through a usable drawing
    can also be rotated in 15° steps. Name, notes, color, layer and typed properties are editable.
 6. Toggle/reorder layers; top of the control list draws above the others. These changes are drafts
    until saved. Hidden-layer features remain in the document and are saved.
-7. **Measure distance / Measure area** makes a transient drawing. It never becomes a saved feature.
-   Live measurements use Turf geodesic calculations; **Confirm measurement** sends a selected
-   feature to PostGIS. A successful save also supplies authoritative measurements.
+7. **Measure** (a small button over the map, beside Zoom to boundary and Legend, in every focus) unfolds
+   into **Distance**, **Area** and **Grid**. Distance / Area make a transient drawing that never becomes a
+   saved feature; the live geodesic readout (Turf) shows in the map hint, and the measurement panel appears
+   while measuring. A selected zone, bed or path also shows its size there, with no tool (see "Map tools"
+   below); **Confirm measurement** sends the selected feature to PostGIS, and a successful save also
+   supplies authoritative measurements.
 8. **Save design** (Ctrl/Cmd+S), **Undo** (Ctrl/Cmd+Z), **Redo** (Ctrl/Cmd+Shift+Z or Ctrl/Cmd+Y).
    Text inputs retain their normal keyboard editing behavior. Leaving a dirty design asks whether
    to keep editing or discard it; browser reload/close uses the browser's unsaved-changes prompt.
@@ -111,6 +114,32 @@ Fixes from the owner's first run on a real plot in Tanzania:
   button that says what is missing. `focus/SaveStatus.tsx` shows Saved / Unsaved / Saving / Not saved, says
   the design autosaves and links to Design plans, and `PlacedNotice` confirms "X added" with a
   place-another button. Element icons are done: see "Element icons" below.
+
+## Map tools (measuring, grid, sizes)
+
+All optional, folded away until asked for, and never saved with the design.
+
+- **Measure control.** `MapToolsControl.tsx` sits in the `.map-tools` row over the editor map. One
+  "Measure" button unfolds, inline, into Distance, Area (the existing `measure-line` / `measure-area`
+  tools in `useEditorMap.ts`; a second click puts the tool down) and Grid. The scale bar stays. The old
+  "Measure & layers" section is now just "Layers". The live number is shown in the map hint
+  (`36.3 m — not saved`); `focus/MeasurementPanel.tsx` shows only while measuring or with a selected
+  shape.
+- **Distance grid.** `map/layers/gridLayer.ts` is a `MapLayerDefinition` (registered in the editor
+  registry only, drawn under the design) that is given the viewport through `MapLayerContext.ui`. It
+  builds north-aligned lines for that view only (`useViewportBounds` rebuilds it when the map settles
+  after a move or zoom): spacing is the smallest of 1, 2, 5, 10, 25, 50, 100, 250 m... that leaves at
+  most ~12 lines across the longer side. Numbers count metres from the plot's south-west corner (its bbox
+  corner), on the top and left edges, at most six per edge. Off by default; while it is on the Grid button
+  names the spacing ("Grid · 25 m"). The numbers are canvas images made on demand through the same
+  `setMissingStyleImageResolver` as the element icons (`gridLabels.ts`), so the map style needs no font
+  server and nothing is fetched. The layer's structure is the same for every view, so a pan only swaps
+  GeoJSON data; the editor's `overlays` key includes whether the grid is present so design layers stay on
+  top when it is added.
+- **Selected size.** `measure.ts` `orientedSize` is the smallest enclosing rectangle of a polygon (rotating
+  calipers over its convex hull in a local metric projection), so a bed turned by the rotate tool still
+  reads "4.2 × 1.2 m", unlike a north-aligned bounding box. The panel shows that, the area and the
+  perimeter for polygons, and the length for paths; points have none.
 
 ## Goals step (grounding the design in what the owner wants)
 
