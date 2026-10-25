@@ -8,26 +8,32 @@
     sans-serif;
   line-height: 1.5;
 
-  --bg: #f6f5f1;
+  /* Brand: warm brown + gold, taken from the Maumbile logo. UI chrome only: the map's data colours
+     (zones, sectors, boundary, element defaults) are semantic and live elsewhere. */
+  --bg: #faf8f4;
   --surface: #ffffff;
-  --text: #1c2a21;
-  --muted: #5d6b62;
-  --accent: #2f6b3f;
+  --text: #2b2320;
+  --muted: #6f6050;
+  --accent: #4a3728;
   --accent-contrast: #ffffff;
-  --border: #d9dcd3;
+  --gold: #e0a63c;
+  --gold-contrast: #2b2320;
+  --border: #e6ded2;
   --danger: #a12b2b;
   --danger-bg: #fbeaea;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #14201a;
-    --surface: #1d2d24;
-    --text: #e7efe8;
-    --muted: #9fb0a5;
-    --accent: #6fbf84;
-    --accent-contrast: #0f1a13;
-    --border: #2f4338;
+    --bg: #1f1814;
+    --surface: #2a211c;
+    --text: #f1e8dd;
+    --muted: #b9a893;
+    --accent: #d9b58e;
+    --accent-contrast: #1f1814;
+    --gold: #f0b94d;
+    --gold-contrast: #1f1814;
+    --border: #46392f;
     --danger: #ff9b9b;
     --danger-bg: #3a1f1f;
   }
@@ -86,16 +92,30 @@ h1 {
 }
 
 .shell__brand {
+  display: inline-flex;
+  align-items: center;
   font-weight: 700;
   text-decoration: none;
 }
-.shell__tagline {
-  font-weight: 400;
-  color: var(--muted);
+.shell__logo {
+  display: block;
+  height: 2rem;
+  width: auto;
 }
-@media (max-width: 40rem) {
-  .shell__tagline {
-    display: none;
+.auth-logo {
+  display: block;
+  width: min(16rem, 80%);
+  height: auto;
+  margin: 0 auto 0.75rem;
+}
+/* The logo is brown on transparent: give it a light plate on the dark theme. */
+@media (prefers-color-scheme: dark) {
+  .shell__logo,
+  .auth-logo {
+    box-sizing: content-box;
+    padding: 0.2rem 0.5rem;
+    border-radius: 0.4rem;
+    background: #faf8f4;
   }
 }
 
@@ -355,7 +375,7 @@ h1 {
 }
 
 .map-attribution a {
-  color: #1d5a31;
+  color: #4a3728;
 }
 
 .layer-panel {
@@ -550,9 +570,9 @@ h1 {
   gap: 0.3rem;
 }
 .editor-sidebar .btn[aria-pressed="true"] {
-  background: #d4e8d5;
-  color: #174a28;
-  border-color: #2f855a;
+  background: color-mix(in srgb, var(--accent) 14%, var(--surface));
+  color: var(--text);
+  border-color: var(--accent);
 }
 .editor-layer {
   display: flex;
@@ -797,9 +817,9 @@ h1 {
   font-size: 0.8rem;
 }
 .focus-rail__step[data-done="true"]:not([aria-current="step"]) .focus-rail__num {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: var(--accent-contrast);
+  background: var(--gold);
+  border-color: var(--gold);
+  color: var(--gold-contrast);
 }
 .focus-rail__warn {
   display: inline-flex;

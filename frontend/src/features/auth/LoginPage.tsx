@@ -23,6 +23,13 @@ export function LoginPage() {
 
   return (
     <section className="card auth-card">
+      <img
+        className="auth-logo"
+        src="/brand/maumbile-logo-tagline-sm.png"
+        alt="Maumbile — an ecosoul.tech product"
+        width={600}
+        height={245}
+      />
       <h1>Sign in</h1>
       <p className="muted">Welcome back to Maumbile — design your land.</p>
       <form onSubmit={onSubmit} className="form">

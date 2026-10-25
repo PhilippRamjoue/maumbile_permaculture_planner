@@ -30,6 +30,13 @@ export function RegisterPage() {
 
   return (
     <section className="card auth-card">
+      <img
+        className="auth-logo"
+        src="/brand/maumbile-logo-tagline-sm.png"
+        alt="Maumbile — an ecosoul.tech product"
+        width={600}
+        height={245}
+      />
       <h1>Create your account</h1>
       <p className="muted">Maumbile is free to use: plan your land on a real map.</p>
       <form onSubmit={onSubmit} className="form">

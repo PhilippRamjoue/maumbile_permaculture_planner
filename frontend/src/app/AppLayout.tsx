@@ -11,8 +11,13 @@ export function AppLayout() {
     <div className="shell">
       <header className="shell__header">
         <Link to="/" className="shell__brand">
-          Maumbile
-          <span className="shell__tagline"> — design your land</span>
+          <img
+            className="shell__logo"
+            src="/brand/maumbile-logo-header.png"
+            alt="Maumbile"
+            width={340}
+            height={128}
+          />
         </Link>
         <nav aria-label="Main" className="shell__nav">
           {user ? <Link to="/">My sites</Link> : null}
