@@ -11,7 +11,8 @@ export function AppLayout() {
     <div className="shell">
       <header className="shell__header">
         <Link to="/" className="shell__brand">
-          Permaculture Planner
+          Maumbile
+          <span className="shell__tagline"> — design your land</span>
         </Link>
         <nav aria-label="Main" className="shell__nav">
           {user ? <Link to="/">My sites</Link> : null}

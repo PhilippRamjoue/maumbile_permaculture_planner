@@ -24,6 +24,7 @@ export function LoginPage() {
   return (
     <section className="card auth-card">
       <h1>Sign in</h1>
+      <p className="muted">Welcome back to Maumbile — design your land.</p>
       <form onSubmit={onSubmit} className="form">
         <TextField
           label="Email"

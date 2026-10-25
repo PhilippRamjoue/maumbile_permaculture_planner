@@ -21,6 +21,19 @@ describe("auth guard", () => {
     expect(router.state.location.pathname).toBe("/login");
   });
 
+  it("greets visitors with the app's name", async () => {
+    mockApi({
+      "GET /auth/me": problem(401, "Not authenticated"),
+      "POST /auth/refresh": problem(401, "x"),
+    });
+    renderApp("/");
+
+    await screen.findByRole("heading", { name: "Sign in" });
+    expect(screen.getByRole("link", { name: /^Maumbile/ })).toHaveAttribute("href", "/");
+    expect(screen.getByText(/design your land/i, { selector: ".shell__tagline" })).toBeVisible();
+    expect(screen.queryByText(/permaculture planner/i)).not.toBeInTheDocument();
+  });
+
   it("remembers where the visitor was heading", async () => {
     mockApi({
       "GET /auth/me": problem(401, "Not authenticated"),

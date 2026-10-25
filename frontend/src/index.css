@@ -89,6 +89,15 @@ h1 {
   font-weight: 700;
   text-decoration: none;
 }
+.shell__tagline {
+  font-weight: 400;
+  color: var(--muted);
+}
+@media (max-width: 40rem) {
+  .shell__tagline {
+    display: none;
+  }
+}
 
 .shell__nav {
   display: flex;
@@ -564,6 +573,10 @@ h1 {
   border-top: 1px solid var(--border);
   margin-top: 0.75rem;
 }
+.editor-measurement__size {
+  font-size: 1.15rem;
+  font-weight: 600;
+}
 @media (max-width: 52rem) {
   .editor-layout {
     grid-template-columns: 1fr;
@@ -971,6 +984,13 @@ h1 {
 /* ---- map legend ---- */
 .map-tools {
   align-items: flex-end;
+  flex-wrap: wrap;
+  max-width: calc(100% - 1.2rem);
+}
+/* A button that unfolds into its options in place (the map's measuring tools). */
+.map-tool-group {
+  display: flex;
+  gap: 0.4rem;
 }
 .map-legend {
   position: absolute;

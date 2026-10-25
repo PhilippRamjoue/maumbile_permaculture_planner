@@ -17,7 +17,7 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    app_name: str = "Permaculture Planner"
+    app_name: str = "Maumbile"
     environment: str = "development"
     debug: bool = False
 

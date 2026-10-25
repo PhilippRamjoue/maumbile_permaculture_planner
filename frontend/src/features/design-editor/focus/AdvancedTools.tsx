@@ -1,9 +1,4 @@
-import type { DesignFeature } from "../../../entities/planning";
-import { formatArea } from "../../../shared/format";
-import type { Measurement } from "../measure";
 import type { EditorState } from "../store";
-import type { Tool } from "../useEditorMap";
-import { ToolButton } from "./common";
 
 /** Undo / redo of the design (the border has its own, in its panel). */
 export function HistoryButtons({ state, disabled }: { state: EditorState; disabled: boolean }) {
@@ -30,35 +25,19 @@ export function HistoryButtons({ state, disabled }: { state: EditorState; disabl
 }
 
 /**
- * Everything that is useful but not part of the current step, folded away: measuring, the plan
- * layers and which layer new shapes go into. Out of sight until asked for.
+ * Everything that is useful but not part of the current step, folded away: the plan layers and
+ * which layer new shapes go into. Out of sight until asked for. (Measuring lives on the map.)
  */
 export function AdvancedTools({
   state,
   disabled,
-  tool,
-  choose,
   activeLayer,
   setActiveLayer,
-  selected,
-  measurement,
-  confirmed,
-  confirming,
-  confirmError,
-  onConfirm,
 }: {
   state: EditorState;
   disabled: boolean;
-  tool: Tool;
-  choose(tool: Tool): void;
   activeLayer: string;
   setActiveLayer(id: string): void;
-  selected: DesignFeature | undefined;
-  measurement: Measurement | null;
-  confirmed: boolean;
-  confirming: boolean;
-  confirmError: string | null;
-  onConfirm(): void;
 }) {
   const reorder = (id: string, delta: number) => {
     const layers = [...state.document.layers].sort((a, b) => a.sort_order - b.sort_order);
@@ -73,40 +52,7 @@ export function AdvancedTools({
 
   return (
     <details className="editor-advanced">
-      <summary>Measure &amp; layers</summary>
-      <fieldset disabled={disabled}>
-        <legend>Measure</legend>
-        <div className="editor-tools">
-          <ToolButton tool="measure-line" current={tool} label="Measure distance" choose={choose} />
-          <ToolButton tool="measure-area" current={tool} label="Measure area" choose={choose} />
-        </div>
-      </fieldset>
-      <div className="editor-measurement" aria-label="Measurement">
-        <h2>Measurements</h2>
-        {measurement ? (
-          <>
-            <p>
-              {measurement.length_m.toFixed(1)} m{" "}
-              {selected?.geometry.type === "Polygon" ? "perimeter" : "length"}
-            </p>
-            <p>{formatArea(measurement.area_m2)}</p>
-          </>
-        ) : (
-          <p>Select a shape or use a measure tool.</p>
-        )}
-        <p className="muted">
-          {selected && confirmed ? "Confirmed by server" : "Live geodesic estimate"}
-        </p>
-        <button
-          type="button"
-          className="btn"
-          disabled={!selected || confirming || disabled}
-          onClick={onConfirm}
-        >
-          Confirm measurement
-        </button>
-        {confirmError && <p role="alert">{confirmError}</p>}
-      </div>
+      <summary>Layers</summary>
       <fieldset disabled={disabled}>
         <legend>Layers</legend>
         <label>

@@ -31,6 +31,7 @@ export function RegisterPage() {
   return (
     <section className="card auth-card">
       <h1>Create your account</h1>
+      <p className="muted">Maumbile is free to use: plan your land on a real map.</p>
       <form onSubmit={onSubmit} className="form">
         <TextField
           label="Email"

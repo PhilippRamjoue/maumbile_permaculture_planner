@@ -22,16 +22,21 @@ import { buildLegend } from "./legend";
 import { MapLegend } from "./MapLegend";
 import { MAX_FIT_ZOOM } from "../map/layers/zoomLimits";
 import { MapView } from "../map/MapView";
+import { GRID_LAYER_ID, gridStepFor } from "../map/layers/gridLayer";
+import { useViewportBounds } from "../map/useViewportBounds";
 import { ZoomToBoundaryButton } from "../map/ZoomToBoundaryButton";
 import { ImageryAttribution } from "../map/ImageryAttribution";
 import { useImageryMeta } from "../map/imageryMeta";
 import { persistDesign, planningApi, planningKeys } from "./api";
 import type { SectorKind } from "./sectors";
 import { createEditorStore, signature } from "./store";
+import { formatArea, formatLength } from "../../shared/format";
 import { measureGeometry, type Measurement } from "./measure";
 import { useEditorMap, type Tool } from "./useEditorMap";
+import { MapToolsControl } from "./MapToolsControl";
 import { AdvancedTools, HistoryButtons } from "./focus/AdvancedTools";
 import { BoundaryPanel } from "./focus/BoundaryPanel";
+import { MeasurementPanel } from "./focus/MeasurementPanel";
 import { editorLayerRegistry } from "./focus/boundaryLayer";
 import {
   createBoundaryDraft,
@@ -174,9 +179,13 @@ export function Workspace({
     () => buildLegend(features, types, state.document.layers, view.isShown),
     [features, types, state.document.layers, view],
   );
+  // The optional distance grid: only tracked and drawn while switched on (and never saved).
+  const [gridOn, setGridOn] = useState(false);
+  const viewport = useViewportBounds(map, gridOn);
+  const gridStep = viewport ? gridStepFor(viewport, [site.bbox[0], site.bbox[1]]) : null;
   const overlays = useMemo(
-    () => ({ terrain: terrain.data, border: focus === "boundary" }),
-    [terrain.data, focus],
+    () => ({ terrain: terrain.data, border: focus === "boundary", grid: viewport !== null }),
+    [terrain.data, focus, viewport],
   );
 
   const save = useMutation({
@@ -224,6 +233,10 @@ export function Workspace({
     },
   });
   const boundaryUi = useBoundaryEditing(map, focus === "boundary", draft, saveBoundary.isPending);
+  const layerUi = useMemo(
+    () => (viewport ? { ...boundaryUi, [GRID_LAYER_ID]: { bounds: viewport } } : boundaryUi),
+    [boundaryUi, viewport],
+  );
 
   // Open framed on the land. MapView sets its initial bounds at construction, but the canvas can
   // still be laying out then, which leaves the map at world zoom; resizing and fitting once, as
@@ -418,8 +431,13 @@ export function Workspace({
     placed?.tool === "element"
       ? `Place another ${paletteName.toLowerCase()}`
       : `Draw another ${placed?.tool ?? "feature"}`;
+  const live = drawing.live;
   const hint = tool.startsWith("measure")
-    ? "Measurement only — this drawing is not saved"
+    ? live && live.length_m > 0
+      ? tool === "measure-area"
+        ? `${formatArea(live.area_m2)} · ${formatLength(live.length_m)} around — not saved`
+        : `${formatLength(live.length_m)} — not saved`
+      : "Click points on the map to measure — nothing is saved"
     : tool === "select"
       ? HINTS[focus]
       : "Draw on the map to add a feature";
@@ -564,22 +582,25 @@ export function Workspace({
               });
             }}
           />
+          {((selected && selected.geometry.type !== "Point") || tool.startsWith("measure")) && (
+            <MeasurementPanel
+              measurement={measurement}
+              selected={selected}
+              confirmed={authoritative?.key === selectedGeometryKey}
+              confirming={confirmMeasurement.isPending}
+              confirmError={confirmMeasurement.isError ? message(confirmMeasurement.error) : null}
+              disabled={disabled}
+              onConfirm={() => {
+                if (selected) confirmMeasurement.mutate(selected);
+              }}
+            />
+          )}
           {focus !== "goals" && (
             <AdvancedTools
               state={state}
               disabled={disabled}
-              tool={tool}
-              choose={choose}
               activeLayer={activeLayer}
               setActiveLayer={setActiveLayer}
-              selected={selected}
-              measurement={measurement}
-              confirmed={authoritative?.key === selectedGeometryKey}
-              confirming={confirmMeasurement.isPending}
-              confirmError={confirmMeasurement.isError ? message(confirmMeasurement.error) : null}
-              onConfirm={() => {
-                if (selected) confirmMeasurement.mutate(selected);
-              }}
             />
           )}
         </aside>
@@ -589,12 +610,20 @@ export function Workspace({
             imagery={imagery.data}
             terrain={terrain.data}
             registry={editorLayerRegistry}
-            layerUi={boundaryUi}
+            layerUi={layerUi}
             onMapReady={setMap}
           />
           <div className="map-tools map-tools--bottom">
             <ZoomToBoundaryButton map={map} bounds={site.bbox} />
             <MapLegend entries={legend} />
+            <MapToolsControl
+              tool={tool}
+              choose={choose}
+              disabled={disabled}
+              grid={gridOn}
+              gridStep={gridStep}
+              onGridChange={setGridOn}
+            />
           </div>
           <div className="editor-map-hint" role="status">
             {hint}

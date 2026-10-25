@@ -514,7 +514,7 @@ def _draw_header(draw: ImageDraw.ImageDraw, doc: PlanDocument) -> None:
 def _draw_footer(draw: ImageDraw.ImageDraw, scale_text: str) -> None:
     y = PAGE_H - MARGIN - FOOTER_H + 14
     lines = [
-        "Created with Permaculture Planner, free and open-source software (AGPL-3.0). "
+        "Created with Maumbile, free and open-source software (AGPL-3.0). "
         "Positions are WGS84; measurements are geodesic.",
         f"{scale_text}. No aerial imagery is included in this export, so no imagery licence "
         "applies.",
@@ -638,7 +638,7 @@ def render_plan_image(doc: PlanDocument) -> Image.Image:
 def render_png(doc: PlanDocument) -> bytes:
     info = PngInfo()
     info.add_text("Title", doc.name)
-    info.add_text("Software", "Permaculture Planner")
+    info.add_text("Software", "Maumbile")
     buf = BytesIO()
     render_plan_image(doc).save(buf, "PNG", dpi=(DPI, DPI), pnginfo=info)
     return buf.getvalue()
@@ -668,7 +668,7 @@ def image_to_pdf(img: Image.Image, title: str) -> bytes:
         + pixels
         + b"\nendstream",
         f"<< /Length {len(content)} >>\nstream\n".encode() + content + b"\nendstream",
-        b"<< /Title " + _pdf_text(title) + b" /Producer (Permaculture Planner) >>",
+        b"<< /Title " + _pdf_text(title) + b" /Producer (Maumbile) >>",
     ]
     out = bytearray(b"%PDF-1.4\n%\xe2\xe3\xcf\xd3\n")
     offsets: list[int] = []
