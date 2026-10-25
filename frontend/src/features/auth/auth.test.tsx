@@ -29,8 +29,9 @@ describe("auth guard", () => {
     renderApp("/");
 
     await screen.findByRole("heading", { name: "Sign in" });
-    expect(screen.getByRole("link", { name: /^Maumbile/ })).toHaveAttribute("href", "/");
-    expect(screen.getByText(/design your land/i, { selector: ".shell__tagline" })).toBeVisible();
+    // The header brand is the logo image inside the home link.
+    expect(screen.getByRole("link", { name: "Maumbile" })).toHaveAttribute("href", "/");
+    expect(screen.getByRole("img", { name: "Maumbile — an ecosoul.tech product" })).toBeVisible();
     expect(screen.queryByText(/permaculture planner/i)).not.toBeInTheDocument();
   });
 

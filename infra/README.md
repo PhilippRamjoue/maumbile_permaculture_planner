@@ -30,6 +30,8 @@ docker compose -f docker-compose.yml -f docker-compose.local.yml up --build
 ## Coolify
 
 Create a Docker Compose resource from this repository (Base Directory `/infra`, file
-`/docker-compose.yml`), put the secrets from `.env.example` into Coolify's environment variables and
-attach the domain to the **frontend** service on port 80. Full steps, rollback, operating notes and the
+`/docker-compose.coolify.yml`: self-contained, pulls the prebuilt GHCR images, no build step; to build
+from source use `/docker-compose.yml`), put the secrets from `.env.example` into Coolify's environment
+variables and attach the domain to the **frontend** service on port 80. Do not attach a Coolify-managed
+Postgres: the compose file includes the PostGIS database. Full steps, rollback, operating notes and the
 imagery/elevation defaults: [`../docs/DEPLOY.md`](../docs/DEPLOY.md).
