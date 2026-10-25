@@ -1,4 +1,5 @@
 import type { DesignFeature, ElementType } from "../../../entities/planning";
+import { ELEMENT_HINTS } from "../elementHints";
 import { FeatureProperties } from "../FeatureProperties";
 import { defaultFootprint, footprintLabel } from "../footprint";
 import { GlyphIcon } from "../GlyphIcon";
@@ -62,6 +63,9 @@ export function ElementsPanel({
             </select>
           </span>
         </label>
+        {chosen && ELEMENT_HINTS[chosen.key] && (
+          <p className="muted palette-hint">{ELEMENT_HINTS[chosen.key]}</p>
+        )}
         <div className="editor-tools">
           <ToolButton tool="select" current={tool} label="Select / edit" choose={choose} />
           <button

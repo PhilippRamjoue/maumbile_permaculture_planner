@@ -1145,6 +1145,10 @@ h1 {
   flex: 1;
   min-width: 0;
 }
+.palette-hint {
+  margin: 0.15rem 0 0.5rem;
+  font-size: 0.88rem;
+}
 .glyph-icon {
   flex: none;
 }
