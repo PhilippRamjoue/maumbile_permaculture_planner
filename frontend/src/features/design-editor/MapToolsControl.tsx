@@ -9,17 +9,26 @@ const MEASURE_TOOLS: { tool: Tool; label: string; text: string }[] = [
 
 /**
  * The map's measuring tools: one small "Measure" button that unfolds, inline, into distance and
- * area. Measuring is a transient drawing (never saved) and works in every focus. Render it inside
- * the map's `.map-tools` row.
+ * area, plus a switch for the optional distance grid (off by default). Measuring is a transient
+ * drawing and the grid a visual aid, so neither is saved; both work in every focus. Render it
+ * inside the map's `.map-tools` row.
  */
 export function MapToolsControl({
   tool,
   choose,
   disabled,
+  grid,
+  gridStep,
+  onGridChange,
 }: {
   tool: Tool;
   choose(tool: Tool): void;
   disabled: boolean;
+  /** Whether the optional distance grid is on. */
+  grid: boolean;
+  /** The grid's spacing in metres at the current zoom, once known. */
+  gridStep: number | null;
+  onGridChange(on: boolean): void;
 }) {
   const [open, setOpen] = useState(false);
   const measuring = tool.startsWith("measure");
@@ -50,6 +59,17 @@ export function MapToolsControl({
             {text}
           </button>
         ))}
+      {open && (
+        <button
+          type="button"
+          className="btn"
+          aria-pressed={grid}
+          title="Metre lines over the map, counted from the plot's south-west corner"
+          onClick={() => onGridChange(!grid)}
+        >
+          {grid && gridStep ? `Grid · ${gridStep} m` : "Grid"}
+        </button>
+      )}
     </div>
   );
 }

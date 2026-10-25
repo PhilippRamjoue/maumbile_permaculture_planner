@@ -17,6 +17,11 @@ import {
   verticesOf,
   type FeatureHit,
 } from "./editorModes";
+import {
+  GRID_LABEL_PIXEL_RATIO,
+  parseGridLabelName,
+  renderGridLabel,
+} from "../map/layers/gridLabels";
 import { BADGE_PIXEL_RATIO, parseBadgeName, renderBadge } from "./icons";
 import { measureGeometry, type Measurement } from "./measure";
 import type { EditorDocument, EditorStore } from "./store";
@@ -249,14 +254,21 @@ export function useEditorMap(
     }
   }, [map, document, selectedId, tool, element, saving, activeLayer, view]);
 
-  // Icon markers are drawn on demand: the layers ask for an image by name (glyph and colour),
-  // which is made once and kept by the map.
+  // Icon markers and grid numbers are drawn on demand: the layers ask for an image by name (glyph
+  // and colour, or the number), which is made once and kept by the map.
   useEffect(() => {
     if (!map) return;
     map.setMissingStyleImageResolver((id) => {
+      if (map.hasImage(id)) return;
       const badge = parseBadgeName(id);
-      const image = badge && renderBadge(badge.key, badge.color);
-      if (image && !map.hasImage(id)) map.addImage(id, image, { pixelRatio: BADGE_PIXEL_RATIO });
+      const label = parseGridLabelName(id);
+      if (badge) {
+        const image = renderBadge(badge.key, badge.color);
+        if (image) map.addImage(id, image, { pixelRatio: BADGE_PIXEL_RATIO });
+      } else if (label) {
+        const image = renderGridLabel(label);
+        if (image) map.addImage(id, image, { pixelRatio: GRID_LABEL_PIXEL_RATIO });
+      }
     });
     return () => {
       try {

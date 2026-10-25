@@ -22,6 +22,8 @@ import { buildLegend } from "./legend";
 import { MapLegend } from "./MapLegend";
 import { MAX_FIT_ZOOM } from "../map/layers/zoomLimits";
 import { MapView } from "../map/MapView";
+import { GRID_LAYER_ID, gridStepFor } from "../map/layers/gridLayer";
+import { useViewportBounds } from "../map/useViewportBounds";
 import { ZoomToBoundaryButton } from "../map/ZoomToBoundaryButton";
 import { ImageryAttribution } from "../map/ImageryAttribution";
 import { useImageryMeta } from "../map/imageryMeta";
@@ -177,9 +179,13 @@ export function Workspace({
     () => buildLegend(features, types, state.document.layers, view.isShown),
     [features, types, state.document.layers, view],
   );
+  // The optional distance grid: only tracked and drawn while switched on (and never saved).
+  const [gridOn, setGridOn] = useState(false);
+  const viewport = useViewportBounds(map, gridOn);
+  const gridStep = viewport ? gridStepFor(viewport, [site.bbox[0], site.bbox[1]]) : null;
   const overlays = useMemo(
-    () => ({ terrain: terrain.data, border: focus === "boundary" }),
-    [terrain.data, focus],
+    () => ({ terrain: terrain.data, border: focus === "boundary", grid: viewport !== null }),
+    [terrain.data, focus, viewport],
   );
 
   const save = useMutation({
@@ -227,6 +233,10 @@ export function Workspace({
     },
   });
   const boundaryUi = useBoundaryEditing(map, focus === "boundary", draft, saveBoundary.isPending);
+  const layerUi = useMemo(
+    () => (viewport ? { ...boundaryUi, [GRID_LAYER_ID]: { bounds: viewport } } : boundaryUi),
+    [boundaryUi, viewport],
+  );
 
   // Open framed on the land. MapView sets its initial bounds at construction, but the canvas can
   // still be laying out then, which leaves the map at world zoom; resizing and fitting once, as
@@ -600,13 +610,20 @@ export function Workspace({
             imagery={imagery.data}
             terrain={terrain.data}
             registry={editorLayerRegistry}
-            layerUi={boundaryUi}
+            layerUi={layerUi}
             onMapReady={setMap}
           />
           <div className="map-tools map-tools--bottom">
             <ZoomToBoundaryButton map={map} bounds={site.bbox} />
             <MapLegend entries={legend} />
-            <MapToolsControl tool={tool} choose={choose} disabled={disabled} />
+            <MapToolsControl
+              tool={tool}
+              choose={choose}
+              disabled={disabled}
+              grid={gridOn}
+              gridStep={gridStep}
+              onGridChange={setGridOn}
+            />
           </div>
           <div className="editor-map-hint" role="status">
             {hint}

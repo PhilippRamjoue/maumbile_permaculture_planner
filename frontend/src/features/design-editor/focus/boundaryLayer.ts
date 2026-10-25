@@ -1,4 +1,5 @@
 import { layerRegistry } from "../../map/layers/defaultRegistry";
+import { gridLayer } from "../../map/layers/gridLayer";
 import { createLayerRegistry } from "../../map/layers/registry";
 import type { MapLayerContext, MapLayerDefinition } from "../../map/layers/types";
 import {
@@ -38,8 +39,9 @@ export const editorBoundaryLayer: MapLayerDefinition = {
   },
 };
 
-/** The app-wide layers plus the border-editing layer on top. */
+/** The app-wide layers, the optional distance grid, and the border-editing layer on top. */
 export const editorLayerRegistry = createLayerRegistry([
   ...layerRegistry.list(),
+  gridLayer,
   editorBoundaryLayer,
 ]);
