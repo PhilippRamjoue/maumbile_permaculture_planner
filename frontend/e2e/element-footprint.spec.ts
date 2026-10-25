@@ -15,7 +15,11 @@ interface Saved {
 }
 
 async function saveAndRead(page: Page, planId: string): Promise<Saved[]> {
-  await page.getByRole("button", { name: "Save design" }).click();
+  // Autosave may already have persisted the change, which disables the button; clicking a disabled
+  // button would wait forever (Playwright has no action timeout). Click only when there is something
+  // to save, then confirm the saved state either way.
+  const save = page.getByRole("button", { name: "Save design" });
+  if (await save.isEnabled()) await save.click();
   await expect(page.getByText("All changes saved")).toBeVisible();
   const response = await page.request.get(`/api/v1/plans/${planId}/features`);
   return (await response.json()).features;
