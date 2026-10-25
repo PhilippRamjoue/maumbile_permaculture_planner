@@ -6,6 +6,33 @@ export interface Measurement {
   length_m: number;
   area_m2: number;
 }
+
+/** The Terra Draw mode a measure tool draws in, or null when the tool is not a measure tool. */
+export const measureMode = (tool: string): "linestring" | "polygon" | null =>
+  tool === "measure-area" ? "polygon" : tool === "measure-line" ? "linestring" : null;
+
+/**
+ * The geometry whose live measurement should be shown, from a Terra Draw snapshot. While measuring,
+ * the most recent feature drawn in the wanted mode — never a transient snapping-point helper, which
+ * has length 0 and would make the distance blink away between a click and the next mouse move.
+ * Returns null when there is nothing to measure yet (keep the previous reading), otherwise the last
+ * drawable feature.
+ */
+export function liveMeasureGeometry(
+  snapshot: readonly { properties?: { mode?: unknown }; geometry: DesignGeometry }[],
+  wantedMode: "linestring" | "polygon" | null,
+): DesignGeometry | null {
+  const drawable = snapshot.filter((f) =>
+    ["point", "linestring", "polygon", "rectangle"].includes(String(f.properties?.mode)),
+  );
+  if (wantedMode) {
+    for (let i = drawable.length - 1; i >= 0; i--) {
+      if (String(drawable[i].properties?.mode) === wantedMode) return drawable[i].geometry;
+    }
+    return null;
+  }
+  return drawable.at(-1)?.geometry ?? null;
+}
 export function measureGeometry(geometry: DesignGeometry): Measurement {
   try {
     if (geometry.type === "Point") return { length_m: 0, area_m2: 0 };

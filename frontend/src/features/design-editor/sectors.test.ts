@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   dayOfYear,
   defaultSectorRadius,
+  isParametricSector,
   normalizeBearing,
   offsetPoint,
   redrawSector,
@@ -256,5 +257,26 @@ describe("wedge coordinates are storable by the map editor", () => {
       expect(decimals(lat)).toBeLessThanOrEqual(8);
     }
     expect(wedge.coordinates[0][0]).toEqual(wedge.coordinates[0].at(-1));
+  });
+});
+
+describe("isParametricSector", () => {
+  const sun = sectorFeature(
+    { kind: "sun", from: 90, to: 270, origin: nairobi, radiusM: 60 },
+    "s1",
+    "layer",
+  );
+
+  it("is true for a sector made from an origin, radius and bearings", () => {
+    expect(isParametricSector(sun)).toBe(true);
+  });
+
+  it("is false for a hand-drawn sector (no origin/radius) and for non-sectors", () => {
+    const handDrawn = {
+      ...sun,
+      properties: { ...sun.properties, origin: undefined, radius_m: undefined },
+    };
+    expect(isParametricSector(handDrawn)).toBe(false);
+    expect(isParametricSector({ ...sun, feature_type: "zone" })).toBe(false);
   });
 });

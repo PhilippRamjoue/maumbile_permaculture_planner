@@ -152,6 +152,26 @@ export function sectorFeature(spec: SectorSpec, id: string, layerId: string): De
 }
 
 /**
+ * Whether a sector is parametric — made from an origin, radius and two bearings (the sun's path or
+ * one added from bearings), so it is reshaped from those numbers rather than its arc vertices. A
+ * hand-drawn sector has no origin/radius and is an ordinary editable polygon.
+ */
+export function isParametricSector(
+  feature: Pick<DesignFeature, "feature_type" | "properties">,
+): boolean {
+  if (feature.feature_type !== "sector") return false;
+  const { origin, radius_m, bearing_from, bearing_to } = feature.properties;
+  return (
+    Array.isArray(origin) &&
+    origin.length === 2 &&
+    origin.every((n) => typeof n === "number") &&
+    typeof radius_m === "number" &&
+    typeof bearing_from === "number" &&
+    typeof bearing_to === "number"
+  );
+}
+
+/**
  * Redraws a helper-made sector after its bearings were edited. Hand-drawn sectors (no origin and
  * radius) keep their polygon, since their bearings only describe it.
  */

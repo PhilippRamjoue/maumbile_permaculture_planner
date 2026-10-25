@@ -24,7 +24,8 @@ import {
 } from "../map/layers/gridLabels";
 import { BADGE_PIXEL_RATIO, parseBadgeName, renderBadge } from "./icons";
 import { defaultFootprint, placeFootprint, placementMode, syncRotation } from "./footprint";
-import { measureGeometry, type Measurement } from "./measure";
+import { liveMeasureGeometry, measureGeometry, measureMode, type Measurement } from "./measure";
+import { isParametricSector } from "./sectors";
 import type { EditorDocument, EditorStore } from "./store";
 import { typicalFunctions } from "./focus/functions";
 import { CONTEXT_OPACITY, OPEN_VIEW, renderableFeatures, type FocusView } from "./focus/view";
@@ -56,6 +57,10 @@ function editedFeature(
   if (tool !== "select" || saving || !view.geometryEditable) return undefined;
   const selected = document.features.find((f) => f.id === selectedId);
   if (!selected || !view.isEditable(selected) || !view.isShown(selected)) return undefined;
+  // A parametric sector (the sun's path, or one added from bearings) is reshaped from the panel —
+  // its kind, bearings and radius — not by dragging its many arc vertices, so it is never handed to
+  // Terra Draw for vertex editing. A hand-drawn sector has no origin/radius and stays editable.
+  if (isParametricSector(selected)) return undefined;
   return document.layers.find((l) => l.id === selected.layer_id)?.visible ? selected : undefined;
 }
 
@@ -87,6 +92,12 @@ export function useEditorMap(
   const document = useStore(store, (s) => s.document);
   const selectedId = useStore(store, (s) => s.selectedId);
 
+  // A measurement belongs to the tool that made it: switching tools (including starting a fresh
+  // measurement) drops the previous reading so a stale distance never lingers.
+  useEffect(() => {
+    setLive(null);
+  }, [tool]);
+
   useEffect(() => {
     if (!map) return;
     const draw = new TerraDraw({
@@ -109,12 +120,7 @@ export function useEditorMap(
     drawRef.current = draw;
     draw.on("change", () => {
       if (syncing.current) return;
-      const snapshot = draw
-        .getSnapshot()
-        .filter((f) =>
-          ["point", "linestring", "polygon", "rectangle"].includes(String(f.properties.mode)),
-        );
-      const geometry = snapshot.at(-1)?.geometry;
+      const geometry = liveMeasureGeometry(draw.getSnapshot(), measureMode(options.current.tool));
       if (geometry) setLive(measureGeometry(geometry));
     });
     draw.on("finish", (id, context) => {

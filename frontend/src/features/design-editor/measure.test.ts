@@ -1,7 +1,13 @@
 import { describe, expect, it } from "vitest";
 
 import type { DesignGeometry } from "../../entities/planning";
-import { formatSize, measureGeometry, orientedSize } from "./measure";
+import {
+  formatSize,
+  liveMeasureGeometry,
+  measureGeometry,
+  measureMode,
+  orientedSize,
+} from "./measure";
 
 const LAT = -1.2;
 const LNG = 36.8;
@@ -71,5 +77,43 @@ describe("measureGeometry", () => {
   it("agrees with the size on area for a rectangle", () => {
     const { area_m2 } = measureGeometry(rectangle(4.2, 1.2));
     expect(area_m2).toBeCloseTo(4.2 * 1.2, 1);
+  });
+});
+
+describe("measureMode", () => {
+  it("maps measure tools to their Terra Draw mode, and nothing else", () => {
+    expect(measureMode("measure-line")).toBe("linestring");
+    expect(measureMode("measure-area")).toBe("polygon");
+    expect(measureMode("select")).toBeNull();
+    expect(measureMode("zone")).toBeNull();
+  });
+});
+
+describe("liveMeasureGeometry", () => {
+  const line: DesignGeometry = {
+    type: "LineString",
+    coordinates: [
+      [LNG, LAT],
+      [LNG + 10 / M_LNG, LAT],
+    ],
+  };
+  const helperPoint = {
+    properties: { mode: "point" },
+    geometry: { type: "Point", coordinates: [LNG, LAT] } as DesignGeometry,
+  };
+  const lineFeature = { properties: { mode: "linestring" }, geometry: line };
+
+  it("keeps the line being measured even when a snapping-point helper is drawn last", () => {
+    // After a click, the trailing feature can be the snapping point; the distance must not vanish.
+    expect(liveMeasureGeometry([lineFeature, helperPoint], "linestring")).toBe(line);
+  });
+
+  it("returns null while measuring when no feature of the wanted mode exists yet", () => {
+    expect(liveMeasureGeometry([helperPoint], "linestring")).toBeNull();
+    expect(liveMeasureGeometry([], "polygon")).toBeNull();
+  });
+
+  it("falls back to the last drawable feature when not measuring", () => {
+    expect(liveMeasureGeometry([lineFeature, helperPoint], null)).toBe(helperPoint.geometry);
   });
 });

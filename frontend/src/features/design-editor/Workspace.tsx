@@ -570,18 +570,6 @@ export function Workspace({
             />
           )}
           {focus === "functions" && <FunctionsPanel props={panel} elements={own} types={types} />}
-          <ContextToggles
-            current={focus}
-            hidden={hidden}
-            onToggle={(group, shown) => {
-              setHidden((previous) => {
-                const next = new Set(previous);
-                if (shown) next.delete(group);
-                else next.add(group);
-                return next;
-              });
-            }}
-          />
           {((selected && selected.geometry.type !== "Point") || tool.startsWith("measure")) && (
             <MeasurementPanel
               measurement={measurement}
@@ -596,12 +584,27 @@ export function Workspace({
             />
           )}
           {focus !== "goals" && (
-            <AdvancedTools
-              state={state}
-              disabled={disabled}
-              activeLayer={activeLayer}
-              setActiveLayer={setActiveLayer}
-            />
+            <details className="editor-more">
+              <summary>Layers &amp; context</summary>
+              <ContextToggles
+                current={focus}
+                hidden={hidden}
+                onToggle={(group, shown) => {
+                  setHidden((previous) => {
+                    const next = new Set(previous);
+                    if (shown) next.delete(group);
+                    else next.add(group);
+                    return next;
+                  });
+                }}
+              />
+              <AdvancedTools
+                state={state}
+                disabled={disabled}
+                activeLayer={activeLayer}
+                setActiveLayer={setActiveLayer}
+              />
+            </details>
           )}
         </aside>
         <div className="site-map__canvas editor-canvas">
