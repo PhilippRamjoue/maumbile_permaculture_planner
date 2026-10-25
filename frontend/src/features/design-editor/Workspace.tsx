@@ -28,10 +28,13 @@ import { useImageryMeta } from "../map/imageryMeta";
 import { persistDesign, planningApi, planningKeys } from "./api";
 import type { SectorKind } from "./sectors";
 import { createEditorStore, signature } from "./store";
+import { formatArea, formatLength } from "../../shared/format";
 import { measureGeometry, type Measurement } from "./measure";
 import { useEditorMap, type Tool } from "./useEditorMap";
+import { MapToolsControl } from "./MapToolsControl";
 import { AdvancedTools, HistoryButtons } from "./focus/AdvancedTools";
 import { BoundaryPanel } from "./focus/BoundaryPanel";
+import { MeasurementPanel } from "./focus/MeasurementPanel";
 import { editorLayerRegistry } from "./focus/boundaryLayer";
 import {
   createBoundaryDraft,
@@ -418,8 +421,13 @@ export function Workspace({
     placed?.tool === "element"
       ? `Place another ${paletteName.toLowerCase()}`
       : `Draw another ${placed?.tool ?? "feature"}`;
+  const live = drawing.live;
   const hint = tool.startsWith("measure")
-    ? "Measurement only — this drawing is not saved"
+    ? live && live.length_m > 0
+      ? tool === "measure-area"
+        ? `${formatArea(live.area_m2)} · ${formatLength(live.length_m)} around — not saved`
+        : `${formatLength(live.length_m)} — not saved`
+      : "Click points on the map to measure — nothing is saved"
     : tool === "select"
       ? HINTS[focus]
       : "Draw on the map to add a feature";
@@ -564,22 +572,25 @@ export function Workspace({
               });
             }}
           />
+          {(selected || tool.startsWith("measure")) && (
+            <MeasurementPanel
+              measurement={measurement}
+              selected={selected}
+              confirmed={authoritative?.key === selectedGeometryKey}
+              confirming={confirmMeasurement.isPending}
+              confirmError={confirmMeasurement.isError ? message(confirmMeasurement.error) : null}
+              disabled={disabled}
+              onConfirm={() => {
+                if (selected) confirmMeasurement.mutate(selected);
+              }}
+            />
+          )}
           {focus !== "goals" && (
             <AdvancedTools
               state={state}
               disabled={disabled}
-              tool={tool}
-              choose={choose}
               activeLayer={activeLayer}
               setActiveLayer={setActiveLayer}
-              selected={selected}
-              measurement={measurement}
-              confirmed={authoritative?.key === selectedGeometryKey}
-              confirming={confirmMeasurement.isPending}
-              confirmError={confirmMeasurement.isError ? message(confirmMeasurement.error) : null}
-              onConfirm={() => {
-                if (selected) confirmMeasurement.mutate(selected);
-              }}
             />
           )}
         </aside>
@@ -595,6 +606,7 @@ export function Workspace({
           <div className="map-tools map-tools--bottom">
             <ZoomToBoundaryButton map={map} bounds={site.bbox} />
             <MapLegend entries={legend} />
+            <MapToolsControl tool={tool} choose={choose} disabled={disabled} />
           </div>
           <div className="editor-map-hint" role="status">
             {hint}

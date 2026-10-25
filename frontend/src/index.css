@@ -971,6 +971,13 @@ h1 {
 /* ---- map legend ---- */
 .map-tools {
   align-items: flex-end;
+  flex-wrap: wrap;
+  max-width: calc(100% - 1.2rem);
+}
+/* A button that unfolds into its options in place (the map's measuring tools). */
+.map-tool-group {
+  display: flex;
+  gap: 0.4rem;
 }
 .map-legend {
   position: absolute;
