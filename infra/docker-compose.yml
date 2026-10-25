@@ -1,5 +1,6 @@
-# Lean v1 stack: db + backend + frontend. Deployed on Coolify from this file
-# (see docs/DEPLOY.md). This file is production-shaped:
+# Lean v1 stack: db + backend + frontend, built from source. On Coolify prefer the prebuilt-image
+# docker-compose.coolify.yml (same services, no build step; keep the two in sync). This file also
+# works there when the Base Directory is /infra (see docs/DEPLOY.md). This file is production-shaped:
 #   - no host ports are published (Coolify's proxy reaches the frontend on container port 80;
 #     the database and API are internal only),
 #   - required secrets fail fast when unset,

@@ -1,8 +1,11 @@
 # Deploying on Coolify (runbook)
 
 Lean v1: **db** (PostGIS) + **backend** (FastAPI; applies Alembic migrations, then serves) +
-**frontend** (nginx: SPA + `/api` proxy). One Compose file, [`infra/docker-compose.yml`](../infra/docker-compose.yml);
-no paid service or API key is needed (Esri imagery and Copernicus DEM are keyless, see
+**frontend** (nginx: SPA + `/api` proxy). **Recommended:** deploy the **prebuilt images** from GitHub
+Container Registry with the self-contained
+[`infra/docker-compose.coolify.yml`](../infra/docker-compose.coolify.yml): Coolify only pulls, nothing is
+built on your server. Fallback: build from source with
+[`infra/docker-compose.yml`](../infra/docker-compose.yml) (§2b). No paid service or API key is needed (Esri imagery and Copernicus DEM are keyless, see
 [`DATA_SOURCES.md`](DATA_SOURCES.md)). Architecture background: [`ARCHITECTURE.md`](ARCHITECTURE.md) §10.
 
 > ## Configuration and secrets never live in this repository
@@ -17,7 +20,10 @@ no paid service or API key is needed (Esri imagery and Copernicus DEM are keyles
 > local `.env` can never be baked into an image. `maumbile.ecosoul.tech` below is **only an example
 > origin** — substitute your own domain.
 
-## What the Compose file guarantees
+## What the Compose files guarantee
+
+Both files define the same three services with identical configuration; they differ only in where the
+backend and frontend images come from (GHCR pull vs. local build).
 
 | Concern | Behavior |
 |---|---|
@@ -36,9 +42,13 @@ migration that has been deployed; add a new one.
 
 ## 1. Prerequisites
 
-- A Coolify instance with a server that has ≥ 2 GB RAM (the backend image builds `rasterio`/`numpy`;
-  the frontend build runs `npm ci`), and a DNS record for the public hostname pointing at it.
+- A Coolify instance with a **linux/amd64** server and a DNS record for the public hostname pointing
+  at it. The prebuilt-image path needs little RAM; building from source needs ≥ 2 GB (the backend
+  image builds `rasterio`/`numpy`; the frontend build runs `npm ci`).
 - The repository reachable from Coolify (public GitHub URL, or a GitHub App/deploy key for a private one).
+- Published images (prebuilt path): a tagged release built by
+  [`.github/workflows/release.yml`](../.github/workflows/release.yml) (push a `v*` tag, see
+  [`RELEASING.md`](RELEASING.md)), with both GHCR packages set to **public** (below).
 - Two generated secrets (run anywhere):
 
   ```bash
@@ -46,14 +56,18 @@ migration that has been deployed; add a new one.
   python -c "import secrets; print(secrets.token_urlsafe(48))"   # APP_SECRET_KEY
   ```
 
-## 2. Create the resource
+## 2. Create the resource (prebuilt images, recommended)
+
+**One-time: make the images pullable.** GHCR creates a package as *private* on its first push. After the
+first release, open the GitHub profile/organization → **Packages** → `maumbile-backend` and
+`maumbile-frontend` → **Package settings → Change visibility → Public** (see [`RELEASING.md`](RELEASING.md)).
+Otherwise Coolify's pull fails with `unauthorized`.
 
 1. **Project → New Resource → Public/Private Repository** (your Git source), pick the branch (`main`).
 2. **Build Pack: Docker Compose.**
-3. **Base Directory:** `/infra` · **Docker Compose Location:** `/docker-compose.yml`
-   (the compose file's `build.context: ../backend` / `../frontend` is relative to `/infra`; if the
-   build fails with a missing context, set Base Directory to `/` and Location to `/infra/docker-compose.yml`
-   — Coolify's field labels vary slightly between versions).
+3. **Base Directory:** `/infra` · **Docker Compose Location:** `/docker-compose.coolify.yml`.
+   The file is self-contained and has no `build:` section, so Coolify only pulls
+   `ghcr.io/<owner>/maumbile-backend|frontend:<tag>`.
 4. Open the resource's **Domains** for the **frontend** service and enter the public URL **with the
    container port**: `https://maumbile.ecosoul.tech:80`. Coolify's Traefik proxy issues the Let's Encrypt
    certificate. Do **not** set a domain on `db` or `backend`.
@@ -65,15 +79,34 @@ migration that has been deployed; add a new one.
    | `APP_SECRET_KEY` | generated (required) |
    | `APP_CORS_ORIGINS` | `["https://maumbile.ecosoul.tech"]` |
    | `APP_COOKIE_SECURE` | leave unset (defaults to `true`) |
+   | `MAUMBILE_VERSION` | optional image tag: `latest` (default) or pin e.g. `0.1.0` |
+   | `MAUMBILE_IMAGE_OWNER` | optional GHCR namespace (default `philippramjoue`); set it for images you publish from a fork |
    | `POSTGRES_USER`, `POSTGRES_DB` | optional (`postgres`, `permaculture`) |
 
    The full list with comments is [`infra/.env.example`](../infra/.env.example). **Set
    `POSTGRES_PASSWORD` before the first deploy:** Postgres only reads it when it initialises an
    empty volume.
 
+> **Do not attach a Coolify-managed Postgres** (and do not add a database resource to the project): the
+> Compose file already includes the required **PostGIS** database (`postgis/postgis:16-3.4`) and the
+> backend is wired to it. A stock Postgres has no PostGIS and the first migration would fail.
+
+### 2b. Fallback: build from source
+
+Use this only to run unreleased code. It is slower (5–10 minutes, needs ≥ 2 GB RAM) and depends on
+Coolify resolving the compose file's relative build contexts:
+
+- **Base Directory must be `/infra`** and **Docker Compose Location** `/docker-compose.yml`. The
+  compose file's `build.context: ../backend` / `../frontend` is relative to the Base Directory; with the
+  repository root as the project directory it resolves to a non-existent `/artifacts/backend` and the
+  build fails with a missing context. (Field labels vary slightly between Coolify versions; if in doubt,
+  use the prebuilt path above.)
+- Otherwise steps 1, 2, 4 and 5 are the same as above.
+
 ## 3. First deploy
 
-Click **Deploy**. Expect 5–10 minutes (image builds). In the deployment log you should see, in order:
+Click **Deploy**. Expect 1–2 minutes with prebuilt images (5–10 when building from source). In the
+deployment log you should see, in order:
 
 1. `db` becomes healthy.
 2. `backend`: Alembic prints `Running upgrade … -> 0009_element_type_icons` (the full chain on a fresh
@@ -104,10 +137,12 @@ Check migrations explicitly from Coolify's **Terminal** for the backend (or `doc
 
 ## 4. Updating
 
-Tagged releases are also published as prebuilt images ([`OPERATIONS.md`](OPERATIONS.md) → *Updating*).
+**Prebuilt images:** tag a release ([`RELEASING.md`](RELEASING.md)), wait for the *Release* workflow to
+publish the images, set `MAUMBILE_VERSION` in Coolify to the new version (or leave `latest`) and click
+**Redeploy**: Coolify pulls the new images ([`OPERATIONS.md`](OPERATIONS.md) → *Updating*).
 
-Push to the tracked branch (enable Coolify's webhook for auto-deploy) or click **Redeploy**. Coolify
-rebuilds, recreates the containers and the backend applies any new migrations on start. Always redeploy
+**Building from source:** push to the tracked branch (enable Coolify's webhook for auto-deploy) or click
+**Redeploy**. Coolify rebuilds, recreates the containers and the backend applies any new migrations on start. Always redeploy
 the **whole** resource rather than restarting only the backend: nginx resolves `backend` once at start, so
 a backend container that comes back with a new IP needs the frontend recreated too (a full redeploy
 does that).
@@ -116,7 +151,8 @@ does that).
 
 Migrations are additive (new tables/columns), so older code runs against a newer schema.
 
-1. In Coolify, redeploy the previous good commit (set the branch/commit, or revert on Git and redeploy).
+1. In Coolify, redeploy the previous good version (prebuilt images: set `MAUMBILE_VERSION` to the earlier
+   tag; from source: set the branch/commit, or revert on Git and redeploy).
 2. The old backend runs `alembic upgrade head`; Alembic finds the database at a revision the old code
    doesn't know. If it errors with *Can't locate revision*, the previous image predates a migration that
    was already applied — in that case roll **forward** with a fix instead, or restore the database backup

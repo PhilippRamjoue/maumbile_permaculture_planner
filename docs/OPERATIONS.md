@@ -71,13 +71,11 @@ Releases are tagged and published as images to GHCR ([`RELEASING.md`](RELEASING.
   `docker compose -f docker-compose.yml -f docker-compose.ghcr.yml pull && docker compose -f docker-compose.yml -f docker-compose.ghcr.yml up -d`.
   Pin `MAUMBILE_VERSION=X.Y.Z` in `.env` to move only when you choose; read
   [`CHANGELOG.md`](../CHANGELOG.md) first.
-- **Coolify, building from source (the setup in `DEPLOY.md`):** push or tag on the tracked branch
-  and redeploy the whole resource.
-- **Coolify, running the prebuilt images:** use Base Directory `/infra` and set the Docker Compose
-  location to `/docker-compose.yml`, and add the overlay with the resource's custom start command if
-  your Coolify version offers one (`docker compose -f docker-compose.yml -f docker-compose.ghcr.yml up -d`),
-  or point the resource at a compose file that merges both. Set `MAUMBILE_VERSION` in the resource's environment
-  and redeploy to upgrade.
+- **Coolify, prebuilt images (recommended, the setup in `DEPLOY.md`):** the resource uses Base Directory
+  `/infra` and `/docker-compose.coolify.yml`. Set `MAUMBILE_VERSION` in the resource's environment to the
+  new release (or leave `latest`) and redeploy the whole resource to upgrade.
+- **Coolify, building from source (fallback):** push or tag on the tracked branch and redeploy the
+  whole resource (Base Directory `/infra`, file `/docker-compose.yml`).
 
 Before an upgrade that adds a migration: **run `backup.sh`**. Migrations are additive and run
 automatically on start; rollback limits are in `DEPLOY.md` §5. Always redeploy the whole stack, not
