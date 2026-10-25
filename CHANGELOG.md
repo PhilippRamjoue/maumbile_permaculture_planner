@@ -6,6 +6,24 @@ All notable changes to Maumbile are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-10-25
+
+A simpler, less-jargon design editor, from a hands-on beginner walkthrough.
+
+### Added
+
+- A **simple editor mode**: new plans open straight to placing things on the map — the element palette
+  and the map — with a one-line switch to the full guided method. The choice is remembered per browser.
+- Plain-language glosses under every guided step (Sectors "sun · wind · water", Zones "how often you
+  visit", Functions "needs & gives", …) and one-line hints for specialist palette items (swale, herb
+  spiral, food forest, windbreak, …).
+
+### Changed
+
+- The element palette drops the Zone and Sector entries (they have their own steps) and groups the rest
+  under tidy, capitalized categories.
+- On phones the satellite map now leads the editor instead of being pushed below the controls.
+
 ## [0.1.1] - 2026-10-25
 
 Editor UX refinements from hands-on testing.
@@ -43,6 +61,7 @@ First public release.
 - Released under AGPL-3.0. All instance configuration and secrets live in the environment, never
   in the repository.
 
-[Unreleased]: https://github.com/PhilippRamjoue/maumbile_permaculture_planner/compare/v0.1.1...HEAD
+[Unreleased]: https://github.com/PhilippRamjoue/maumbile_permaculture_planner/compare/v0.1.2...HEAD
+[0.1.2]: https://github.com/PhilippRamjoue/maumbile_permaculture_planner/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/PhilippRamjoue/maumbile_permaculture_planner/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/PhilippRamjoue/maumbile_permaculture_planner/releases/tag/v0.1.0
