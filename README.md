@@ -3,13 +3,38 @@
 _Maumbile is the app's name; the repository and packages keep the working name `permaculture_planner`._
 
 A web application for planning permaculture sites visually, on real georeferenced
-aerial imagery. Define your land by its coordinates, pull in satellite imagery and
+aerial imagery. Free and open source ([AGPL-3.0](LICENSE)), built as a public good. Define your land by its coordinates, pull in satellite imagery and
 terrain, then design: trace **zones** and **sectors**, place **elements** (house,
 beds, trees, water, paths), and **measure** distances and areas accurately.
 
-> Status: **in development** — backend (auth, sites, regions, imagery proxy, planning, terrain) and
-> frontend (shell, auth, dashboard, map, country-first site setup, design editor) are implemented and
-> tested; terrain visualization and exports are next. For the current state, how to run/test, and known
+## Run it yourself in ~5 minutes
+
+You need Docker (with Compose v2) and nothing else: the images are prebuilt and published to GitHub
+Container Registry, so there is no build step, no API key and no paid service.
+
+```bash
+git clone --depth 1 https://github.com/PhilippRamjoue/permaculture_planner.git maumbile
+cd maumbile/infra
+cp .env.example .env
+# Set the two required secrets (random values, generated here; they stay in your local .env):
+sed -i "s|^POSTGRES_PASSWORD=.*|POSTGRES_PASSWORD=$(openssl rand -hex 24)|; s|^APP_SECRET_KEY=.*|APP_SECRET_KEY=$(openssl rand -hex 32)|" .env
+docker compose -f docker-compose.yml -f docker-compose.ghcr.yml -f docker-compose.local.yml up -d
+```
+
+Open <http://localhost:8080>, register, and create your first site. The database lives in the
+`pgdata` Docker volume, so it survives restarts and upgrades.
+
+- **On a server with a domain:** leave out `docker-compose.local.yml` (it publishes localhost ports
+  and relaxes cookie security), put the `frontend` service's port 80 behind an HTTPS reverse proxy
+  (Coolify, Caddy, Traefik, ...) and set `APP_CORS_ORIGINS` to your public origin. Cookies are
+  `Secure` by default, so the site must be served over HTTPS. Steps: [`docs/DEPLOY.md`](docs/DEPLOY.md).
+- **Upgrade:** `docker compose -f docker-compose.yml -f docker-compose.ghcr.yml pull` then `up -d`
+  (migrations run automatically). Pin `MAUMBILE_VERSION=0.1.0` in `.env` to stay on a release.
+- **Back up** the database regularly: [`docs/OPERATIONS.md`](docs/OPERATIONS.md).
+- **Not on Linux/amd64?** Build from source instead: `docker compose -f docker-compose.yml -f docker-compose.local.yml up --build`.
+
+> Status: **v0.1** — feature-complete first release (accounts, sites, imagery, terrain, design editor,
+> exports) and still evolving; see [`CHANGELOG.md`](CHANGELOG.md). For the current state, how to run/test, and known
 > deferrals, see **[`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md)**. Design lives in
 > [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md); the task plan in [`docs/WORK_PACKAGES.md`](docs/WORK_PACKAGES.md).
 >

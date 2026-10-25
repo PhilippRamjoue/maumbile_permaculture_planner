@@ -64,7 +64,7 @@ migration that has been deployed; add a new one.
    | `POSTGRES_PASSWORD` | generated, URL-safe (required) |
    | `APP_SECRET_KEY` | generated (required) |
    | `APP_CORS_ORIGINS` | `["https://maumbile.ecosoul.tech"]` |
-   | `APP_COOKIE_SECURE` | `true` (default; leave it) |
+   | `APP_COOKIE_SECURE` | leave unset (defaults to `true`) |
    | `POSTGRES_USER`, `POSTGRES_DB` | optional (`postgres`, `permaculture`) |
 
    The full list with comments is [`infra/.env.example`](../infra/.env.example). **Set
