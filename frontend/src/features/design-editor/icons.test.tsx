@@ -60,4 +60,21 @@ describe("icons", () => {
     expect(marked!.properties._icon).toBe("glyph|tank|#0d47a1");
     expect(plain!.properties._icon).toBe("");
   });
+
+  it("keeps the badge of a footprint the map is editing, but not its shape", () => {
+    const footprint = {
+      id: "f",
+      feature_type: "element",
+      element_type_id: 1,
+      geometry: { type: "Polygon", coordinates: [[[0, 0]]] },
+      properties: { color: "#0d47a1" },
+    } as unknown as DesignFeature;
+    const view = createFocusView("elements", new Set(), [], 1, new Set(), () => "tank");
+    const [badge] = renderableFeatures([footprint], view, "f", "f");
+    expect(badge!.properties._drawing).toBe(true);
+    expect(badge!.properties._icon).toBe("glyph|tank|#0d47a1");
+    // Without an icon, Terra Draw alone draws it.
+    const bare = createFocusView("elements", new Set(), [], 1, new Set(), () => null);
+    expect(renderableFeatures([footprint], bare, "f", "f")).toEqual([]);
+  });
 });

@@ -41,8 +41,7 @@ test("draws a zone and places an element across focus modes, then saves and relo
   // Elements focus: pick from the palette and place it.
   await step(page, "Elements").click();
   await page.getByLabel("Element palette").selectOption({ label: "House" });
-  await click(0.55, 0.35);
-  await click(0.67, 0.48);
+  await click(0.6, 0.45); // a house is one click: an 8 x 6 m footprint, to scale
   await expect(page.getByLabel("Feature name")).toHaveValue("House");
   await page.getByLabel("Feature name").fill("Main house");
   await expect(page.getByRole("heading", { name: "Elements (1)" })).toBeVisible();

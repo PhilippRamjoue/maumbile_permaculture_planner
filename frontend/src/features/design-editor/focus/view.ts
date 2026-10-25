@@ -83,8 +83,10 @@ const numberStyle = (style: unknown, key: string, fallback: number, min: number,
 
 /**
  * The GeoJSON features of one plan layer as the map draws them. `drawingId` is the feature Terra
- * Draw is editing right now (it draws that one itself); `selectedId` is highlighted when it is
- * drawn here instead. Properties starting with `_` exist only for rendering and are never saved.
+ * Draw is editing right now (it draws that one itself, so only its icon is drawn here, marked
+ * `_drawing`, for shapes that have one: a small to-scale footprint must keep its badge);
+ * `selectedId` is highlighted when it is drawn here instead. Properties starting with `_` exist
+ * only for rendering and are never saved.
  */
 export function renderableFeatures(
   features: readonly DesignFeature[],
@@ -93,7 +95,11 @@ export function renderableFeatures(
   drawingId: string | null,
 ) {
   return features
-    .filter((f) => f.id !== drawingId && view.isShown(f))
+    .filter(
+      (f) =>
+        view.isShown(f) &&
+        (f.id !== drawingId || (f.geometry.type === "Polygon" && view.iconOf(f) !== null)),
+    )
     .map((f) => ({
       ...f,
       properties: {
@@ -101,6 +107,7 @@ export function renderableFeatures(
         _editor_id: f.id,
         _context: !view.isEditable(f),
         _selected: f.id === selectedId,
+        _drawing: f.id === drawingId,
         _width: numberStyle(f.properties.style, "stroke_width", 3, 1, 12),
         _radius: numberStyle(f.properties.style, "radius", 8, 3, 24),
         _opacity: numberStyle(f.properties.style, "fill_opacity", 0.3, 0, 1),

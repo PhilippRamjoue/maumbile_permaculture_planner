@@ -23,6 +23,7 @@ import {
   renderGridLabel,
 } from "../map/layers/gridLabels";
 import { BADGE_PIXEL_RATIO, parseBadgeName, renderBadge } from "./icons";
+import { defaultFootprint, placeFootprint, placementMode, syncRotation } from "./footprint";
 import { measureGeometry, type Measurement } from "./measure";
 import type { EditorDocument, EditorStore } from "./store";
 import { typicalFunctions } from "./focus/functions";
@@ -144,6 +145,13 @@ export function useEditorMap(
       if (featureType === "zone") properties.zone_number = current.view.defaults.zoneNumber;
       if (featureType === "sector")
         Object.assign(properties, { sector_kind: "wind", bearing_from: 0, bearing_to: 90 });
+      // A round or rectangular palette entry is one click: its to-scale footprint around the click.
+      let geometry = feature.geometry;
+      const footprint = defaultFootprint(palette);
+      if (footprint && geometry.type === "Point") {
+        geometry = placeFootprint(geometry.coordinates, footprint);
+        properties.footprint = footprint;
+      }
       const color = palette?.default_style.fill ?? palette?.default_style.stroke;
       properties.color =
         typeof color === "string" ? color : featureType === "zone" ? "#f59e0b" : "#2f855a";
@@ -153,7 +161,7 @@ export function useEditorMap(
         layer_id: current.activeLayer,
         feature_type: featureType as DesignFeature["feature_type"],
         element_type_id: current.tool === "element" ? (current.element?.id ?? null) : null,
-        geometry: feature.geometry,
+        geometry,
         properties,
       });
       queueMicrotask(() => current.setTool("select"));
@@ -238,11 +246,7 @@ export function useEditorMap(
           tool === "path" || tool === "measure-line"
             ? "linestring"
             : tool === "element"
-              ? element?.geometry_type === "line"
-                ? "linestring"
-                : element?.geometry_type === "polygon"
-                  ? "rectangle"
-                  : "point"
+              ? placementMode(element)
               : "polygon";
         draw.setMode(mode);
       }
@@ -307,7 +311,7 @@ export function useEditorMap(
             id: layerId,
             source: id,
             type: "fill",
-            filter: ["==", "$type", "Polygon"],
+            filter: ["all", ["==", "$type", "Polygon"], ["!", flag("_drawing")]],
             layout: { visibility },
             paint: {
               "fill-color": ["get", "color"],
@@ -319,7 +323,7 @@ export function useEditorMap(
             id: layerId,
             source: id,
             type: "line",
-            filter: ["!=", "$type", "Point"],
+            filter: ["all", ["!=", "$type", "Point"], ["!", flag("_drawing")]],
             layout: { visibility },
             paint: {
               "line-color": ["get", "color"],
@@ -441,10 +445,11 @@ export function useEditorMap(
         (Math.min(...lngs) + Math.max(...lngs)) / 2,
         (Math.min(...lats) + Math.max(...lats)) / 2,
       ],
-      options: { angle },
+      // Terra Draw turns counter-clockwise for a positive angle; "right" means clockwise.
+      options: { angle: -angle },
     });
     const changed = draw.getSnapshotFeature(selected.id);
-    if (changed) store.getState().upsert({ ...selected, geometry: changed.geometry });
+    if (changed) store.getState().upsert(syncRotation({ ...selected, geometry: changed.geometry }));
   };
   return { live, error, rotate };
 }
