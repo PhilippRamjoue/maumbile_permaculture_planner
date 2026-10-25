@@ -9,6 +9,7 @@ import {
 } from "terra-draw";
 
 import type { DesignFeature } from "../../entities/planning";
+import { footprintOf } from "./footprint";
 import type { EditorDocument } from "./store";
 
 /**
@@ -175,7 +176,8 @@ export function createEditorModes(getTargets: () => Position[]) {
         point: editable(snap),
         linestring: editable(snap),
         polygon: editable(snap),
-        rectangle: editable(snap),
+        // A to-scale footprint moves as a whole: its corners are set by its size, not dragged.
+        rectangle: { feature: { draggable: true } },
       },
       keyEvents: { deselect: "Escape", delete: null, rotate: null, scale: null },
     }),
@@ -188,4 +190,6 @@ export const geometryMode = (feature: DesignFeature) =>
     ? "point"
     : feature.geometry.type === "LineString"
       ? "linestring"
-      : "polygon";
+      : footprintOf(feature)
+        ? "rectangle"
+        : "polygon";

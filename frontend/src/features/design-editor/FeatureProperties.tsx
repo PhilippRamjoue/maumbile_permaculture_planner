@@ -1,4 +1,5 @@
 import type { DesignFeature, PlanLayer } from "../../entities/planning";
+import { FootprintFields } from "./FootprintFields";
 import { SECTOR_KINDS, redrawSector, syncSectorLook } from "./sectors";
 
 export function FeatureProperties({
@@ -30,6 +31,7 @@ export function FeatureProperties({
           onChange={(event) => patchProperties({ name: event.target.value })}
         />
       </label>
+      <FootprintFields selected={selected} onChange={onChange} />
       <details className="editor-more">
         <summary>More options</summary>
         <label>

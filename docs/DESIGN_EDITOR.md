@@ -198,6 +198,34 @@ the palette, in the legend and in the PNG/PDF export.
   footprints, ink chosen for contrast, dark rim for black-and-white prints); a footprint's name moves below
   its badge; legend rows use the badge too.
 
+## Elements to scale
+
+Round and rectangular palette entries are placed at their real size with **one click**; nothing
+asks for a number. The catalog (`element_types`, migration `0010_element_type_footprints`) gives
+each entry a `shape` (`point` | `line` | `area` | `round` | `rect`) and a default size in metres:
+`default_diameter_m` for round entries (tank 2, pond 3, tree 4, shrub 1.5, herb spiral 2, well 1),
+`default_width_m` (east-west) by `default_length_m` (north-south) for rectangular ones (bed 1.2 x 4,
+house 8 x 6, shed 3 x 3, greenhouse 3 x 6, coop 2 x 3, compost 1 x 1, nursery 3 x 3, toilet
+1.5 x 1.5). Lines, hand-drawn areas (zone, sector, paddock, food forest) and points (beehive, note)
+are placed as before. The seed (`planning/seed.py`) is the live source; a test keeps the migrated
+rows in step with it. `ElementTypeRead` is generated into `entities/generated/elements.ts`.
+
+On the click, `design-editor/footprint.ts` builds the polygon in true metres (a 32-point circle, or
+four corners at +-W/2, +-L/2, north-aligned) around the click and stores
+`properties.footprint = {shape, diameter_m | width_m, length_m, rotation_deg}` beside it. The
+polygon is always drawn *from* that record and its centre is the middle of its bounding box, so a
+drag-move needs no bookkeeping. The icon badge stays centred on it, also while it is selected.
+Footprints load into Terra Draw as `rectangle` features (move only, no vertex handles), so a corner
+can never be dragged out of true.
+
+The selected element shows an **Exact size** section (`FootprintFields`): *Diameter (m)*, or
+*Width (m)*, *Length (m)* and *Rotation (deg)*. Values from 0.1 to 1000 m are accepted (a comma
+works as the decimal mark); editing one redraws the footprint around the same centre. The rotate
+buttons turn clockwise for "right" and the rotation field reads the angle back from the geometry.
+The size also shows in the Size readout and in the PNG/PDF export, where footprints are ordinary
+polygons drawn at scale with their icon. Features placed before this change (a tree as a point)
+keep their geometry; a new one of the same type is a footprint.
+
 ## Verification and limits
 
 - Store tests cover geometry/properties/deletion undo/redo, dirty state and deletion payloads.

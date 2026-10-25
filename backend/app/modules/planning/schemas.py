@@ -36,6 +36,12 @@ class ElementTypeRead(BaseModel):
     icon: str | None
     default_style: dict[str, Any]
     default_properties: dict[str, Any]
+    # ``round`` / ``rect`` entries drop a to-scale footprint with one click: a circle of the
+    # diameter, or a rectangle of width (east-west) by length (north-south), in metres.
+    shape: Literal["point", "line", "area", "round", "rect"]
+    default_width_m: float | None
+    default_length_m: float | None
+    default_diameter_m: float | None
     sort_order: int
 
 

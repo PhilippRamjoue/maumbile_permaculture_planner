@@ -93,6 +93,36 @@ async def test_migrated_catalog_matches_the_seed(api: AsyncClient) -> None:
         assert by_key[key]["default_style"] == entry["default_style"], key
         assert by_key[key]["default_properties"] == entry["default_properties"], key
         assert by_key[key]["icon"] == entry["icon"], key
+        assert by_key[key]["geometry_type"] == entry["geometry_type"], key
+        assert by_key[key]["shape"] == entry["shape"], key
+        for size in ("default_width_m", "default_length_m", "default_diameter_m"):
+            assert by_key[key][size] == entry[size], (key, size)
+
+
+async def test_element_types_carry_a_real_world_footprint(api: AsyncClient) -> None:
+    by_key = {e["key"]: e for e in (await api.get(f"{API}/element-types")).json()}
+
+    # Round entries have a diameter, rectangular ones a width and length; nothing else has a size.
+    for key, entry in by_key.items():
+        sizes = (entry["default_width_m"], entry["default_length_m"], entry["default_diameter_m"])
+        if entry["shape"] == "round":
+            assert sizes[2] and sizes[2] > 0 and sizes[:2] == (None, None), key
+        elif entry["shape"] == "rect":
+            assert sizes[0] and sizes[1] and sizes[2] is None, key
+        else:
+            assert sizes == (None, None, None), key
+        # Footprints come out as polygons; points and lines keep their geometry.
+        expected = {"point": "point", "line": "line"}.get(entry["shape"], "polygon")
+        assert entry["geometry_type"] == expected, key
+
+    assert (by_key["water_tank"]["shape"], by_key["water_tank"]["default_diameter_m"]) == (
+        "round",
+        2.0,
+    )
+    assert by_key["tree"]["default_diameter_m"] == 4.0
+    assert (by_key["bed"]["default_width_m"], by_key["bed"]["default_length_m"]) == (1.2, 4.0)
+    assert (by_key["house"]["default_width_m"], by_key["house"]["default_length_m"]) == (8.0, 6.0)
+    assert by_key["path"]["shape"] == "line" and by_key["note"]["shape"] == "point"
 
 
 # ── plans & layers ─────────────────────────────────────────────────────────────────────────

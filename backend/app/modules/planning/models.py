@@ -10,6 +10,7 @@ from geoalchemy2 import Geometry, WKBElement
 from sqlalchemy import (
     CheckConstraint,
     DateTime,
+    Float,
     ForeignKey,
     Integer,
     String,
@@ -46,6 +47,12 @@ class ElementType(Base):
     default_properties: Mapped[dict[str, Any]] = mapped_column(
         JSONB, nullable=False, server_default=text("'{}'::jsonb")
     )
+    # How the entry is drawn: point | line | area (shaped by hand) | round | rect. The last two are
+    # placed with one click as a to-scale footprint of the default size below, in metres.
+    shape: Mapped[str] = mapped_column(String(10), nullable=False, server_default=text("'area'"))
+    default_width_m: Mapped[float | None] = mapped_column(Float, nullable=True)
+    default_length_m: Mapped[float | None] = mapped_column(Float, nullable=True)
+    default_diameter_m: Mapped[float | None] = mapped_column(Float, nullable=True)
     sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
 

@@ -1,5 +1,6 @@
 import type { DesignFeature, ElementType } from "../../../entities/planning";
 import { FeatureProperties } from "../FeatureProperties";
+import { defaultFootprint, footprintLabel } from "../footprint";
 import { GlyphIcon } from "../GlyphIcon";
 import { FeatureList, ToolButton, type PanelProps } from "./common";
 
@@ -24,6 +25,7 @@ export function ElementsPanel({
 }) {
   const { state, tool, choose, pick, disabled, selected, onRotate } = props;
   const chosen = types.find((t) => t.id === elementId);
+  const footprint = defaultFootprint(chosen);
   const categories = [...new Set(types.map((t) => t.category))];
   return (
     <>
@@ -68,8 +70,14 @@ export function ElementsPanel({
           <ToolButton tool="path" current={tool} label="Draw path" choose={choose} />
         </div>
         <p className="muted">
-          Points: click to place. Footprints: click opposite corners. Lines and paths: click points,
-          then Enter.
+          {footprint
+            ? `One click places a ${footprintLabel(footprint)} ${chosen?.name.toLowerCase()} to scale — set the exact size afterwards.`
+            : chosen?.shape === "area"
+              ? "Click opposite corners to draw it."
+              : chosen?.shape === "line"
+                ? "Click points along it, then Enter."
+                : "Click the map to place it."}{" "}
+          Paths: click points, then Enter.
         </p>
       </fieldset>
       <FeatureList
