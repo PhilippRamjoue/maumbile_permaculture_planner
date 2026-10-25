@@ -20,6 +20,10 @@ docker compose -f docker-compose.yml -f docker-compose.local.yml up --build
 - **Smoke test** (`smoke-test.sh` + `docker-compose.smoke.yml`): `./smoke-test.sh` builds a throwaway
   `permaculture-smoke-<random>` stack on ports 25432/28000/28080, checks it and removes only that stack;
   `./smoke-test.sh --remote https://your-domain` checks a deployed URL.
+- **Prebuilt images** (`docker-compose.ghcr.yml`): pull the released images from GHCR instead of building:
+  `docker compose -f docker-compose.yml -f docker-compose.ghcr.yml up -d` (see [`../docs/RELEASING.md`](../docs/RELEASING.md)).
+- **Backup / restore** (`backup.sh`): verified `pg_dump` of the database and a guarded restore; see
+  [`../docs/OPERATIONS.md`](../docs/OPERATIONS.md).
 - **Scale-up** (`docker-compose.scale.yml`): adds Redis + a worker when load needs it:
   `docker compose -f docker-compose.yml -f docker-compose.scale.yml up --build`.
 

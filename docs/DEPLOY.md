@@ -104,6 +104,8 @@ Check migrations explicitly from Coolify's **Terminal** for the backend (or `doc
 
 ## 4. Updating
 
+Tagged releases are also published as prebuilt images ([`OPERATIONS.md`](OPERATIONS.md) → *Updating*).
+
 Push to the tracked branch (enable Coolify's webhook for auto-deploy) or click **Redeploy**. Coolify
 rebuilds, recreates the containers and the backend applies any new migrations on start. Always redeploy
 the **whole** resource rather than restarting only the backend: nginx resolves `backend` once at start, so
@@ -129,7 +131,9 @@ docker exec -t <db-container> pg_dump -U postgres -d permaculture -Fc > permacul
 # restore into an empty database: pg_restore -U postgres -d permaculture --clean --if-exists < file.dump
 ```
 
-Coolify can also schedule volume/database backups; the user data lives only in the `pgdata` volume.
+The user data lives only in the `pgdata` volume. [`infra/backup.sh`](../infra/backup.sh) takes verified dumps
+(schedule it, and copy them off the server); restore steps, updating from tagged releases, monitoring and
+the rate-limit knob are in [`OPERATIONS.md`](OPERATIONS.md).
 
 ## 6. Imagery and elevation defaults
 
