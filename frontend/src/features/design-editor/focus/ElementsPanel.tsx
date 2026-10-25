@@ -9,6 +9,9 @@ const paletteColor = (type: ElementType | undefined) => {
   return typeof color === "string" ? color : "#2f855a";
 };
 
+/** Palette category labels read as proper headings: "water" → "Water". */
+const categoryLabel = (category: string) => category.charAt(0).toUpperCase() + category.slice(1);
+
 /** Elements focus: choose a thing from the palette and place it; paths are drawn as lines. */
 export function ElementsPanel({
   props,
@@ -24,9 +27,12 @@ export function ElementsPanel({
   elements: readonly DesignFeature[];
 }) {
   const { state, tool, choose, pick, disabled, selected, onRotate } = props;
-  const chosen = types.find((t) => t.id === elementId);
+  // Zones and sectors have their own steps; offering them here too only duplicates them and muddles
+  // "place the concrete things". The palette is just elements, paths and notes.
+  const palette = types.filter((t) => t.feature_type !== "zone" && t.feature_type !== "sector");
+  const chosen = palette.find((t) => t.id === elementId);
   const footprint = defaultFootprint(chosen);
-  const categories = [...new Set(types.map((t) => t.category))];
+  const categories = [...new Set(palette.map((t) => t.category))];
   return (
     <>
       <fieldset disabled={disabled}>
@@ -43,8 +49,8 @@ export function ElementsPanel({
               }}
             >
               {categories.map((category) => (
-                <optgroup key={category} label={category}>
-                  {types
+                <optgroup key={category} label={categoryLabel(category)}>
+                  {palette
                     .filter((t) => t.category === category)
                     .map((type) => (
                       <option key={type.id} value={type.id}>
