@@ -55,12 +55,16 @@ import { connectionLines } from "./focus/functions";
 import {
   focusMode,
   initialFocus,
+  initialLevel,
   isEditable,
   parseFocus,
   progressOf,
+  SIMPLE_FOCUS,
   type ContextGroup,
+  type EditorLevel,
   type FocusId,
 } from "./focus/modes";
+import { loadEditorLevel, saveEditorLevel } from "./focus/editorLevelStore";
 import { PlacedNotice, SaveStatus, saveStateOf } from "./focus/SaveStatus";
 import { SectorsPanel } from "./focus/SectorsPanel";
 import { useAutosave } from "./focus/useAutosave";
@@ -123,7 +127,18 @@ export function Workspace({
   );
   const goals = useGoals(plan);
   const [params, setParams] = useSearchParams();
-  const focus = parseFocus(params.get("focus")) ?? defaultFocus;
+  // Simple vs guided: new/elements-only plans open simple (straight to placing things); a plan with
+  // goals/sectors/zones opens guided. A remembered choice wins. In simple mode the only step is
+  // elements, so the focus is pinned there whatever the URL says.
+  const [level, setLevelState] = useState<EditorLevel>(
+    () => loadEditorLevel() ?? initialLevel(initial.features, plan.goals),
+  );
+  const setLevel = (next: EditorLevel) => {
+    setLevelState(next);
+    saveEditorLevel(next);
+  };
+  const focus =
+    level === "simple" ? SIMPLE_FOCUS : (parseFocus(params.get("focus")) ?? defaultFocus);
   const mode = focusMode(focus);
 
   const [map, setMap] = useState<MapLibreMap | null>(null);
@@ -395,6 +410,28 @@ export function Workspace({
     );
   };
 
+  // Switch between the simple (place-things-only) and full guided editor. Going guided reveals the
+  // step rail on the elements step, so nobody is dropped back onto goals; going simple pins to it.
+  const showGuided = () => {
+    setLevel("guided");
+    store.getState().select(null);
+    setPlaced(null);
+    setParams(
+      (previous) => {
+        const next = new URLSearchParams(previous);
+        next.set("focus", "elements");
+        return next;
+      },
+      { preventScrollReset: true },
+    );
+  };
+  const showSimple = () => {
+    setLevel("simple");
+    store.getState().select(null);
+    setPlaced(null);
+    setTool("select");
+  };
+
   const measurement =
     authoritative?.key === selectedGeometryKey
       ? authoritative.value
@@ -465,13 +502,29 @@ export function Workspace({
         </button>
         <SaveStatus state={saveState} plansPath={`/sites/${site.id}/design`} />
       </header>
-      <FocusRail
-        current={focus}
-        progress={progress}
-        warnings={{ boundary: boundaryDirty ? "The border has unsaved changes" : undefined }}
-        context={{ goals: goals.goals, features }}
-        onChange={go}
-      />
+      {level === "guided" ? (
+        <>
+          <FocusRail
+            current={focus}
+            progress={progress}
+            warnings={{ boundary: boundaryDirty ? "The border has unsaved changes" : undefined }}
+            context={{ goals: goals.goals, features }}
+            onChange={go}
+          />
+          <button type="button" className="btn btn--link editor-level" onClick={showSimple}>
+            Simple view — just place things on the map
+          </button>
+        </>
+      ) : (
+        <nav className="focus-rail focus-rail--simple" aria-label="Design focus">
+          <p className="muted">
+            Simple design — place the things you want on your map: house, water, trees, beds, paths.
+          </p>
+          <button type="button" className="btn btn--link editor-level" onClick={showGuided}>
+            Switch to guided design — goals, sectors, zones, functions →
+          </button>
+        </nav>
+      )}
       {save.isError && (
         <p role="alert">
           Could not save: {message(save.error)} Your draft is still here. Retry saving.
@@ -509,7 +562,7 @@ export function Workspace({
               onDone={() => setPlaced(null)}
             />
           )}
-          {focus !== "goals" && (
+          {focus !== "goals" && level === "guided" && (
             <GoalsReminder goals={goals.goals} labelOf={labelOf} onOpen={() => go("goals")} />
           )}
           {focus === "goals" && (

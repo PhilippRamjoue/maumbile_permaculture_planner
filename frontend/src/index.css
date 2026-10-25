@@ -780,6 +780,22 @@ h1 {
   border: 1px solid var(--border);
   border-radius: 0.5rem;
 }
+.focus-rail--simple {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.4rem 1rem;
+}
+.focus-rail--simple p {
+  margin: 0;
+}
+/* The small link that switches between the simple and guided editor. */
+.editor-level {
+  align-self: flex-start;
+  padding: 0;
+  font-size: 0.9rem;
+}
 .focus-rail__steps {
   display: flex;
   flex-wrap: wrap;
