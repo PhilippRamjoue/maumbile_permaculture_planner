@@ -636,11 +636,15 @@ h1 {
   .editor-layout {
     grid-template-columns: 1fr;
   }
-  .editor-sidebar {
-    max-height: 22rem;
-  }
+  /* Map-first on a phone: the satellite view is the point, so it comes first and fills most of the
+     screen; the step's controls flow underneath and the whole page scrolls. */
   .editor-canvas {
-    min-height: 28rem;
+    order: -1;
+    min-height: 60vh;
+  }
+  .editor-sidebar {
+    max-height: none;
+    overflow: visible;
   }
 }
 
@@ -780,6 +784,22 @@ h1 {
   border: 1px solid var(--border);
   border-radius: 0.5rem;
 }
+.focus-rail--simple {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.4rem 1rem;
+}
+.focus-rail--simple p {
+  margin: 0;
+}
+/* The small link that switches between the simple and guided editor. */
+.editor-level {
+  align-self: flex-start;
+  padding: 0;
+  font-size: 0.9rem;
+}
 .focus-rail__steps {
   display: flex;
   flex-wrap: wrap;
@@ -805,6 +825,19 @@ h1 {
   border-color: var(--accent);
   color: var(--accent-contrast);
   font-weight: 650;
+}
+/* The method name over a plain one-line gloss, so a beginner always sees what the step means. */
+.focus-rail__label {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  line-height: 1.15;
+  text-align: left;
+}
+.focus-rail__plain {
+  font-size: 0.72rem;
+  font-weight: 400;
+  opacity: 0.75;
 }
 .focus-rail__num {
   display: inline-flex;
@@ -1111,6 +1144,10 @@ h1 {
 .palette-choice select {
   flex: 1;
   min-width: 0;
+}
+.palette-hint {
+  margin: 0.15rem 0 0.5rem;
+  font-size: 0.88rem;
 }
 .glyph-icon {
   flex: none;

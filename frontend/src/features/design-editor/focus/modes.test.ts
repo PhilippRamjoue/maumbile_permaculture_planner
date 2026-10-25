@@ -8,6 +8,7 @@ import {
   contextGroups,
   groupOf,
   initialFocus,
+  initialLevel,
   isEditable,
   isShown,
   nudgeFor,
@@ -157,5 +158,20 @@ describe("water-first nudge", () => {
     expect(nudgeFor("zones", progressOf(doc()), { goals: water, features: [] }).text).toMatch(
       /first zone/i,
     );
+  });
+});
+
+describe("initialLevel", () => {
+  const goals = { priorities: ["water" as const], vision: "" };
+
+  it("opens simple for a new or elements-only plan", () => {
+    expect(initialLevel([])).toBe("simple");
+    expect(initialLevel([feat("element"), feat("path")])).toBe("simple");
+  });
+
+  it("opens guided when the plan already carries method work or goals", () => {
+    expect(initialLevel([feat("sector")])).toBe("guided");
+    expect(initialLevel([feat("zone")])).toBe("guided");
+    expect(initialLevel([], goals)).toBe("guided");
   });
 });

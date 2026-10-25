@@ -51,7 +51,10 @@ export function FocusRail({
                 <span className="focus-rail__num" aria-hidden="true">
                   {done && !active ? "✓" : index + 1}
                 </span>
-                <span>{mode.label}</span>
+                <span className="focus-rail__label">
+                  <span>{mode.label}</span>
+                  <span className="focus-rail__plain">{mode.plain}</span>
+                </span>
                 {done && <span className="visually-hidden"> (has content)</span>}
                 {warning && (
                   <span

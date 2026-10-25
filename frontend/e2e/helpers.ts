@@ -6,6 +6,15 @@ import { expect } from "./map-fixture";
 export const step = (page: Page, name: string) =>
   page.locator(".focus-rail__steps").getByRole("button", { name });
 
+/**
+ * New plans open in the simple (place-things-only) editor, which has no step rail. These specs drive
+ * the full guided flow, so switch into it first; it is a no-op once the rail is already showing.
+ */
+export async function enterGuided(page: Page) {
+  const toGuided = page.getByRole("button", { name: /guided design/i });
+  if (await toGuided.isVisible().catch(() => false)) await toGuided.click();
+}
+
 export async function register(page: Page, tag: string) {
   const email = `${tag}-${Date.now()}@example.org`;
   const password = "e2e-editor-password-123";

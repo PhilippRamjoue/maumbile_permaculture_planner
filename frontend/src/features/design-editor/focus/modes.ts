@@ -13,6 +13,16 @@ import { functionsOf } from "./functions";
  */
 export type FocusId = "goals" | "boundary" | "sectors" | "zones" | "elements" | "functions";
 
+/**
+ * How much of the method the editor shows at once. "simple" is just "place things on the map" — one
+ * step, the elements — so a beginner is designing within seconds; "guided" opens the full set of
+ * steps (goals, boundary, sectors, zones, elements, functions). The user can switch any time.
+ */
+export type EditorLevel = "simple" | "guided";
+
+/** The single step a simple-mode editor works in: placing the concrete things on the map. */
+export const SIMPLE_FOCUS: FocusId = "elements";
+
 /** What the user can toggle as faint context: the site border and the three feature families. */
 export type ContextGroup = "boundary" | "sectors" | "zones" | "elements";
 
@@ -22,6 +32,8 @@ export interface FocusMode {
   id: FocusId;
   /** Short name on the rail. */
   label: string;
+  /** A plain-language gloss under the label, so the method term is never the only word a beginner sees. */
+  plain: string;
   /** The question this step answers, in the user's words. */
   question: string;
   /** A sentence or two of guidance shown at the top of the mode's panel. */
@@ -45,6 +57,7 @@ export const FOCUS_MODES: readonly FocusMode[] = [
   {
     id: "goals",
     label: "Goals",
+    plain: "what you want",
     question: "What do I want from this land?",
     help: "Permaculture starts with you, not the map. Say what matters most; every later step can come back to it. Optional, and you can change it any time.",
     editableTypes: [],
@@ -56,6 +69,7 @@ export const FOCUS_MODES: readonly FocusMode[] = [
   {
     id: "boundary",
     label: "Boundary",
+    plain: "your land",
     question: "Where is my land?",
     help: "See your land on the satellite image and make sure the border follows it. Drag a corner to nudge it.",
     editableTypes: [],
@@ -67,6 +81,7 @@ export const FOCUS_MODES: readonly FocusMode[] = [
   {
     id: "sectors",
     label: "Sectors & terrain",
+    plain: "sun · wind · water",
     question: "What is this site subject to?",
     help: "Mark where sun, wind, water, fire and views come from, and see how the land slopes.",
     editableTypes: ["sector"],
@@ -78,6 +93,7 @@ export const FOCUS_MODES: readonly FocusMode[] = [
   {
     id: "zones",
     label: "Zones",
+    plain: "how often you visit",
     question: "What gets visited how often?",
     help: "Sketch rough areas by how often you visit them: zone 0 is the house, zone 5 is left wild.",
     editableTypes: ["zone"],
@@ -89,6 +105,7 @@ export const FOCUS_MODES: readonly FocusMode[] = [
   {
     id: "elements",
     label: "Elements",
+    plain: "the things you place",
     question: "What goes where?",
     help: "Place the concrete things: house, beds, trees, pond, paths, fences.",
     editableTypes: ["element", "path", "annotation"],
@@ -100,6 +117,7 @@ export const FOCUS_MODES: readonly FocusMode[] = [
   {
     id: "functions",
     label: "Functions & connections",
+    plain: "needs & gives",
     question: "What does each thing need and give?",
     help: "Every element should serve several functions, and every function should be met by several elements.",
     editableTypes: ["element", "path"],
@@ -182,6 +200,22 @@ export function progressOf(document: EditorDocument, goals?: PlanGoals | null): 
         (functionsOf(f, "needs").length > 0 || functionsOf(f, "yields").length > 0),
     ),
   };
+}
+
+/**
+ * How detailed to open a plan in: a plan that already carries method work — goals, sectors or zones —
+ * opens in the full guided view; a fresh or elements-only plan opens simple, straight to placing
+ * things on the map. A remembered preference (localStorage) overrides this.
+ */
+export function initialLevel(
+  features: readonly Pick<DesignFeature, "feature_type">[],
+  goals?: PlanGoals | null,
+): EditorLevel {
+  if (hasGoals(goals)) return "guided";
+  const hasMethodWork = features.some(
+    (f) => f.feature_type === "sector" || f.feature_type === "zone",
+  );
+  return hasMethodWork ? "guided" : "simple";
 }
 
 /**
