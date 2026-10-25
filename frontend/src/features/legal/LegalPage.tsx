@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-export const REPOSITORY_URL = "https://github.com/PhilippRamjoue/permaculture_planner";
+export const REPOSITORY_URL = "https://github.com/PhilippRamjoue/maumbile_permaculture_planner";
 
 export interface LegalSection {
   heading: string;

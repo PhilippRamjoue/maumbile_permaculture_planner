@@ -13,7 +13,7 @@ You need Docker (with Compose v2) and nothing else: the images are prebuilt and 
 Container Registry, so there is no build step, no API key and no paid service.
 
 ```bash
-git clone --depth 1 https://github.com/PhilippRamjoue/permaculture_planner.git maumbile
+git clone --depth 1 https://github.com/PhilippRamjoue/maumbile_permaculture_planner.git maumbile
 cd maumbile/infra
 cp .env.example .env
 # Set the two required secrets (random values, generated here; they stay in your local .env):
@@ -23,6 +23,10 @@ docker compose -f docker-compose.yml -f docker-compose.ghcr.yml -f docker-compos
 
 Open <http://localhost:8080>, register, and create your first site. The database lives in the
 `pgdata` Docker volume, so it survives restarts and upgrades.
+
+**New here?** The **[Getting started guide](docs/GETTING_STARTED.md)** walks you from zero to a first
+design — create your land from its coordinates, then the guided steps (Goals → Boundary → Sectors →
+Zones → Elements → Functions) and the map tools (measure, distance grid, real‑sized elements, export).
 
 - **On a server with a domain:** leave out `docker-compose.local.yml` (it publishes localhost ports
   and relaxes cookie security), put the `frontend` service's port 80 behind an HTTPS reverse proxy

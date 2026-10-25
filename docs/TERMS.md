@@ -63,7 +63,7 @@ license. See [`LICENSE`](../LICENSE).
 These terms may be updated; the date above changes when they do, and material changes are announced
 in the [changelog](../CHANGELOG.md). Questions, abuse reports and data requests: use the contact
 published on the project's GitHub page, or open an issue at
-<https://github.com/PhilippRamjoue/permaculture_planner/issues> (public; do not post personal data
+<https://github.com/PhilippRamjoue/maumbile_permaculture_planner/issues> (public; do not post personal data
 there). Security problems: see [`SECURITY.md`](../SECURITY.md).
 
 <!-- Operator note: add a direct contact email for data requests here and in PRIVACY.md before

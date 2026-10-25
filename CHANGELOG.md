@@ -24,5 +24,5 @@ First public release.
 - Released under AGPL-3.0. All instance configuration and secrets live in the environment, never
   in the repository.
 
-[Unreleased]: https://github.com/PhilippRamjoue/permaculture_planner/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/PhilippRamjoue/permaculture_planner/releases/tag/v0.1.0
+[Unreleased]: https://github.com/PhilippRamjoue/maumbile_permaculture_planner/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/PhilippRamjoue/maumbile_permaculture_planner/releases/tag/v0.1.0

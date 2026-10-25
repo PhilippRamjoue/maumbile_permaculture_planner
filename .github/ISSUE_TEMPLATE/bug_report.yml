@@ -6,7 +6,7 @@ body:
     attributes:
       value: |
         Thanks for helping! **Do not include passwords, secrets, your `.env`, or personal data.**
-        Security problems: please do not file them here, see [SECURITY.md](https://github.com/PhilippRamjoue/permaculture_planner/blob/main/SECURITY.md).
+        Security problems: please do not file them here, see [SECURITY.md](https://github.com/PhilippRamjoue/maumbile_permaculture_planner/blob/main/SECURITY.md).
   - type: textarea
     id: what-happened
     attributes:
