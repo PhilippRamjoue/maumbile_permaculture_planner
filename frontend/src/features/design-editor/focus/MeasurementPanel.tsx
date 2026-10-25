@@ -1,10 +1,10 @@
 import type { DesignFeature } from "../../../entities/planning";
-import { formatArea } from "../../../shared/format";
-import type { Measurement } from "../measure";
+import { formatArea, formatLength } from "../../../shared/format";
+import { formatSize, orientedSize, type Measurement } from "../measure";
 
 /**
- * The numbers for the selected shape or for the measuring drawing in progress, with the server's
- * authoritative check for a selected shape. Shown only when there is something to measure.
+ * How big the selected shape is, plainly, or the numbers of a measuring drawing in progress; a
+ * selected shape can also be checked by the server. Shown only when there is something to say.
  */
 export function MeasurementPanel({
   measurement,
@@ -23,16 +23,27 @@ export function MeasurementPanel({
   disabled: boolean;
   onConfirm(): void;
 }) {
+  const size = selected ? orientedSize(selected.geometry) : null;
   return (
     <div className="editor-measurement" aria-label="Measurement">
-      <h2>Measurements</h2>
+      <h2>{selected ? "Size" : "Measurements"}</h2>
       {measurement ? (
         <>
-          <p>
-            {measurement.length_m.toFixed(1)} m{" "}
-            {selected?.geometry.type === "Polygon" ? "perimeter" : "length"}
-          </p>
-          <p>{formatArea(measurement.area_m2)}</p>
+          {size && (
+            <p className="editor-measurement__size" aria-label="Size">
+              {formatSize(size)}
+            </p>
+          )}
+          {measurement.area_m2 > 0 ? (
+            <>
+              <p>{formatArea(measurement.area_m2)}</p>
+              <p>
+                {formatLength(measurement.length_m)} {selected ? "all the way round" : "around"}
+              </p>
+            </>
+          ) : (
+            <p className="editor-measurement__size">{formatLength(measurement.length_m)} long</p>
+          )}
         </>
       ) : (
         <p className="muted">Click on the map to start measuring.</p>

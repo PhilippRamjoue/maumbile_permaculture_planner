@@ -564,6 +564,10 @@ h1 {
   border-top: 1px solid var(--border);
   margin-top: 0.75rem;
 }
+.editor-measurement__size {
+  font-size: 1.15rem;
+  font-weight: 600;
+}
 @media (max-width: 52rem) {
   .editor-layout {
     grid-template-columns: 1fr;

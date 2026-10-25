@@ -582,7 +582,7 @@ export function Workspace({
               });
             }}
           />
-          {(selected || tool.startsWith("measure")) && (
+          {((selected && selected.geometry.type !== "Point") || tool.startsWith("measure")) && (
             <MeasurementPanel
               measurement={measurement}
               selected={selected}
