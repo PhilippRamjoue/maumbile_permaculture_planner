@@ -60,7 +60,7 @@ jobs:
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
           labels: |
-            org.opencontainers.image.licenses=AGPL-3.0-or-later
+            org.opencontainers.image.licenses=AGPL-3.0
             org.opencontainers.image.title=Maumbile ${{ matrix.image }}
       - uses: docker/build-push-action@v6
         with:

@@ -79,6 +79,13 @@ licenses, and anyone using Maumbile commercially must obtain those licenses them
 [Terms of use](docs/TERMS.md) and the [Privacy notice](docs/PRIVACY.md) (also in the app footer),
 and [`docs/DATA_SOURCES.md`](docs/DATA_SOURCES.md).
 
+## Community and project docs
+
+[Contributing](CONTRIBUTING.md) · [Code of conduct](CODE_OF_CONDUCT.md) ·
+[Security policy](SECURITY.md) · [Changelog](CHANGELOG.md) ·
+[Releasing](docs/RELEASING.md) · [Operations and backups](docs/OPERATIONS.md) ·
+[Digital Public Good readiness](docs/DPG.md)
+
 ## Repository layout (target)
 
 ```
@@ -88,6 +95,8 @@ permaculture_planner/
 │   ├── ARCHITECTURE.md        # system design, modules, data model, geo strategy
 │   ├── PROJECT_STATUS.md      # what's built, how to run/test, known deferrals (review guide)
 │   ├── DATA_SOURCES.md        # every data source: license, attribution, rights
+│   ├── DEPLOY.md · OPERATIONS.md · RELEASING.md   # run, back up and release an instance
+│   ├── TERMS.md · PRIVACY.md · DPG.md             # terms, privacy, Digital Public Good mapping
 │   └── WORK_PACKAGES.md       # sequenced, self-contained tasks for AI agents
 ├── backend/                   # FastAPI modular monolith
 ├── frontend/                  # React + Vite SPA
