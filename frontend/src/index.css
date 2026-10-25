@@ -569,6 +569,22 @@ h1 {
   border-radius: 0.3rem;
   pointer-events: none;
 }
+.editor-footprint {
+  margin: 0.6rem 0;
+}
+.editor-footprint__field {
+  display: inline-flex;
+  flex-direction: column;
+  width: 6.5rem;
+  margin-right: 0.6rem;
+}
+.editor-footprint__field input[aria-invalid="true"] {
+  border-color: #b3261e;
+}
+.editor-footprint__error {
+  color: #b3261e;
+  font-size: 0.85rem;
+}
 .editor-measurement {
   border-top: 1px solid var(--border);
   margin-top: 0.75rem;
