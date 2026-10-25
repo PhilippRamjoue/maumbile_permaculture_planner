@@ -89,6 +89,15 @@ h1 {
   font-weight: 700;
   text-decoration: none;
 }
+.shell__tagline {
+  font-weight: 400;
+  color: var(--muted);
+}
+@media (max-width: 40rem) {
+  .shell__tagline {
+    display: none;
+  }
+}
 
 .shell__nav {
   display: flex;

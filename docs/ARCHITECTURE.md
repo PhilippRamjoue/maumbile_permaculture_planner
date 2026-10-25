@@ -1,6 +1,6 @@
 # Architecture
 
-This document is the single source of truth for how the Permaculture Planner is
+This document is the single source of truth for how Maumbile (the Permaculture Planner) is
 built. It is written to be consumed both by humans and by AI coding agents
 (Opus as architect; Sonnet/Codex implementing work packages). Keep it current:
 when a design decision changes, change it here first.

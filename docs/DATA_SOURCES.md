@@ -1,6 +1,6 @@
 # Data Sources & Rights
 
-This is the canonical record of every external data source the Permaculture Planner can use, its
+This is the canonical record of every external data source Maumbile (the Permaculture Planner) can use, its
 license, the attribution we must show, whether we may cache it, and where to verify the terms.
 
 The app surfaces this information live (map attribution control + a "Data sources & credits" page)

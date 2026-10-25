@@ -43,7 +43,7 @@ migration that has been deployed; add a new one.
    build fails with a missing context, set Base Directory to `/` and Location to `/infra/docker-compose.yml`
    — Coolify's field labels vary slightly between versions).
 4. Open the resource's **Domains** for the **frontend** service and enter the public URL **with the
-   container port**: `https://planner.example.org:80`. Coolify's Traefik proxy issues the Let's Encrypt
+   container port**: `https://maumbile.ecosoul.tech:80`. Coolify's Traefik proxy issues the Let's Encrypt
    certificate. Do **not** set a domain on `db` or `backend`.
 5. **Environment Variables** (mark both secrets as such):
 
@@ -51,7 +51,7 @@ migration that has been deployed; add a new one.
    |---|---|
    | `POSTGRES_PASSWORD` | generated, URL-safe (required) |
    | `APP_SECRET_KEY` | generated (required) |
-   | `APP_CORS_ORIGINS` | `["https://planner.example.org"]` |
+   | `APP_CORS_ORIGINS` | `["https://maumbile.ecosoul.tech"]` |
    | `APP_COOKIE_SECURE` | `true` (default; leave it) |
    | `POSTGRES_USER`, `POSTGRES_DB` | optional (`postgres`, `permaculture`) |
 
@@ -72,8 +72,8 @@ Click **Deploy**. Expect 5–10 minutes (image builds). In the deployment log yo
 ### Verify
 
 ```bash
-infra/smoke-test.sh --remote https://planner.example.org               # read-only checks
-SMOKE_AUTH=1 infra/smoke-test.sh --remote https://planner.example.org  # + registers a throwaway user
+infra/smoke-test.sh --remote https://maumbile.ecosoul.tech               # read-only checks
+SMOKE_AUTH=1 infra/smoke-test.sh --remote https://maumbile.ecosoul.tech  # + registers a throwaway user
 ```
 
 Then in a browser: register, create a site (**/sites/new**), confirm the satellite basemap and

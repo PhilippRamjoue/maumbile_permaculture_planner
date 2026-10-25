@@ -1,4 +1,6 @@
-# Permaculture Planner
+# Maumbile — design your land
+
+_Maumbile is the app's name; the repository and packages keep the working name `permaculture_planner`._
 
 A web application for planning permaculture sites visually, on real georeferenced
 aerial imagery. Define your land by its coordinates, pull in satellite imagery and
