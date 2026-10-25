@@ -1,0 +1,20 @@
+# Self-hosting without building: pull the prebuilt images published by the release workflow
+# (.github/workflows/release.yml) to GitHub Container Registry. Usage (from infra/):
+#   cp .env.example .env     # set POSTGRES_PASSWORD and APP_SECRET_KEY (both required)
+#   docker compose -f docker-compose.yml -f docker-compose.ghcr.yml up -d
+#
+# Optional variables (set in .env or the environment, never committed):
+#   MAUMBILE_VERSION      image tag to run: `latest` (default), or pin e.g. `0.1.0`
+#   MAUMBILE_IMAGE_OWNER  GHCR namespace of the images (lowercase); default is the upstream project.
+#                         Set it to your own namespace if you publish images from a fork.
+# Images are linux/amd64 (the PostGIS database image is amd64 only).
+# Update with: docker compose -f docker-compose.yml -f docker-compose.ghcr.yml pull && ... up -d
+
+services:
+  backend:
+    image: ghcr.io/${MAUMBILE_IMAGE_OWNER:-philippramjoue}/maumbile-backend:${MAUMBILE_VERSION:-latest}
+    # `build:` stays in the base file for developers; this forces a pull instead of a local build.
+    pull_policy: always
+  frontend:
+    image: ghcr.io/${MAUMBILE_IMAGE_OWNER:-philippramjoue}/maumbile-frontend:${MAUMBILE_VERSION:-latest}
+    pull_policy: always

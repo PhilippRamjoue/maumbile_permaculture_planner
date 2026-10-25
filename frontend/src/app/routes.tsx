@@ -2,6 +2,7 @@ import { Link, type RouteObject } from "react-router-dom";
 
 import { CreditsPage } from "../features/credits";
 import { SharedPlanPage } from "../features/export";
+import { PrivacyPage, TermsPage } from "../features/legal";
 import { LoginPage, RegisterPage } from "../features/auth";
 import { SitesDashboardPage } from "../features/sites-dashboard";
 import { AppLayout } from "./AppLayout";
@@ -16,6 +17,8 @@ export const routes: RouteObject[] = [
     element: <AppLayout />,
     children: [
       { path: "credits", element: <CreditsPage /> },
+      { path: "terms", element: <TermsPage /> },
+      { path: "privacy", element: <PrivacyPage /> },
       { path: "shared/:token", element: <SharedPlanPage /> },
       {
         element: <GuestOnly />,

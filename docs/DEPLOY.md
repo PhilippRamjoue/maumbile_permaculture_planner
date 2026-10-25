@@ -5,6 +5,18 @@ Lean v1: **db** (PostGIS) + **backend** (FastAPI; applies Alembic migrations, th
 no paid service or API key is needed (Esri imagery and Copernicus DEM are keyless, see
 [`DATA_SOURCES.md`](DATA_SOURCES.md)). Architecture background: [`ARCHITECTURE.md`](ARCHITECTURE.md) §10.
 
+> ## Configuration and secrets never live in this repository
+>
+> This is a public, open-source repository. **All instance configuration and every secret**
+> (`APP_SECRET_KEY`, `POSTGRES_PASSWORD`, `APP_CORS_ORIGINS`, the public domain) live in
+> **Coolify's environment variables** for the resource (or, when self-hosting by hand, in a local
+> **git-ignored `.env`** file) — never in a commit. One public repository is safe because the
+> configuration is externalized ([12-factor](https://12factor.net/config)): the Compose file only
+> references `${VAR}` placeholders, `.env` / `.env.*` are git-ignored (only `infra/.env.example`,
+> with `change-me` placeholders, is tracked), and the Docker build contexts exclude `.env*`, so a
+> local `.env` can never be baked into an image. `maumbile.ecosoul.tech` below is **only an example
+> origin** — substitute your own domain.
+
 ## What the Compose file guarantees
 
 | Concern | Behavior |
@@ -52,7 +64,7 @@ migration that has been deployed; add a new one.
    | `POSTGRES_PASSWORD` | generated, URL-safe (required) |
    | `APP_SECRET_KEY` | generated (required) |
    | `APP_CORS_ORIGINS` | `["https://maumbile.ecosoul.tech"]` |
-   | `APP_COOKIE_SECURE` | `true` (default; leave it) |
+   | `APP_COOKIE_SECURE` | leave unset (defaults to `true`) |
    | `POSTGRES_USER`, `POSTGRES_DB` | optional (`postgres`, `permaculture`) |
 
    The full list with comments is [`infra/.env.example`](../infra/.env.example). **Set
@@ -92,6 +104,8 @@ Check migrations explicitly from Coolify's **Terminal** for the backend (or `doc
 
 ## 4. Updating
 
+Tagged releases are also published as prebuilt images ([`OPERATIONS.md`](OPERATIONS.md) → *Updating*).
+
 Push to the tracked branch (enable Coolify's webhook for auto-deploy) or click **Redeploy**. Coolify
 rebuilds, recreates the containers and the backend applies any new migrations on start. Always redeploy
 the **whole** resource rather than restarting only the backend: nginx resolves `backend` once at start, so
@@ -117,7 +131,9 @@ docker exec -t <db-container> pg_dump -U postgres -d permaculture -Fc > permacul
 # restore into an empty database: pg_restore -U postgres -d permaculture --clean --if-exists < file.dump
 ```
 
-Coolify can also schedule volume/database backups; the user data lives only in the `pgdata` volume.
+The user data lives only in the `pgdata` volume. [`infra/backup.sh`](../infra/backup.sh) takes verified dumps
+(schedule it, and copy them off the server); restore steps, updating from tagged releases, monitoring and
+the rate-limit knob are in [`OPERATIONS.md`](OPERATIONS.md).
 
 ## 6. Imagery and elevation defaults
 
