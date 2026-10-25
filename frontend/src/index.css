@@ -826,6 +826,19 @@ h1 {
   color: var(--accent-contrast);
   font-weight: 650;
 }
+/* The method name over a plain one-line gloss, so a beginner always sees what the step means. */
+.focus-rail__label {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  line-height: 1.15;
+  text-align: left;
+}
+.focus-rail__plain {
+  font-size: 0.72rem;
+  font-weight: 400;
+  opacity: 0.75;
+}
 .focus-rail__num {
   display: inline-flex;
   align-items: center;

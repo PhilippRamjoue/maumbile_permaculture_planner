@@ -32,6 +32,8 @@ export interface FocusMode {
   id: FocusId;
   /** Short name on the rail. */
   label: string;
+  /** A plain-language gloss under the label, so the method term is never the only word a beginner sees. */
+  plain: string;
   /** The question this step answers, in the user's words. */
   question: string;
   /** A sentence or two of guidance shown at the top of the mode's panel. */
@@ -55,6 +57,7 @@ export const FOCUS_MODES: readonly FocusMode[] = [
   {
     id: "goals",
     label: "Goals",
+    plain: "what you want",
     question: "What do I want from this land?",
     help: "Permaculture starts with you, not the map. Say what matters most; every later step can come back to it. Optional, and you can change it any time.",
     editableTypes: [],
@@ -66,6 +69,7 @@ export const FOCUS_MODES: readonly FocusMode[] = [
   {
     id: "boundary",
     label: "Boundary",
+    plain: "your land",
     question: "Where is my land?",
     help: "See your land on the satellite image and make sure the border follows it. Drag a corner to nudge it.",
     editableTypes: [],
@@ -77,6 +81,7 @@ export const FOCUS_MODES: readonly FocusMode[] = [
   {
     id: "sectors",
     label: "Sectors & terrain",
+    plain: "sun · wind · water",
     question: "What is this site subject to?",
     help: "Mark where sun, wind, water, fire and views come from, and see how the land slopes.",
     editableTypes: ["sector"],
@@ -88,6 +93,7 @@ export const FOCUS_MODES: readonly FocusMode[] = [
   {
     id: "zones",
     label: "Zones",
+    plain: "how often you visit",
     question: "What gets visited how often?",
     help: "Sketch rough areas by how often you visit them: zone 0 is the house, zone 5 is left wild.",
     editableTypes: ["zone"],
@@ -99,6 +105,7 @@ export const FOCUS_MODES: readonly FocusMode[] = [
   {
     id: "elements",
     label: "Elements",
+    plain: "the things you place",
     question: "What goes where?",
     help: "Place the concrete things: house, beds, trees, pond, paths, fences.",
     editableTypes: ["element", "path", "annotation"],
@@ -110,6 +117,7 @@ export const FOCUS_MODES: readonly FocusMode[] = [
   {
     id: "functions",
     label: "Functions & connections",
+    plain: "needs & gives",
     question: "What does each thing need and give?",
     help: "Every element should serve several functions, and every function should be met by several elements.",
     editableTypes: ["element", "path"],
