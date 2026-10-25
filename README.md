@@ -36,6 +36,16 @@ coordinates and measurements) yet easy and pleasant to use.
 
 **Cost: zero.** No external service in the default config needs a paid plan or an API key.
 
+## Configuration and secrets
+
+**Nothing secret is stored in this repository.** All instance configuration and secrets
+(`APP_SECRET_KEY`, `POSTGRES_PASSWORD`, `APP_CORS_ORIGINS`, your domain) live in **Coolify's
+environment variables** (or a local, git-ignored `.env` file) — never in git. One public repository
+is safe because config is externalized ([12-factor](https://12factor.net/config)): Compose reads
+`${VAR}` placeholders, `.env*` is git-ignored (only [`infra/.env.example`](infra/.env.example) with
+`change-me` placeholders is tracked) and excluded from Docker builds. `maumbile.ecosoul.tech` in the
+docs is just an example origin. Details: [`docs/DEPLOY.md`](docs/DEPLOY.md).
+
 ## Repository layout (target)
 
 ```

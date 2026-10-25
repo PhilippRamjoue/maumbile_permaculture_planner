@@ -5,6 +5,18 @@ Lean v1: **db** (PostGIS) + **backend** (FastAPI; applies Alembic migrations, th
 no paid service or API key is needed (Esri imagery and Copernicus DEM are keyless, see
 [`DATA_SOURCES.md`](DATA_SOURCES.md)). Architecture background: [`ARCHITECTURE.md`](ARCHITECTURE.md) §10.
 
+> ## Configuration and secrets never live in this repository
+>
+> This is a public, open-source repository. **All instance configuration and every secret**
+> (`APP_SECRET_KEY`, `POSTGRES_PASSWORD`, `APP_CORS_ORIGINS`, the public domain) live in
+> **Coolify's environment variables** for the resource (or, when self-hosting by hand, in a local
+> **git-ignored `.env`** file) — never in a commit. One public repository is safe because the
+> configuration is externalized ([12-factor](https://12factor.net/config)): the Compose file only
+> references `${VAR}` placeholders, `.env` / `.env.*` are git-ignored (only `infra/.env.example`,
+> with `change-me` placeholders, is tracked), and the Docker build contexts exclude `.env*`, so a
+> local `.env` can never be baked into an image. `maumbile.ecosoul.tech` below is **only an example
+> origin** — substitute your own domain.
+
 ## What the Compose file guarantees
 
 | Concern | Behavior |
