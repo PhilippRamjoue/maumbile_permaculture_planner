@@ -116,6 +116,25 @@ h1 {
   padding: 1.5rem 1rem;
 }
 
+.shell__footer {
+  padding: 0.4rem 1rem;
+  font-size: 0.8rem;
+  text-align: center;
+  color: var(--muted);
+  border-top: 1px solid var(--border);
+}
+
+.legal {
+  max-width: 44rem;
+}
+.legal section {
+  margin-top: 1.25rem;
+}
+.legal h2 {
+  font-size: 1.1rem;
+  margin-bottom: 0.4rem;
+}
+
 /* ---- shared controls ---- */
 
 .card {

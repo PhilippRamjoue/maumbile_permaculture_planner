@@ -10,6 +10,13 @@ so what users see cannot drift from this table. **When you add a provider adapte
 > **Project stance:** this is a free, non-commercial, open tool for everyone — built to help people
 > design permaculture, especially in lower-income regions. We use only sources we can use at no cost
 > without a paid plan or API key in the default config, and we always display their attribution.
+>
+> **Third-party data stays under its own license.** Maumbile's code is AGPL-3.0, but the imagery and
+> elevation it displays belongs to the providers below and is *not* relicensed by this project. We
+> keep Esri World Imagery as the default for its resolution in our target regions, under the
+> free, non-commercial public-good stance. **Anyone using Maumbile or its outputs commercially is
+> responsible for obtaining the appropriate licenses from these providers** (Esri imagery in
+> particular needs its own license for commercial use). See [`TERMS.md`](TERMS.md) §5.
 
 ## Imagery
 
@@ -20,7 +27,7 @@ so what users see cannot drift from this table. **When you add a provider adapte
 
 - **Esri** is the East-Africa default for resolution; **Sentinel-2 cloudless** is the license-clean,
   keyless fallback/alternative (coarser, ~10 m) and the recommended default if the project ever
-  becomes commercial.
+  becomes commercial, or if you self-host for a commercial purpose.
 - Future (expansion): national open orthophotos (e.g. Europe) are typically open-licensed **and**
   higher-resolution; add them per region with their own attribution rows.
 

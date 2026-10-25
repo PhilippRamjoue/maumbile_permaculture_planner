@@ -71,6 +71,14 @@ is safe because config is externalized ([12-factor](https://12factor.net/config)
 `change-me` placeholders is tracked) and excluded from Docker builds. `maumbile.ecosoul.tech` in the
 docs is just an example origin. Details: [`docs/DEPLOY.md`](docs/DEPLOY.md).
 
+## Terms, privacy and licenses
+
+Maumbile is a free, non-commercial public good, provided as-is with no warranty. The code is
+[AGPL-3.0](LICENSE). Map and elevation data (Esri, Copernicus, OpenStreetMap, ...) keep their own
+licenses, and anyone using Maumbile commercially must obtain those licenses themselves. Read the
+[Terms of use](docs/TERMS.md) and the [Privacy notice](docs/PRIVACY.md) (also in the app footer),
+and [`docs/DATA_SOURCES.md`](docs/DATA_SOURCES.md).
+
 ## Repository layout (target)
 
 ```

@@ -39,6 +39,11 @@ export function AppLayout() {
       <main className="shell__main">
         <Outlet />
       </main>
+      <footer className="shell__footer" aria-label="Legal">
+        <Link to="/terms">Terms</Link>
+        <span aria-hidden="true"> · </span>
+        <Link to="/privacy">Privacy</Link>
+      </footer>
     </div>
   );
 }
