@@ -47,7 +47,10 @@ test("draws a zone and places an element across focus modes, then saves and relo
   await page.getByLabel("Feature name").fill("Main house");
   await expect(page.getByRole("heading", { name: "Elements (1)" })).toBeVisible();
 
-  await page.getByRole("button", { name: "Save design" }).click();
+  // The design autosaves, so the Save button shows only until it has saved; click it if it is still
+  // there, then confirm the saved state either way.
+  const saveButton = page.getByRole("button", { name: "Save design" });
+  if (await saveButton.count()) await saveButton.click().catch(() => {});
   await expect(page.getByText("All changes saved")).toBeVisible();
 
   const saved = (await (await page.request.get(featuresUrl)).json()).features;
@@ -125,7 +128,8 @@ test("keeps the draft after a save failure and warns before leaving", async ({ p
   await expect(page.getByRole("alert")).toContainText("Your draft is still here");
   await expect(page.getByLabel("Feature name")).toHaveValue("Mango");
 
-  await page.getByRole("button", { name: "Save design" }).click();
+  // After a failed save the button offers a retry.
+  await page.getByRole("button", { name: "Retry save" }).click();
   await expect(page.getByText("All changes saved")).toBeVisible();
 
   await page.reload();

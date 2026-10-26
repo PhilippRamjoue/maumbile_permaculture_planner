@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Site } from "../../entities/site";
+import type { Plan } from "../../entities/planning";
 import { useSite } from "../../entities/siteQueries";
 import { planningApi, planningKeys } from "./api";
 import { errorMessage as message } from "./messages";
@@ -38,11 +39,9 @@ function PlanPicker({ site }: { site: Site }) {
       {plans.isPending && <p role="status">Loading plans…</p>}
       {plans.isError && <p role="alert">{message(plans.error)}</p>}
       {plans.data && (
-        <ul>
+        <ul className="plan-list">
           {plans.data.items.map((plan) => (
-            <li key={plan.id}>
-              <Link to={`/sites/${site.id}/design/${plan.id}`}>{plan.name}</Link>
-            </li>
+            <PlanRow key={plan.id} siteId={site.id} plan={plan} />
           ))}
         </ul>
       )}
@@ -69,6 +68,88 @@ function PlanPicker({ site }: { site: Site }) {
         {create.isError && <p role="alert">{message(create.error)}</p>}
       </form>
     </section>
+  );
+}
+
+/** One plan in the list: open it, rename it in place, or delete it. */
+function PlanRow({ siteId, plan }: { siteId: string; plan: Plan }) {
+  const queryClient = useQueryClient();
+  const [editing, setEditing] = useState(false);
+  const [name, setName] = useState(plan.name);
+  const invalidate = () => queryClient.invalidateQueries({ queryKey: planningKeys.plans(siteId) });
+  const rename = useMutation({
+    mutationFn: () => planningApi.rename(plan.id, name.trim()),
+    onSuccess: () => {
+      void invalidate();
+      void queryClient.invalidateQueries({ queryKey: planningKeys.plan(plan.id) });
+      setEditing(false);
+    },
+  });
+  const remove = useMutation({
+    mutationFn: () => planningApi.remove(plan.id),
+    onSuccess: invalidate,
+  });
+  const busy = rename.isPending || remove.isPending;
+
+  if (editing) {
+    return (
+      <li className="plan-row">
+        <form
+          className="plan-row__edit"
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (name.trim()) rename.mutate();
+          }}
+        >
+          <input
+            aria-label="Plan name"
+            value={name}
+            maxLength={200}
+            autoFocus
+            onChange={(event) => setName(event.target.value)}
+          />
+          <button type="submit" className="btn" disabled={!name.trim() || busy}>
+            {rename.isPending ? "Saving…" : "Save"}
+          </button>
+          <button
+            type="button"
+            className="btn"
+            disabled={busy}
+            onClick={() => {
+              setName(plan.name);
+              setEditing(false);
+            }}
+          >
+            Cancel
+          </button>
+        </form>
+        {rename.isError && <p role="alert">{message(rename.error)}</p>}
+      </li>
+    );
+  }
+  return (
+    <li className="plan-row">
+      <Link to={`/sites/${siteId}/design/${plan.id}`} className="plan-row__name">
+        {plan.name}
+      </Link>
+      <span className="plan-row__actions">
+        <button type="button" className="btn" disabled={busy} onClick={() => setEditing(true)}>
+          Rename
+        </button>
+        <button
+          type="button"
+          className="btn"
+          disabled={busy}
+          onClick={() => {
+            if (window.confirm(`Delete the plan “${plan.name}”? This cannot be undone.`))
+              remove.mutate();
+          }}
+        >
+          {remove.isPending ? "Deleting…" : "Delete"}
+        </button>
+      </span>
+      {remove.isError && <p role="alert">{message(remove.error)}</p>}
+    </li>
   );
 }
 

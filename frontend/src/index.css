@@ -567,6 +567,39 @@ h1 {
   border: 1px solid var(--border);
   border-radius: 0.3rem;
 }
+/* Plans list: open · rename · delete per row. */
+.plan-list {
+  list-style: none;
+  padding: 0;
+  margin: 0.5rem 0;
+}
+.plan-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  padding: 0.45rem 0;
+  border-bottom: 1px solid var(--border);
+}
+.plan-row__name {
+  flex: 1;
+  min-width: 8rem;
+}
+.plan-row__actions {
+  display: flex;
+  gap: 0.4rem;
+}
+.plan-row__edit {
+  display: flex;
+  gap: 0.4rem;
+  flex: 1;
+  flex-wrap: wrap;
+}
+.plan-row__edit input {
+  flex: 1;
+  min-width: 8rem;
+  width: auto;
+}
 .editor-tools {
   display: flex;
   flex-wrap: wrap;
@@ -797,11 +830,41 @@ h1 {
 .focus-rail--simple p {
   margin: 0;
 }
-/* The small link that switches between the simple and guided editor. */
-.editor-level {
-  align-self: flex-start;
-  padding: 0;
+/* Segmented Simple / Guided switch above the editor. */
+.editor-level-switch {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.4rem;
+}
+.editor-level-switch__label {
+  font-weight: 650;
   font-size: 0.9rem;
+}
+.editor-level-switch__btn {
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  padding: 0.3rem 0.95rem;
+  cursor: pointer;
+}
+.editor-level-switch__btn:first-of-type {
+  border-radius: 999px 0 0 999px;
+}
+.editor-level-switch__btn:last-of-type {
+  border-radius: 0 999px 999px 0;
+  margin-left: -1px;
+}
+.editor-level-switch__btn[aria-pressed="true"] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-contrast);
+  font-weight: 650;
+}
+.editor-level-switch__hint {
+  font-size: 0.85rem;
 }
 .focus-rail__steps {
   display: flex;

@@ -98,6 +98,27 @@ export function useEditorMap(
     setLive(null);
   }, [tool]);
 
+  // Esc clears the measurement — including a finished line, which Terra Draw leaves on the map (it is
+  // never saved). You can then measure again, or put the tool down.
+  useEffect(() => {
+    if (!map) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== "Escape" || !options.current.tool.startsWith("measure")) return;
+      const draw = drawRef.current;
+      if (!draw) return;
+      syncing.current = true;
+      try {
+        draw.clear();
+        draw.setMode(options.current.tool === "measure-area" ? "polygon" : "linestring");
+      } finally {
+        syncing.current = false;
+      }
+      setLive(null);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [map]);
+
   useEffect(() => {
     if (!map) return;
     const draw = new TerraDraw({

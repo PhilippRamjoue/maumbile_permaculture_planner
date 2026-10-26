@@ -71,6 +71,7 @@ test("a new plan opens on Goals; goals autosave, survive a reload and are recall
   await expect(step(page, "Zones")).toHaveAttribute("aria-current", "step");
   await expect(page.getByRole("button", { name: "Draw zone", exact: true })).toBeVisible();
   await expect(page.getByText(/Your goals:/)).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "Save design" })).toBeDisabled();
+  // Nothing drawn yet, so there is nothing to save (the Save button only appears when there is).
+  await expect(page.getByRole("button", { name: "Save design" })).toHaveCount(0);
   expect((await (await page.request.get(`/api/v1/plans/${otherId}`)).json()).goals).toBeNull();
 });
