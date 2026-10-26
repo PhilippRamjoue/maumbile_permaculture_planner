@@ -4,6 +4,9 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
 COPY . .
+# The release workflow passes the tag version; other builds fall back to package.json (see vite.config).
+ARG APP_VERSION=
+ENV VITE_APP_VERSION=$APP_VERSION
 RUN npm run build
 
 FROM nginx:1.27-alpine

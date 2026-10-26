@@ -28,7 +28,7 @@ import { ZoomToBoundaryButton } from "../map/ZoomToBoundaryButton";
 import { ImageryAttribution } from "../map/ImageryAttribution";
 import { useImageryMeta } from "../map/imageryMeta";
 import { persistDesign, planningApi, planningKeys } from "./api";
-import type { SectorKind } from "./sectors";
+import { isParametricSector, type SectorKind } from "./sectors";
 import { createEditorStore, signature } from "./store";
 import { formatArea, formatLength } from "../../shared/format";
 import { measureGeometry, type Measurement } from "./measure";
@@ -336,6 +336,20 @@ export function Workspace({
       }
     };
     const key = (event: KeyboardEvent) => {
+      const typing =
+        event.target instanceof HTMLElement &&
+        (event.target.isContentEditable || !!event.target.closest("input, textarea, select"));
+      // Delete / Backspace removes the selected feature (not while typing; the border has its own
+      // corner controls, so nothing is editable to delete in the boundary step).
+      if (!typing && (event.key === "Delete" || event.key === "Backspace")) {
+        const id = store.getState().selectedId;
+        const feature = store.getState().document.features.find((f) => f.id === id);
+        if (id && feature && isEditable(focus, feature) && !save.isPending) {
+          event.preventDefault();
+          store.getState().remove(id);
+        }
+        return;
+      }
       if (!(event.ctrlKey || event.metaKey)) return;
       if (event.key.toLowerCase() === "s") {
         event.preventDefault();
@@ -469,6 +483,15 @@ export function Workspace({
       ? `Place another ${paletteName.toLowerCase()}`
       : `Draw another ${placed?.tool ?? "feature"}`;
   const live = drawing.live;
+  // Once a feature is picked, the hint explains how to edit and remove it (right-click a point to
+  // drop it, Delete to remove the whole shape) — a wedge is reshaped from the panel instead.
+  const selectHint = selected
+    ? selected.geometry.type === "Point"
+      ? "Drag to move it · press Delete to remove it"
+      : isParametricSector(selected)
+        ? "Reshape it from the panel · press Delete to remove it"
+        : "Drag a point to move it · right-click a point to remove it · Delete removes the whole shape"
+    : HINTS[focus];
   const hint = tool.startsWith("measure")
     ? live && live.length_m > 0
       ? tool === "measure-area"
@@ -476,7 +499,7 @@ export function Workspace({
         : `${formatLength(live.length_m)} — not saved`
       : "Click points on the map to measure — nothing is saved"
     : tool === "select"
-      ? HINTS[focus]
+      ? selectHint
       : "Draw on the map to add a feature";
 
   return (
