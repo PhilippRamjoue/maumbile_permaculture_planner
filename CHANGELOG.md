@@ -6,6 +6,26 @@ All notable changes to Maumbile are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.1.4] - 2026-10-26
+
+More fixes from online testing.
+
+### Added
+
+- Plans can be **renamed** and **deleted** from the plans list.
+- An obvious segmented **Simple / Guided** switch above the editor (replacing the faint text link).
+
+### Changed
+
+- The **Save design** button is no longer permanently greyed out: the design autosaves, so the
+  button appears only when there is something to save or a failed save to retry — otherwise the
+  status line confirms everything is saved.
+
+### Fixed
+
+- Measuring: **Esc** now clears the measurement, including a finished line (which the draw engine
+  leaves on the map and never saves).
+
 ## [0.1.3] - 2026-10-26
 
 Fixes from online testing.
@@ -77,7 +97,8 @@ First public release.
 - Released under AGPL-3.0. All instance configuration and secrets live in the environment, never
   in the repository.
 
-[Unreleased]: https://github.com/PhilippRamjoue/maumbile_permaculture_planner/compare/v0.1.3...HEAD
+[Unreleased]: https://github.com/PhilippRamjoue/maumbile_permaculture_planner/compare/v0.1.4...HEAD
+[0.1.4]: https://github.com/PhilippRamjoue/maumbile_permaculture_planner/compare/v0.1.3...v0.1.4
 [0.1.3]: https://github.com/PhilippRamjoue/maumbile_permaculture_planner/compare/v0.1.2...v0.1.3
 [0.1.2]: https://github.com/PhilippRamjoue/maumbile_permaculture_planner/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/PhilippRamjoue/maumbile_permaculture_planner/compare/v0.1.0...v0.1.1
