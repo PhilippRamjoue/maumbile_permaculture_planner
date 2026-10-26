@@ -57,6 +57,7 @@ test("the map's Measure control measures a distance live, and the grid toggles w
     "false",
   );
 
-  // Measuring never becomes a feature: the design is still unchanged.
-  await expect(page.getByRole("button", { name: "Save design" })).toBeDisabled();
+  // Measuring never becomes a feature: the design is still unchanged, so there is nothing to save
+  // (the Save button only appears when there is).
+  await expect(page.getByRole("button", { name: "Save design" })).toHaveCount(0);
 });

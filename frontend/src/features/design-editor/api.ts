@@ -25,6 +25,9 @@ export const planningApi = {
   get: (id: string) => apiFetch<PlanDetail>(`/plans/${id}`),
   updateGoals: (id: string, goals: PlanGoals) =>
     apiFetch<Plan>(`/plans/${id}`, { method: "PATCH", body: { goals } }),
+  rename: (id: string, name: string) =>
+    apiFetch<Plan>(`/plans/${id}`, { method: "PATCH", body: { name } }),
+  remove: (id: string) => apiFetch<void>(`/plans/${id}`, { method: "DELETE" }),
   features: (id: string) => apiFetch<FeatureCollection>(`/plans/${id}/features`),
   types: () => apiFetch<ElementType[]>("/element-types"),
   save: (id: string, features: DesignFeature[], deleted_ids: string[]) =>

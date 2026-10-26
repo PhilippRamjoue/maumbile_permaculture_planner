@@ -495,8 +495,8 @@ export function Workspace({
   const hint = tool.startsWith("measure")
     ? live && live.length_m > 0
       ? tool === "measure-area"
-        ? `${formatArea(live.area_m2)} · ${formatLength(live.length_m)} around — not saved`
-        : `${formatLength(live.length_m)} — not saved`
+        ? `${formatArea(live.area_m2)} · ${formatLength(live.length_m)} around — not saved · Esc to clear`
+        : `${formatLength(live.length_m)} — not saved · Esc to clear`
       : "Click points on the map to measure — nothing is saved"
     : tool === "select"
       ? selectHint
@@ -509,44 +509,55 @@ export function Workspace({
         <h1>{plan.name}</h1>
         <span>{site.name}</span>
         <ExportMenu planId={plan.id} unsaved={dirty} />
-        <button
-          className="btn btn--primary"
-          onClick={() => {
-            setTool("select");
-            saveRef.current();
-          }}
-          disabled={
-            save.isPending ||
-            (!dirty && !(boundaryDirty && boundaryValid) && !goals.dirty) ||
-            saveBoundary.isPending
-          }
-        >
-          {save.isPending ? "Saving…" : "Save design"}
-        </button>
+        {/* The design autosaves, so a Save button appears only when there is actually something to
+            save (briefly) or a failed save to retry — otherwise the status says it is all saved. */}
+        {(saveState === "unsaved" || saveState === "failed") && (
+          <button
+            className="btn btn--primary"
+            onClick={() => {
+              setTool("select");
+              saveRef.current();
+            }}
+          >
+            {saveState === "failed" ? "Retry save" : "Save design"}
+          </button>
+        )}
         <SaveStatus state={saveState} plansPath={`/sites/${site.id}/design`} />
       </header>
+      <div className="editor-level-switch" role="group" aria-label="How much detail">
+        <span className="editor-level-switch__label">Mode</span>
+        <button
+          type="button"
+          className="editor-level-switch__btn"
+          aria-pressed={level === "simple"}
+          onClick={showSimple}
+        >
+          Simple
+        </button>
+        <button
+          type="button"
+          className="editor-level-switch__btn"
+          aria-pressed={level === "guided"}
+          onClick={showGuided}
+        >
+          Guided
+        </button>
+        <span className="editor-level-switch__hint muted">
+          {level === "simple" ? "just place things on the map" : "goals, sectors, zones, functions"}
+        </span>
+      </div>
       {level === "guided" ? (
-        <>
-          <FocusRail
-            current={focus}
-            progress={progress}
-            warnings={{ boundary: boundaryDirty ? "The border has unsaved changes" : undefined }}
-            context={{ goals: goals.goals, features }}
-            onChange={go}
-          />
-          <button type="button" className="btn btn--link editor-level" onClick={showSimple}>
-            Simple view — just place things on the map
-          </button>
-        </>
+        <FocusRail
+          current={focus}
+          progress={progress}
+          warnings={{ boundary: boundaryDirty ? "The border has unsaved changes" : undefined }}
+          context={{ goals: goals.goals, features }}
+          onChange={go}
+        />
       ) : (
-        <nav className="focus-rail focus-rail--simple" aria-label="Design focus">
-          <p className="muted">
-            Simple design — place the things you want on your map: house, water, trees, beds, paths.
-          </p>
-          <button type="button" className="btn btn--link editor-level" onClick={showGuided}>
-            Switch to guided design — goals, sectors, zones, functions →
-          </button>
-        </nav>
+        <p className="focus-rail focus-rail--simple muted" aria-label="Design focus">
+          Place the things you want on your map — house, water, trees, beds, paths.
+        </p>
       )}
       {save.isError && (
         <p role="alert">
