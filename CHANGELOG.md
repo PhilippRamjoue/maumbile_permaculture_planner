@@ -6,6 +6,22 @@ All notable changes to Maumbile are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.1.3] - 2026-10-26
+
+Fixes from online testing.
+
+### Added
+
+- The footer shows the running app version (next to Terms · Privacy), stamped from the release tag.
+- Press **Delete** (or Backspace) to remove the selected feature; **right-click a point** to delete
+  that vertex. Once something is selected, the map hint explains both.
+
+### Fixed
+
+- Measuring a distance no longer blanks out after the second click. Terra Draw emits a helper point
+  carrying the line's mode once a line has two points; the live reading now matches on geometry type,
+  so the distance stays visible as you keep clicking.
+
 ## [0.1.2] - 2026-10-25
 
 A simpler, less-jargon design editor, from a hands-on beginner walkthrough.
@@ -61,7 +77,8 @@ First public release.
 - Released under AGPL-3.0. All instance configuration and secrets live in the environment, never
   in the repository.
 
-[Unreleased]: https://github.com/PhilippRamjoue/maumbile_permaculture_planner/compare/v0.1.2...HEAD
+[Unreleased]: https://github.com/PhilippRamjoue/maumbile_permaculture_planner/compare/v0.1.3...HEAD
+[0.1.3]: https://github.com/PhilippRamjoue/maumbile_permaculture_planner/compare/v0.1.2...v0.1.3
 [0.1.2]: https://github.com/PhilippRamjoue/maumbile_permaculture_planner/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/PhilippRamjoue/maumbile_permaculture_planner/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/PhilippRamjoue/maumbile_permaculture_planner/releases/tag/v0.1.0
