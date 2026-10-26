@@ -48,6 +48,10 @@ export function AppLayout() {
         <Link to="/terms">Terms</Link>
         <span aria-hidden="true"> · </span>
         <Link to="/privacy">Privacy</Link>
+        <span aria-hidden="true"> · </span>
+        <span className="shell__version" title="App version">
+          v{__APP_VERSION__}
+        </span>
       </footer>
     </div>
   );

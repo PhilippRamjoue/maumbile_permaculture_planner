@@ -66,6 +66,9 @@ jobs:
         with:
           context: ${{ matrix.context }}
           push: true
+          # The frontend Dockerfile stamps this into the SPA (footer); the backend ignores it.
+          build-args: |
+            APP_VERSION=${{ needs.check.outputs.version }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha,scope=${{ matrix.image }}

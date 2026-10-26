@@ -97,19 +97,21 @@ describe("liveMeasureGeometry", () => {
       [LNG + 10 / M_LNG, LAT],
     ],
   };
+  // The real trap: Terra Draw's closing/snapping indicator is a *Point* that carries the line's own
+  // mode, "linestring". Matching the mode would pick it (zero length) and blank the measurement.
   const helperPoint = {
-    properties: { mode: "point" },
+    properties: { mode: "linestring" },
     geometry: { type: "Point", coordinates: [LNG, LAT] } as DesignGeometry,
   };
   const lineFeature = { properties: { mode: "linestring" }, geometry: line };
 
-  it("keeps the line being measured even when a snapping-point helper is drawn last", () => {
-    // After a click, the trailing feature can be the snapping point; the distance must not vanish.
+  it("keeps the line even when a helper point carrying mode 'linestring' is drawn last", () => {
     expect(liveMeasureGeometry([lineFeature, helperPoint], "linestring")).toBe(line);
   });
 
-  it("returns null while measuring when no feature of the wanted mode exists yet", () => {
+  it("returns null while measuring when no geometry of the wanted type exists yet", () => {
     expect(liveMeasureGeometry([helperPoint], "linestring")).toBeNull();
+    expect(liveMeasureGeometry([lineFeature], "polygon")).toBeNull();
     expect(liveMeasureGeometry([], "polygon")).toBeNull();
   });
 

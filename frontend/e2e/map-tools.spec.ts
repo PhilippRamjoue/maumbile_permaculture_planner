@@ -35,6 +35,10 @@ test("the map's Measure control measures a distance live, and the grid toggles w
   await page.mouse.click(at(0.4, 0.5).x, at(0.4, 0.5).y);
   await page.mouse.move(at(0.6, 0.5).x, at(0.6, 0.5).y, { steps: 5 });
   await expect(page.locator(".editor-map-hint")).toHaveText(/\d[\d.,]* (m|km) — not saved/);
+  // Clicking the second point must keep the distance visible — Terra Draw adds a helper point
+  // (carrying the line's mode) that previously blanked the reading.
+  await page.mouse.click(at(0.6, 0.5).x, at(0.6, 0.5).y);
+  await expect(page.locator(".editor-map-hint")).toHaveText(/\d[\d.,]* (m|km) — not saved/);
 
   // The grid is off by default; switching it on names its spacing.
   const grid = page.getByRole("button", { name: /^Grid/ });
