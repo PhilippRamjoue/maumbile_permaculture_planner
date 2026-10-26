@@ -65,6 +65,12 @@ test("draws a zone and places an element across focus modes, then saves and relo
   await expect(page.getByRole("button", { name: "Kitchen zone" })).toBeVisible();
   await step(page, "Elements").click();
   await expect(page.getByRole("button", { name: "Main house", exact: true })).toBeVisible();
+
+  // A selected feature is removed with the Delete key.
+  await page.getByRole("button", { name: "Main house", exact: true }).click();
+  await page.keyboard.press("Delete");
+  await expect(page.getByRole("button", { name: "Main house", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Elements (0)" })).toBeVisible();
 });
 
 test("keeps the draft after a save failure and warns before leaving", async ({ page }) => {

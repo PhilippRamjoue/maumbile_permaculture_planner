@@ -22,15 +22,19 @@ export function liveMeasureGeometry(
   snapshot: readonly { properties?: { mode?: unknown }; geometry: DesignGeometry }[],
   wantedMode: "linestring" | "polygon" | null,
 ): DesignGeometry | null {
-  const drawable = snapshot.filter((f) =>
-    ["point", "linestring", "polygon", "rectangle"].includes(String(f.properties?.mode)),
-  );
   if (wantedMode) {
-    for (let i = drawable.length - 1; i >= 0; i--) {
-      if (String(drawable[i].properties?.mode) === wantedMode) return drawable[i].geometry;
+    // Match on the geometry type, not the `mode` property: while a line is being drawn Terra Draw
+    // also emits a helper *point* carrying mode "linestring" (the closing / snapping indicator). It
+    // measures as zero length, so matching `mode` would blank the distance the moment a point lands.
+    const geomType = wantedMode === "polygon" ? "Polygon" : "LineString";
+    for (let i = snapshot.length - 1; i >= 0; i--) {
+      if (snapshot[i].geometry?.type === geomType) return snapshot[i].geometry;
     }
     return null;
   }
+  const drawable = snapshot.filter((f) =>
+    ["point", "linestring", "polygon", "rectangle"].includes(String(f.properties?.mode)),
+  );
   return drawable.at(-1)?.geometry ?? null;
 }
 export function measureGeometry(geometry: DesignGeometry): Measurement {
