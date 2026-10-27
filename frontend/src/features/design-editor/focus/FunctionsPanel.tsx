@@ -1,7 +1,7 @@
 import { useState } from "react";
 
 import type { DesignFeature, ElementType } from "../../../entities/planning";
-import { FeatureList, type PanelProps } from "./common";
+import { BackToAdding, FeatureList, type PanelProps } from "./common";
 import {
   FUNCTION_PRESETS,
   connectionsOf,
@@ -205,7 +205,26 @@ export function FunctionsPanel({
   const fillable = elements.filter((e) => withTypicalFunctions(e, types) !== e);
   const typeName = (e: DesignFeature) => typeOfElement(e, types)?.name ?? "element";
   const selectedFillable = selected && withTypicalFunctions(selected, types) !== selected;
-  return (
+  return selected ? (
+    <>
+      <BackToAdding onBack={() => state.select(null)} />
+      <fieldset disabled={disabled} className="editor-properties">
+        <legend>{name}</legend>
+        {selectedFillable && selected && (
+          <button
+            type="button"
+            className="btn"
+            onClick={() => state.upsert(withTypicalFunctions(selected, types))}
+          >
+            Use the typical needs &amp; gifts of a {typeName(selected).toLowerCase()}
+          </button>
+        )}
+        <FunctionPicker element={selected} kind="needs" onChange={state.upsert} />
+        <FunctionPicker element={selected} kind="yields" onChange={state.upsert} />
+        <Links element={selected} features={elements} onPick={pick} />
+      </fieldset>
+    </>
+  ) : (
     <>
       <p className="muted">
         Say what each element <strong>gives</strong> (water, shade, food…) and what it{" "}
@@ -230,28 +249,7 @@ export function FunctionsPanel({
         onPick={pick}
         empty="No elements yet. Place some in the Elements step first."
       />
-      {selected ? (
-        <fieldset disabled={disabled} className="editor-properties">
-          <legend>{name}</legend>
-          {selectedFillable && selected && (
-            <button
-              type="button"
-              className="btn"
-              onClick={() => state.upsert(withTypicalFunctions(selected, types))}
-            >
-              Use the typical needs &amp; gifts of a {typeName(selected).toLowerCase()}
-            </button>
-          )}
-          <FunctionPicker element={selected} kind="needs" onChange={state.upsert} />
-          <FunctionPicker element={selected} kind="yields" onChange={state.upsert} />
-          <Links element={selected} features={elements} onPick={pick} />
-          <button type="button" className="btn" onClick={() => state.select(null)}>
-            Clear selection
-          </button>
-        </fieldset>
-      ) : (
-        elements.length > 0 && <p className="muted">Pick an element, on the map or above.</p>
-      )}
+      {elements.length > 0 && <p className="muted">Pick an element, on the map or above.</p>}
       <CheckReport features={elements} onPick={pick} />
     </>
   );

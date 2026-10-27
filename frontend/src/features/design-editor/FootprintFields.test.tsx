@@ -131,7 +131,6 @@ describe("FeatureProperties", () => {
         layers={[]}
         onChange={() => undefined}
         onDelete={() => undefined}
-        onClear={() => undefined}
         onRotate={() => undefined}
       />,
     );

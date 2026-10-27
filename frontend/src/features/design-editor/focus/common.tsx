@@ -18,6 +18,19 @@ export interface PanelProps {
   onRotate(angle: number): void;
 }
 
+/**
+ * The editor panel works in two modes so adding, browsing and editing never mix: with nothing
+ * selected it shows the palette/tools and the list of what is placed; select one and it shows just
+ * that item, with this control to go back to adding.
+ */
+export function BackToAdding({ onBack }: { onBack(): void }) {
+  return (
+    <button type="button" className="btn editor-back" onClick={onBack}>
+      ← Back to adding
+    </button>
+  );
+}
+
 export function ToolButton({
   tool,
   current,

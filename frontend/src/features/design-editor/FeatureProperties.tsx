@@ -13,14 +13,12 @@ export function FeatureProperties({
   layers,
   onChange,
   onDelete,
-  onClear,
   onRotate,
 }: {
   selected: DesignFeature | undefined;
   layers: PlanLayer[];
   onChange(feature: DesignFeature): void;
   onDelete(id: string): void;
-  onClear(): void;
   onRotate(angle: number): void;
 }) {
   if (!selected) return null;
@@ -177,9 +175,6 @@ export function FeatureProperties({
       )}
       <button className="btn" onClick={() => onDelete(selected.id)}>
         Delete feature
-      </button>
-      <button className="btn" onClick={() => onClear()}>
-        Clear selection
       </button>
     </div>
   );

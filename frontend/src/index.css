@@ -605,6 +605,10 @@ h1 {
   flex-wrap: wrap;
   gap: 0.3rem;
 }
+/* "Back to adding": returns the panel from editing one item to the palette + list. */
+.editor-back {
+  margin-bottom: 0.5rem;
+}
 .editor-sidebar .btn[aria-pressed="true"] {
   background: color-mix(in srgb, var(--accent) 14%, var(--surface));
   color: var(--text);
