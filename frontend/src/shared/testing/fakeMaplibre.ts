@@ -238,4 +238,5 @@ export const fakeMaplibreModule = {
   NavigationControl: FakeControl,
   ScaleControl: FakeControl,
   setWorkerUrl: () => {},
+  addProtocol: () => {},
 };

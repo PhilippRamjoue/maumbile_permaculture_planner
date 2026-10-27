@@ -71,3 +71,15 @@ def test_rate_limiter_sliding_window() -> None:
     assert limiter.hit("other") is None  # keys are independent
     now[0] = 11.0
     assert limiter.hit("k") is None  # window slid
+
+
+def test_rate_limiter_prunes_inactive_keys_and_bounds_cardinality() -> None:
+    now = [0.0]
+    limiter = RateLimiter(max_attempts=2, window_seconds=10, clock=lambda: now[0])
+    limiter._max_keys = 2
+    assert limiter.hit("first") is None
+    assert limiter.hit("second") is None
+    assert limiter.hit("new-key") is not None
+    now[0] = 11.0
+    assert limiter.hit("new-key") is None
+    assert set(limiter._hits) == {"new-key"}

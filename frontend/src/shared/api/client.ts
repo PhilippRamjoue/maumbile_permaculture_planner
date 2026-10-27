@@ -68,9 +68,19 @@ async function send(path: string, options: RequestOptions): Promise<Response> {
 // Concurrent 401s share one refresh round-trip.
 let refreshInFlight: Promise<boolean> | null = null;
 
-function refreshSession(): Promise<boolean> {
-  refreshInFlight ??= send("/auth/refresh", { method: "POST" })
-    .then((res) => res.ok)
+export function refreshSession(): Promise<boolean> {
+  const renew = () => send("/auth/refresh", { method: "POST" }).then((res) => res.ok);
+  const coordinated = async () => {
+    if (!navigator.locks) return renew();
+    return navigator.locks.request("maumbile-session-refresh", async () => {
+      // Another tab may have rotated the shared cookies while this request waited for the lock.
+      const current = await send("/auth/me", {});
+      if (current.ok) return true;
+      if (current.status !== 401) return false;
+      return renew();
+    });
+  };
+  refreshInFlight ??= coordinated()
     .catch(() => false)
     .finally(() => {
       refreshInFlight = null;
@@ -98,6 +108,15 @@ async function request(path: string, options: RequestOptions): Promise<Response>
 
   if (!res.ok) throw await toError(res);
   return res;
+}
+
+/** Binary map resources use the same renewal/replay path as JSON requests. */
+export async function apiResource(path: string, signal?: AbortSignal) {
+  const response = await request(path, { signal });
+  return {
+    data: await response.arrayBuffer(),
+    cacheControl: response.headers.get("Cache-Control") ?? undefined,
+  };
 }
 
 /** Typed JSON request against `/api/v1`. Throws {@link ApiError} on non-2xx. */

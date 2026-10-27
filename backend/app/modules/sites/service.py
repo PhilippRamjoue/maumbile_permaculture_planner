@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import uuid
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Any
 
 from geoalchemy2.shape import from_shape
@@ -32,6 +33,10 @@ class SiteNotFoundError(SiteError):
 
 class SiteForbiddenError(SiteError):
     """The caller does not own the site."""
+
+
+class SiteConflictError(SiteError):
+    pass
 
 
 @dataclass(frozen=True)
@@ -129,8 +134,19 @@ class SiteService:
         name: str | None = None,
         country_code: str | None = None,
         coordinates: list[tuple[float, float]] | None = None,
+        expected_updated_at: datetime | None = None,
     ) -> Site:
         site = await self.get(site_id, owner_id)
+        if expected_updated_at is not None:
+            current = await self._repo.get(site_id, lock=True)
+            if current is None:
+                raise SiteNotFoundError(str(site_id))
+            site = current
+            if site.updated_at != expected_updated_at:
+                raise SiteConflictError(
+                    "This site changed in another tab or plan. "
+                    "Keep a copy of your draft, then reload the saved site."
+                )
         changes: dict[str, Any] = {}
         if name is not None:
             changes["name"] = name

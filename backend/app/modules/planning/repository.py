@@ -11,7 +11,7 @@ from typing import Any
 from geoalchemy2 import Geography
 from geoalchemy2.shape import from_shape
 from shapely.geometry.base import BaseGeometry
-from sqlalchemy import ColumnElement, case, cast, delete, func, select
+from sqlalchemy import ColumnElement, case, cast, delete, func, select, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -30,6 +30,10 @@ class MeasuredFeature:
 
 class FeatureWriteConflict(Exception):
     """A batch collided with an id owned by another plan; the entire write was rolled back."""
+
+
+class StaleDesign(Exception):
+    """The caller's revision no longer matches the stored design."""
 
 
 def _measures(geometry: Any) -> tuple[ColumnElement[float], ColumnElement[float]]:
@@ -61,10 +65,47 @@ class PlanningRepository:
         return set((await self._session.execute(stmt)).scalars())
 
     # ── plans ──────────────────────────────────────────────────────────────────────────────
-    async def get_plan(self, plan_id: uuid.UUID) -> Plan | None:
+    async def get_plan(self, plan_id: uuid.UUID, *, lock: bool = False) -> Plan | None:
         """Fetch a non-deleted plan."""
         stmt = select(Plan).where(Plan.id == plan_id, Plan.deleted_at.is_(None))
-        return (await self._session.execute(stmt)).scalar_one_or_none()
+        if lock:
+            stmt = stmt.with_for_update()
+        return (
+            await self._session.execute(stmt.execution_options(populate_existing=True))
+        ).scalar_one_or_none()
+
+    async def advance_plan(
+        self, plan_id: uuid.UUID, expected: int | None = None, *, legacy: bool = True
+    ) -> None:
+        stmt = update(Plan).where(Plan.id == plan_id, Plan.deleted_at.is_(None))
+        if expected is not None:
+            stmt = stmt.where(Plan.revision == expected)
+        elif legacy:
+            stmt = stmt.where(Plan.revision_required.is_(False))
+        values: dict[str, Any] = {"revision": Plan.revision + 1, "updated_at": func.now()}
+        if expected is not None:
+            values["revision_required"] = True
+        result = await self._session.execute(stmt.values(**values).returning(Plan.id))
+        if result.scalar_one_or_none() is None:
+            raise StaleDesign
+
+    async def commit(self) -> None:
+        await self._session.commit()
+
+    async def write_layers(self, plan_id: uuid.UUID, layers: Sequence[dict[str, Any]]) -> None:
+        for values in layers:
+            layer_id = values["id"]
+            changes = {k: v for k, v in values.items() if k != "id" and v is not None}
+            if changes:
+                await self._session.execute(
+                    update(Layer)
+                    .where(Layer.id == layer_id, Layer.plan_id == plan_id)
+                    .values(**changes)
+                )
+
+    async def write_goals(self, plan: Plan, goals: dict[str, Any] | None) -> None:
+        plan.goals = goals
+        await self._session.flush()
 
     async def list_plans(
         self, site_id: uuid.UUID, limit: int, offset: int
@@ -94,6 +135,7 @@ class PlanningRepository:
         return plan
 
     async def update_plan(self, plan: Plan, **values: Any) -> Plan:
+        await self.advance_plan(plan.id, legacy="goals" in values)
         for key, value in values.items():
             setattr(plan, key, value)
         await self._session.commit()
@@ -101,6 +143,7 @@ class PlanningRepository:
         return plan
 
     async def soft_delete_plan(self, plan: Plan) -> None:
+        await self.advance_plan(plan.id, legacy=False)
         plan.deleted_at = datetime.now(UTC)
         await self._session.commit()
 
@@ -121,12 +164,14 @@ class PlanningRepository:
         return int((await self._session.execute(stmt)).scalar_one())
 
     async def add_layer(self, layer: Layer) -> Layer:
+        await self.advance_plan(layer.plan_id)
         self._session.add(layer)
         await self._session.commit()
         await self._session.refresh(layer)
         return layer
 
     async def update_layer(self, layer: Layer, **values: Any) -> Layer:
+        await self.advance_plan(layer.plan_id)
         for key, value in values.items():
             setattr(layer, key, value)
         await self._session.commit()
@@ -135,6 +180,7 @@ class PlanningRepository:
 
     async def delete_layer(self, layer: Layer) -> None:
         """Delete a layer; its features go with it (``ON DELETE CASCADE``)."""
+        await self.advance_plan(layer.plan_id)
         await self._session.delete(layer)
         await self._session.commit()
 
@@ -192,6 +238,8 @@ class PlanningRepository:
         plan_id: uuid.UUID,
         rows: Sequence[dict[str, Any]],
         deleted_ids: Sequence[uuid.UUID] = (),
+        *,
+        commit: bool = True,
     ) -> None:
         """Insert-or-update features keyed by id in one statement/transaction.
 
@@ -199,11 +247,14 @@ class PlanningRepository:
         (a Shapely geometry, stored as WGS84). The ``WHERE plan_id`` guard makes it impossible
         to overwrite another plan's feature even under a race with the pre-check.
         """
+        if commit:
+            await self.advance_plan(plan_id)
         if not rows:
             if deleted_ids:
                 await self._session.execute(
                     delete(Feature).where(Feature.plan_id == plan_id, Feature.id.in_(deleted_ids))
                 )
+            if commit:
                 await self._session.commit()
             return
         values = [
@@ -239,9 +290,11 @@ class PlanningRepository:
             await self._session.execute(
                 delete(Feature).where(Feature.plan_id == plan_id, Feature.id.in_(deleted_ids))
             )
-        await self._session.commit()
+        if commit:
+            await self._session.commit()
 
     async def update_feature(self, feature: Feature, **values: Any) -> None:
+        await self.advance_plan(feature.plan_id)
         if "shape" in values:
             feature.geometry = _to_wkb(values.pop("shape"))
         for key, value in values.items():
@@ -249,6 +302,7 @@ class PlanningRepository:
         await self._session.commit()
 
     async def delete_feature(self, feature: Feature) -> None:
+        await self.advance_plan(feature.plan_id)
         await self._session.execute(delete(Feature).where(Feature.id == feature.id))
         await self._session.commit()
 

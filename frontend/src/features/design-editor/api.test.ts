@@ -1,47 +1,63 @@
 import { afterEach, expect, it, vi } from "vitest";
-import { persistDesign, planningApi } from "./api";
-import { createEditorStore, savePayload } from "./store";
-import type { SavedFeature, PlanLayer } from "../../entities/planning";
+import { createDesignWriter, persistDesign, planningApi } from "./api";
+import type { DesignRead, PlanLayer } from "../../entities/planning";
 
-afterEach(() => vi.restoreAllMocks());
-
-it("tracks successful feature writes across a layer failure so retrying cannot leave ghost features", async () => {
-  const layer: PlanLayer = {
-    id: "layer",
-    plan_id: "plan",
-    name: "Elements",
-    visible: true,
-    sort_order: 0,
-    created_at: "",
-  };
-  const store = createEditorStore({ features: [], layers: [layer] });
-  const feature: SavedFeature = {
-    type: "Feature",
-    id: "new",
-    layer_id: layer.id,
-    plan_id: "plan",
-    feature_type: "element",
-    element_type_id: null,
-    geometry: { type: "Point", coordinates: [36.8, -1.3] },
-    properties: {},
-    area_m2: 0,
-    length_m: 0,
+const layer: PlanLayer = {
+  id: "layer",
+  plan_id: "plan",
+  name: "Elements",
+  visible: true,
+  sort_order: 0,
+  created_at: "",
+};
+const response = (revision: number): DesignRead => ({
+  plan: {
+    id: "plan",
+    site_id: "site",
+    name: "Plan",
+    description: null,
+    goals: null,
+    revision,
     created_at: "",
     updated_at: "",
-  };
-  store.getState().upsert(feature);
-  vi.spyOn(planningApi, "save").mockResolvedValue({
-    type: "FeatureCollection",
-    features: [feature],
-  });
-  vi.spyOn(planningApi, "layer").mockRejectedValue(new Error("Layer unavailable"));
-  await expect(
-    persistDesign("plan", store.getState().document, [], (persistedIds) =>
-      store.setState({ persistedIds }),
-    ),
-  ).rejects.toThrow("Layer unavailable");
-  store.getState().remove("new");
-  expect(savePayload(store.getState().document, store.getState().persistedIds).deletedIds).toEqual([
-    "new",
+    layers: [layer],
+  },
+  features: { type: "FeatureCollection", features: [] },
+});
+afterEach(() => vi.restoreAllMocks());
+
+it("serializes goal and document writes with the latest acknowledged revision", async () => {
+  const write = vi
+    .spyOn(planningApi, "writeDesign")
+    .mockResolvedValueOnce(response(5))
+    .mockResolvedValueOnce(response(6));
+  const writer = createDesignWriter("plan", 4);
+  await Promise.all([
+    writer.write({ goals: { priorities: [], vision: "Water" } }),
+    writer.write({ features: [] }),
   ]);
+  expect(write.mock.calls.map((call) => call[1].expected_revision)).toEqual([4, 5]);
+});
+
+it("keeps the original revision after a failed atomic write", async () => {
+  const write = vi
+    .spyOn(planningApi, "writeDesign")
+    .mockRejectedValueOnce(new Error("offline"))
+    .mockResolvedValueOnce(response(5));
+  const writer = createDesignWriter("plan", 4);
+  await expect(writer.write({ features: [] })).rejects.toThrow("offline");
+  await writer.write({ features: [] });
+  expect(write.mock.calls.map((call) => call[1].expected_revision)).toEqual([4, 4]);
+});
+
+it("saves feature deletions atomically and omits unchanged layers", async () => {
+  const write = vi.spyOn(planningApi, "writeDesign").mockResolvedValue(response(5));
+  const writer = createDesignWriter("plan", 4);
+  await persistDesign(writer, { features: [], layers: [layer] }, ["removed"], [layer]);
+  expect(write).toHaveBeenCalledWith("plan", {
+    expected_revision: 4,
+    features: [],
+    deleted_ids: ["removed"],
+    layers: [],
+  });
 });

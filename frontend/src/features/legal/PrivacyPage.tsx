@@ -20,6 +20,13 @@ const sections: LegalSection[] = [
         <li>Your email address and optional display name (your account).</li>
         <li>Your password, only as an argon2 hash, never in plain text.</li>
         <li>
+          Unfinished site drafts stay in this browser tab until you sign out or close the tab.
+        </li>
+        <li>
+          Password reset links expire after 30 minutes and can be used once. Only a hash of the
+          reset token is stored.
+        </li>
+        <li>
           Your sites (name, country, boundary coordinates) and designs. Site coordinates can reveal
           where you live or farm; they are visible only to you and to anyone you give a share link
           for a plan. Share links are unguessable, stored hashed, and can be revoked with{" "}
@@ -53,7 +60,8 @@ const sections: LegalSection[] = [
         Imagery tiles directly from Esri&apos;s servers, so Esri sees your IP address and the area
         you look at. Once a site exists, imagery goes through our server&apos;s proxy, and elevation
         data is fetched by our server from the public Copernicus DEM. Those providers have their own
-        privacy policies; see <Link to="/credits">Data sources &amp; credits</Link>.
+        privacy policies; see <Link to="/credits">Data sources &amp; credits</Link>. If you request
+        a password reset, the operator's email provider delivers the recovery email.
       </p>
     ),
   },
@@ -94,5 +102,5 @@ const sections: LegalSection[] = [
 ];
 
 export function PrivacyPage() {
-  return <LegalPage title="Privacy notice" updated="2026-10-25" sections={sections} />;
+  return <LegalPage title="Privacy notice" updated="2026-10-26" sections={sections} />;
 }

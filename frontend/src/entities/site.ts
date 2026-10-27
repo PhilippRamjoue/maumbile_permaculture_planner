@@ -37,6 +37,7 @@ export interface Page<T> {
 
 /** Body of `PATCH /sites/{id}` (`SiteUpdate`); replacing `coordinates` recomputes centroid, bbox, area and UTM. */
 export interface SiteUpdateRequest {
+  expected_updated_at?: string;
   name?: string;
   country_code?: string;
   coordinates?: [number, number][];

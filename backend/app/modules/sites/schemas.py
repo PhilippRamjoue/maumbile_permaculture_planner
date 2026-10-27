@@ -30,6 +30,7 @@ class SiteCreate(BaseModel):
 
 
 class SiteUpdate(BaseModel):
+    expected_updated_at: datetime | None = None
     name: str | None = Field(default=None, min_length=1, max_length=200)
     country_code: CountryCode | None = None
     # Replacing the boundary re-computes centroid, bbox, area and UTM zone.

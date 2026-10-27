@@ -40,7 +40,7 @@ export interface SlopeSummary {
 
 export interface TerrainRead {
   site_id: string;
-  status: "not_requested" | "pending" | "running" | "ready" | "failed";
+  status: "not_requested" | "pending" | "running" | "ready" | "failed" | "interrupted";
   contour_interval_m: number | null;
   dem_source: string | null;
   attribution: string | null;

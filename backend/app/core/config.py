@@ -40,6 +40,13 @@ class Settings(BaseSettings):
     # Login throttling: max attempts per client IP and per email within the window (per process).
     login_rate_limit_attempts: int = 10
     login_rate_limit_window_seconds: int = 60
+    # Password recovery is enabled only with a trusted public origin and an SMTP sender.
+    public_origin: str = ""
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_username: str = ""
+    smtp_password: SecretStr = SecretStr("")
+    smtp_from: str = ""
 
     # --- Terrain (modules/terrain) ---
     # Default vertical spacing of derived contour lines, metres. 30 m DEMs carry metre-level

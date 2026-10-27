@@ -11,6 +11,8 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
+from app.core.capacity import CapacityExceeded
+
 PROBLEM_MEDIA_TYPE = "application/problem+json"
 
 
@@ -50,5 +52,9 @@ async def _validation_exception_handler(
 
 
 def register_exception_handlers(app: FastAPI) -> None:
+    async def capacity_handler(request: Request, exc: CapacityExceeded) -> JSONResponse:
+        return problem(429, str(exc), headers={"Retry-After": "5"})
+
+    app.add_exception_handler(CapacityExceeded, capacity_handler)  # type: ignore[arg-type]
     app.add_exception_handler(StarletteHTTPException, _http_exception_handler)  # type: ignore[arg-type]
     app.add_exception_handler(RequestValidationError, _validation_exception_handler)  # type: ignore[arg-type]

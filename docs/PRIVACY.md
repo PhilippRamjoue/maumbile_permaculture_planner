@@ -1,6 +1,6 @@
 # Privacy notice
 
-_Last updated: 2026-10-25. This describes the free hosted instance of Maumbile. A self-hosted copy
+_Last updated: 2026-10-26. This describes the free hosted instance of Maumbile. A self-hosted copy
 is run by whoever hosts it; this file is a starting point for them. The in-app page at `/privacy`
 mirrors it (`frontend/src/features/legal/`)._
 
@@ -16,6 +16,8 @@ data, and you can export or delete it.
 | Your sites (name, country, boundary coordinates) and designs (zones, sectors, elements, layers, goals) | The service itself | Your site coordinates can reveal where you live or farm; they are visible only to you, plus anyone you give a **share link** for a plan (links are unguessable, stored hashed, and can be revoked with *Stop sharing*). |
 | Derived terrain data for your sites | Contours and slope overlays | Computed from public elevation data. |
 | Session cookies | Keep you signed in | Two `httpOnly` cookies; strictly necessary, so no consent banner is shown. |
+| Unfinished site draft | Recover your outline after navigation or reload | Stored in this browser tab, scoped to your account; cleared on sign-out or tab close. |
+| Password reset token hash | Recover account access | Reset links expire after 30 minutes and can be used once; raw tokens are not stored in the database. |
 | Server logs | Operating and debugging the service | Request method, path, status, duration, a request id and your **IP address**; kept in rotating container logs on the server (about 50 MB per service), not in the database. |
 
 We use **no analytics, advertising, tracking cookies or third-party scripts**, and we do not sell or
@@ -28,8 +30,9 @@ share your data. Cached satellite tiles are public imagery, not personal data.
   Once a site exists, imagery is fetched through our server's proxy, so the provider sees our server,
   not you. Elevation data is fetched by our server from the public Copernicus DEM on AWS. Those
   providers have their own privacy policies (see **Data sources & credits** in the app).
-- Hosting: the instance runs on a server operated by the instance's operator. No other processors
-  receive your data.
+- Hosting: the instance runs on a server operated by the instance's operator. If you request a
+  password reset and email recovery is enabled, the operator's email provider delivers the recovery
+  email. The operator configures that provider.
 
 ## Your rights
 

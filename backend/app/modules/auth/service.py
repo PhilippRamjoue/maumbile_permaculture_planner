@@ -7,6 +7,8 @@ them to HTTP responses.
 from __future__ import annotations
 
 import asyncio
+import hashlib
+import secrets
 import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
@@ -97,6 +99,7 @@ class AuthService:
                 jti=uuid.uuid4(),
                 issued_at=now,
                 expires_at=access_exp,
+                token_version=user.token_version,
             ),
             refresh_token=security.encode_token(
                 secret=self._secret,
@@ -105,6 +108,7 @@ class AuthService:
                 jti=refresh_jti,
                 issued_at=now,
                 expires_at=refresh_exp,
+                token_version=user.token_version,
             ),
             access_expires_at=access_exp,
             refresh_expires_at=refresh_exp,
@@ -113,7 +117,7 @@ class AuthService:
     async def user_from_access_token(self, token: str) -> User:
         claims = self._decode(token, "access")
         user = await self._repo.get_user(claims.user_id)
-        if user is None or not user.is_active:
+        if user is None or not user.is_active or user.token_version != claims.token_version:
             raise InvalidTokenError
         return user
 
@@ -128,15 +132,34 @@ class AuthService:
         record = await self._repo.get_refresh_token(claims.jti)
         if record is None or record.user_id != claims.user_id:
             raise InvalidTokenError
+        user = await self._repo.get_user(claims.user_id)
+        if user is None or not user.is_active or user.token_version != claims.token_version:
+            raise InvalidTokenError
         if record.revoked_at is not None:
             await self._repo.revoke_all_refresh_tokens(claims.user_id, now=now)
-            raise InvalidTokenError
-        user = await self._repo.get_user(claims.user_id)
-        if user is None or not user.is_active:
             raise InvalidTokenError
         if not await self._repo.revoke_refresh_token(claims.jti, now=now):
             raise InvalidTokenError  # lost a rotation race
         return user, await self.issue_tokens(user)
+
+    async def request_password_reset(self, email: str) -> tuple[str, str] | None:
+        token = secrets.token_urlsafe(32)
+        user = await self._repo.get_user_by_email(normalize_email(email))
+        if user is None or not user.is_active:
+            return None
+        await self._repo.add_password_reset(
+            user.id,
+            hashlib.sha256(token.encode()).hexdigest(),
+            datetime.now(UTC) + timedelta(minutes=30),
+        )
+        return user.email, token
+
+    async def reset_password(self, token: str, password: str) -> None:
+        hashed = await asyncio.to_thread(security.hash_password, password)
+        if not await self._repo.reset_password(
+            hashlib.sha256(token.encode()).hexdigest(), hashed, datetime.now(UTC)
+        ):
+            raise InvalidTokenError
 
     async def logout(self, refresh_token: str | None) -> None:
         """Revoke the presented refresh token. Idempotent; bad tokens are ignored."""

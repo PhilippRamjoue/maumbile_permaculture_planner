@@ -23,10 +23,24 @@ class RateLimiter:
         self._window = window_seconds
         self._clock = clock
         self._hits: dict[str, deque[float]] = defaultdict(deque)
+        self._next_cleanup = 0.0
+        self._max_keys = 10_000
 
     def hit(self, key: str) -> float | None:
         """Record an attempt. Returns ``None`` if allowed, else seconds until retry is allowed."""
         now = self._clock()
+        if now >= self._next_cleanup:
+            self._hits = defaultdict(
+                deque,
+                {
+                    name: hits
+                    for name, hits in self._hits.items()
+                    if hits and now - hits[-1] < self._window
+                },
+            )
+            self._next_cleanup = now + self._window
+        if key not in self._hits and len(self._hits) >= self._max_keys:
+            return self._window
         hits = self._hits[key]
         while hits and now - hits[0] >= self._window:
             hits.popleft()

@@ -4,6 +4,7 @@ import { CreditsPage } from "../features/credits";
 import { SharedPlanPage } from "../features/export";
 import { PrivacyPage, TermsPage } from "../features/legal";
 import { LoginPage, RegisterPage } from "../features/auth";
+import { PasswordRecoveryPage } from "../features/auth/PasswordRecoveryPage";
 import { SitesDashboardPage } from "../features/sites-dashboard";
 import { AppLayout } from "./AppLayout";
 import { GuestOnly, RequireAuth } from "./guards";
@@ -20,6 +21,8 @@ export const routes: RouteObject[] = [
       { path: "terms", element: <TermsPage /> },
       { path: "privacy", element: <PrivacyPage /> },
       { path: "shared/:token", element: <SharedPlanPage /> },
+      { path: "forgot-password", element: <PasswordRecoveryPage /> },
+      { path: "reset-password", element: <PasswordRecoveryPage /> },
       {
         element: <GuestOnly />,
         children: [

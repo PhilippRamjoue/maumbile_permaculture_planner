@@ -103,27 +103,32 @@ describe("terrain on the site map", () => {
     expect(screen.getByRole("checkbox", { name: "Site boundary" })).toBeInTheDocument();
   });
 
-  it("explains a failed run and lets the user retry", async () => {
-    let calls = 0;
-    mockApi(
-      handlers(
-        { json: { ...terrainEmpty, status: "failed", error: "No elevation data" } },
-        {
-          [`POST ${terrainPath}`]: () => {
-            calls++;
-            return { status: 202, json: { ...terrainEmpty, status: "pending" } };
+  it.each(["failed", "interrupted"])(
+    "explains a %s run and lets the user retry",
+    async (status) => {
+      let calls = 0;
+      mockApi(
+        handlers(
+          { json: { ...terrainEmpty, status, error: "No elevation data" } },
+          {
+            [`POST ${terrainPath}`]: () => {
+              calls++;
+              return { status: 202, json: { ...terrainEmpty, status: "pending" } };
+            },
           },
-        },
-      ),
-    );
-    const user = userEvent.setup();
-    renderApp(route);
+        ),
+      );
+      const user = userEvent.setup();
+      renderApp(route);
 
-    expect(await screen.findByRole("alert")).toHaveTextContent("No elevation data");
-    await user.click(screen.getByRole("button", { name: "Try again" }));
+      expect(await screen.findByRole("alert")).toHaveTextContent(
+        status === "failed" ? "No elevation data" : "interrupted",
+      );
+      await user.click(screen.getByRole("button", { name: "Try again" }));
 
-    await waitFor(() => expect(calls).toBe(1));
-  });
+      await waitFor(() => expect(calls).toBe(1));
+    },
+  );
 
   it("surfaces why terrain cannot be requested", async () => {
     mockApi(

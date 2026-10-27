@@ -70,23 +70,25 @@ export function ElementsPanel({
           <ToolButton tool="select" current={tool} label="Select / edit" choose={choose} />
           <button
             type="button"
-            className="btn"
+            className="btn btn--primary"
             aria-pressed={tool === "element"}
             disabled={!elementId}
             onClick={() => choose("element")}
           >
-            Place element
+            Place {chosen?.name.toLowerCase() ?? "element"} on map
           </button>
           <ToolButton tool="path" current={tool} label="Draw path" choose={choose} />
         </div>
         <p className="muted">
-          {footprint
-            ? `One click places a ${footprintLabel(footprint)} ${chosen?.name.toLowerCase()} to scale — set the exact size afterwards.`
-            : chosen?.shape === "area"
-              ? "Click opposite corners to draw it."
-              : chosen?.shape === "line"
-                ? "Click points along it, then Enter."
-                : "Click the map to place it."}{" "}
+          {tool === "select"
+            ? "Choose an item, click its Place button, then click the map. "
+            : footprint
+              ? `One click places a ${footprintLabel(footprint)} ${chosen?.name.toLowerCase()} to scale — set the exact size afterwards.`
+              : chosen?.shape === "area"
+                ? "Click opposite corners to draw it."
+                : chosen?.shape === "line"
+                  ? "Click points along it, then Enter."
+                  : "Click the map to place it."}{" "}
           Paths: click points, then Enter.
         </p>
       </fieldset>
@@ -95,7 +97,7 @@ export function ElementsPanel({
         features={elements}
         selectedId={state.selectedId}
         onPick={pick}
-        empty="Nothing placed yet. Choose from the palette, then click the map."
+        empty="Nothing placed yet. Choose an item and click its Place button to start."
       />
       <FeatureProperties
         selected={selected}

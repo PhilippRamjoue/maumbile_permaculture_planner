@@ -1,5 +1,47 @@
 # Architecture
 
+## October 26 reliability contract update
+
+The editor loads one consistent snapshot from `GET /api/v1/plans/{id}/design`. It saves changed
+features, deletions, layer metadata and/or goals in one `PUT` with `expected_revision`. A successful
+transaction increments `plans.revision`; a stale revision returns 409 without committing any of
+the submitted domains. Goal and geometry writes share a queue in each editor instance. The returned
+snapshot updates the query cache, so leaving and immediately reopening a plan does not revive an
+older revision. Conflict UI preserves the local draft and offers a download before reload.
+
+Legacy planning writes advance the same revision until a plan enters protected saving. After its
+first successful guarded save, unversioned feature/layer/goal writes return 409, including writes
+from an old frontend tab. Plan rename/deletion remain explicit management actions. Clients editing
+protected plans must migrate to the document endpoint. Migration `0011_plan_revision` adds both
+the revision and this compatibility guard; existing plans and geometry are retained.
+
+Site-boundary writes include `expected_updated_at`, compared under a row lock. Boundary changes
+autosave when valid, and all save domains contribute to the global status, export gating and
+navigation guard. Invalid borders never count as saved. Export first flushes pending work or shows
+the failure; GeoJSON now includes the land boundary under its versioned `site` foreign member.
+
+Protected raster tiles use a MapLibre custom protocol backed by the API client's refresh/replay
+logic. In browsers supporting Web Locks, refresh acquires an origin-wide lock and checks the shared
+session before rotating; it retains process-local deduplication as well. Terrain GET responses expose
+an `interrupted` view state after ten minutes without progress, with an explicit retry path. The
+persisted state machine and generation guards are unchanged. Slope statistics remain bbox-based
+and are labeled as such rather than as percentages of the site polygon.
+
+Password recovery uses configured SMTP over verified TLS, 30-minute hashed one-time tokens and
+generic account-existence responses. Migration `0012_password_recovery` adds reset records and
+`users.token_version`; successful resets invalidate existing access and refresh sessions immediately.
+Email recovery stays visibly unavailable until the operator configures SMTP and an HTTPS public
+origin. No email is sent just by visiting the recovery page.
+
+Lean-process work budgets are four concurrent password hashes, two renders and two terrain jobs;
+excess work is rejected rather than accumulating an unbounded waiting queue. Auth rate-limit keys
+are bounded and pruned. Imagery and export reads release database connections before slow provider
+I/O or rendering. Backend and nginx diagnostics avoid bearer share tokens; upstream proxy logging
+still requires operator review. Release images are gated on the same verification workflow as CI.
+
+These contracts supersede older separate feature/layer save descriptions below. See
+[`AUDIT_FIXES_2026-10-26.md`](AUDIT_FIXES_2026-10-26.md) for verification and rollout requirements.
+
 This document is the single source of truth for how Maumbile (the Permaculture Planner) is
 built. It is written to be consumed both by humans and by AI coding agents
 (Opus as architect; Sonnet/Codex implementing work packages). Keep it current:

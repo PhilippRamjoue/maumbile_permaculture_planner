@@ -109,6 +109,24 @@ async def test_get_update_delete(api: AsyncClient) -> None:
     assert (await api.delete(url)).status_code == 404
 
 
+async def test_stale_site_boundary_is_rejected(api: AsyncClient) -> None:
+    created = (await api.post("/api/v1/sites", json=payload())).json()
+    path = f"/api/v1/sites/{created['id']}"
+    first = await api.patch(
+        path, json={"name": "New name", "expected_updated_at": created["updated_at"]}
+    )
+    assert first.status_code == 200, first.text
+    stale = await api.patch(
+        path,
+        json={
+            "coordinates": payload()["coordinates"],
+            "expected_updated_at": created["updated_at"],
+        },
+    )
+    assert stale.status_code == 409
+    assert (await api.get(path)).json()["name"] == "New name"
+
+
 async def test_unknown_site_is_404(api: AsyncClient) -> None:
     assert (await api.get(f"/api/v1/sites/{uuid.uuid4()}")).status_code == 404
 

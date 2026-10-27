@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import re
 import time
 import uuid
 
@@ -16,6 +17,11 @@ REQUEST_ID_HEADER = "X-Request-ID"
 _QUIET_PATHS = frozenset({"/healthz", "/readyz"})
 
 access_log = structlog.get_logger("app.access")
+
+
+def safe_request_path(path: str) -> str:
+    """Bearer share secrets must never be copied to diagnostics."""
+    return re.sub(r"(/(?:api/v1/)?shared/)[^/]+", r"\1[redacted]", path)
 
 
 def configure_logging(debug: bool = False) -> None:
@@ -48,7 +54,10 @@ class RequestIDMiddleware(BaseHTTPMiddleware):
             response = await call_next(request)
         except Exception:
             access_log.exception(
-                "request_failed", method=request.method, path=request.url.path, status=500
+                "request_failed",
+                method=request.method,
+                path=safe_request_path(request.url.path),
+                status=500,
             )
             raise
         else:
@@ -56,7 +65,7 @@ class RequestIDMiddleware(BaseHTTPMiddleware):
                 access_log.info(
                     "request",
                     method=request.method,
-                    path=request.url.path,
+                    path=safe_request_path(request.url.path),
                     status=response.status_code,
                     duration_ms=round((time.perf_counter() - started) * 1000, 1),
                 )

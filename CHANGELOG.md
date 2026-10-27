@@ -6,6 +6,28 @@ All notable changes to Maumbile are documented here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- Stale editor tabs cannot overwrite newer changes or restore deleted features. Document writes
+  use a revision check and atomically save changed features, deletions, layers and goals.
+- Boundary autosave and global save feedback now include invalid/failed border changes. Exports
+  save pending work first; conflicts offer an unsaved-draft download and navigation offers Save and leave.
+- Protected map tiles renew expired sessions; concurrent tabs coordinate session refresh.
+- Interrupted terrain jobs offer a retry. Slope statistics clearly describe available bbox data.
+- Share secrets are redacted in backend logs and excluded from nginx share-route diagnostics.
+- Missing hashed assets return 404, entry pages revalidate and hashed assets use immutable caching.
+- Sites and plan lists have Load more controls beyond the first 100 records.
+
+### Added
+
+- Site rename/deletion controls, account-scoped unfinished-site recovery in the current tab,
+  clearer placement actions, and a land boundary in GeoJSON exports.
+- Optional SMTP password recovery with hashed one-time tokens and immediate session invalidation.
+- Bounded expensive work and auth-throttle state, shorter database read scopes, expired-row
+  maintenance tooling, and a verification gate before release image publication.
+- Additive migrations `0011_plan_revision` and `0012_password_recovery`. Existing plans/accounts
+  are retained. Older frontend tabs must reload before editing a plan that has used protected saving.
+
 ## [0.1.4] - 2026-10-26
 
 More fixes from online testing.

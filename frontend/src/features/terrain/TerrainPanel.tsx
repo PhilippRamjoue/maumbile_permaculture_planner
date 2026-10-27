@@ -37,7 +37,9 @@ export function SlopeLegend({ legend }: { legend: SlopeClass[] }) {
           <span>
             {c.label} <span className="muted">{formatRange(c)}</span>
           </span>
-          <span className="muted">{Math.round(c.area_fraction * 100)}% of site</span>
+          <span className="muted">
+            {Math.round(c.area_fraction * 100)}% of available slope data
+          </span>
         </li>
       ))}
     </ul>
@@ -112,9 +114,14 @@ export function TerrainPanel({
         body = <p role="status">Computing terrain… this can take up to a minute.</p>;
         break;
       case "failed":
+      case "interrupted":
         body = (
           <>
-            <p role="alert">Terrain could not be computed{data.error ? `: ${data.error}` : "."}</p>
+            <p role="alert">
+              {data.status === "interrupted"
+                ? "Terrain computation was interrupted. Try again to restart it."
+                : `Terrain could not be computed${data.error ? `: ${data.error}` : "."}`}
+            </p>
             <button
               type="button"
               className="btn"
@@ -140,6 +147,10 @@ export function TerrainPanel({
               </label>
             ))}
             <Summary terrain={data} />
+            <p className="muted">
+              Estimates cover the rectangle around your land, including neighboring land, using
+              available 30 m elevation data.
+            </p>
             {data.slope && <SlopeLegend legend={data.slope.legend} />}
             {data.slope?.flags.map((flag) => (
               <p key={flag} className="notice" role="status">

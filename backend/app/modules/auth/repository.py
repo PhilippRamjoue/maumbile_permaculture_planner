@@ -5,11 +5,11 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from sqlalchemy import select, update
+from sqlalchemy import delete, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.modules.auth.models import RefreshToken, User
+from app.modules.auth.models import PasswordReset, RefreshToken, User
 
 
 class EmailTakenError(Exception):
@@ -79,3 +79,44 @@ class AuthRepository:
             .values(revoked_at=now)
         )
         await self._session.commit()
+
+    async def add_password_reset(
+        self, user_id: uuid.UUID, token_hash: str, expires_at: datetime
+    ) -> None:
+        # Serialize issuance with consumption so a successful reset invalidates every issued token.
+        await self._session.execute(select(User.id).where(User.id == user_id).with_for_update())
+        await self._session.execute(delete(PasswordReset).where(PasswordReset.user_id == user_id))
+        self._session.add(
+            PasswordReset(user_id=user_id, token_hash=token_hash, expires_at=expires_at)
+        )
+        await self._session.commit()
+
+    async def reset_password(self, token_hash: str, password_hash: str, now: datetime) -> bool:
+        reset = await self._session.get(PasswordReset, token_hash)
+        if reset is None:
+            return False
+        user_id = reset.user_id
+        await self._session.execute(select(User.id).where(User.id == user_id).with_for_update())
+        valid = (
+            await self._session.execute(
+                delete(PasswordReset)
+                .where(PasswordReset.token_hash == token_hash, PasswordReset.expires_at > now)
+                .returning(PasswordReset.user_id)
+            )
+        ).scalar_one_or_none()
+        if valid is None:
+            return False
+        changed = await self._session.execute(
+            update(User)
+            .where(User.id == user_id, User.is_active.is_(True))
+            .values(password_hash=password_hash, token_version=User.token_version + 1)
+            .returning(User.id)
+        )
+        if changed.scalar_one_or_none() is None:
+            return False
+        await self._session.execute(delete(PasswordReset).where(PasswordReset.user_id == user_id))
+        await self._session.execute(
+            update(RefreshToken).where(RefreshToken.user_id == user_id).values(revoked_at=now)
+        )
+        await self._session.commit()
+        return True

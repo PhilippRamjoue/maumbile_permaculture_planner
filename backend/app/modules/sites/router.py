@@ -17,6 +17,7 @@ from app.modules.sites.models import Site
 from app.modules.sites.schemas import SiteCreate, SiteRead, SiteUpdate
 from app.modules.sites.service import (
     InvalidBoundaryError,
+    SiteConflictError,
     SiteError,
     SiteForbiddenError,
     SiteNotFoundError,
@@ -42,6 +43,8 @@ def _to_read(site: Site) -> SiteRead:
 
 
 def _http_error(exc: SiteError) -> HTTPException:
+    if isinstance(exc, SiteConflictError):
+        return HTTPException(409, detail=str(exc))
     if isinstance(exc, InvalidBoundaryError):
         return HTTPException(422, detail=str(exc))
     if isinstance(exc, SiteNotFoundError):

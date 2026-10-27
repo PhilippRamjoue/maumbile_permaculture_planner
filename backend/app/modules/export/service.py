@@ -19,6 +19,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Literal, Protocol
 
+from app.core.capacity import Capacity
 from app.modules.export.document import PlanDocument
 from app.modules.export.geojson import plan_to_geojson
 from app.modules.export.render import render_pdf, render_png
@@ -30,6 +31,7 @@ MEDIA_TYPES: dict[str, str] = {
     "png": "image/png",
     "pdf": "application/pdf",
 }
+_render_capacity = Capacity(2)
 
 
 class ExportError(Exception):
@@ -104,7 +106,9 @@ class ExportService:
 
     async def _file(self, doc: PlanDocument, fmt: ExportFormat) -> ExportedFile:
         # Rendering is CPU-bound; keep it off the event loop.
-        content = await asyncio.to_thread(_render, doc, fmt)
+        await self._repo.release_reads()
+        async with _render_capacity.acquire():
+            content = await asyncio.to_thread(_render, doc, fmt)
         return ExportedFile(content, MEDIA_TYPES[fmt], filename_for(doc.name, fmt))
 
     async def export(

@@ -5,6 +5,7 @@ import type {
   Plan,
   PlanDetail,
   PlanLayer,
+  DesignRead,
 } from "../../entities/planning";
 import type { PlanGoals } from "../../entities/generated/plan";
 import type { Page } from "../../entities/site";
@@ -16,13 +17,17 @@ export const planningKeys = {
   plan: (id: string) => ["plan", id] as const,
   features: (id: string) => ["plan", id, "features"] as const,
   types: ["element-types"] as const,
+  design: (id: string) => ["design", id] as const,
 };
 export const planningApi = {
-  list: (siteId: string) =>
-    apiFetch<Page<Plan>>(`/sites/${siteId}/plans`, { query: { limit: 100 } }),
+  list: (siteId: string, offset = 0) =>
+    apiFetch<Page<Plan>>(`/sites/${siteId}/plans`, { query: { limit: 100, offset } }),
   create: (siteId: string, name: string) =>
     apiFetch<PlanDetail>(`/sites/${siteId}/plans`, { method: "POST", body: { name } }),
   get: (id: string) => apiFetch<PlanDetail>(`/plans/${id}`),
+  design: (id: string) => apiFetch<DesignRead>(`/plans/${id}/design`),
+  writeDesign: (id: string, body: DesignChanges & { expected_revision: number }) =>
+    apiFetch<DesignRead>(`/plans/${id}/design`, { method: "PUT", body }),
   updateGoals: (id: string, goals: PlanGoals) =>
     apiFetch<Plan>(`/plans/${id}`, { method: "PATCH", body: { goals } }),
   rename: (id: string, name: string) =>
@@ -47,22 +52,66 @@ export const planningApi = {
     }),
 };
 
-/** Features are atomic; layer metadata uses existing idempotent PATCH endpoints. Report the
- * successful feature baseline even if a later layer PATCH fails, so a retry can delete newly
- * persisted features that the user subsequently removes from their local draft. */
+export interface DesignChanges {
+  features?: DesignFeature[];
+  deleted_ids?: string[];
+  layers?: Pick<PlanLayer, "id" | "name" | "visible" | "sort_order">[];
+  goals?: PlanGoals;
+}
+
+/** One queue per mounted editor: goals and geometry share a revision without racing each other. */
+export function createDesignWriter(planId: string, initialRevision: number) {
+  let revision = initialRevision;
+  let queue: Promise<unknown> = Promise.resolve();
+  return {
+    write(changes: DesignChanges) {
+      const result = queue.then(async () => {
+        const saved = await planningApi.writeDesign(planId, {
+          ...changes,
+          expected_revision: revision,
+        });
+        revision = saved.plan.revision;
+        return saved;
+      });
+      queue = result.catch(() => {});
+      return result;
+    },
+  };
+}
+export type DesignWriter = ReturnType<typeof createDesignWriter>;
+
+/** Features and changed layer metadata commit atomically under one revision check. */
 export async function persistDesign(
-  planId: string,
+  writer: DesignWriter,
   snapshot: EditorDocument,
   persistedIds: string[],
-  onFeaturesPersisted: (ids: string[]) => void,
+  savedLayers: PlanLayer[],
+  savedFeatures: DesignFeature[] = [],
 ) {
   if (snapshot.features.length > 1000)
     throw new Error(
       "A plan can save up to 1,000 features. Split larger designs into separate plans.",
     );
   const payload = savePayload(snapshot, persistedIds);
-  const result = await planningApi.save(planId, payload.features, payload.deletedIds);
-  onFeaturesPersisted(result.features.map((feature) => feature.id));
-  const layers = await Promise.all(snapshot.layers.map(planningApi.layer));
-  return { snapshot, result, layers };
+  const baseline = new Map(savedFeatures.map((feature) => [feature.id, JSON.stringify(feature)]));
+  const changedFeatures = payload.features.filter(
+    (feature) => baseline.get(feature.id) !== JSON.stringify(feature),
+  );
+  const layers = snapshot.layers
+    .filter((layer) => {
+      const old = savedLayers.find((item) => item.id === layer.id);
+      return (
+        !old ||
+        old.name !== layer.name ||
+        old.visible !== layer.visible ||
+        old.sort_order !== layer.sort_order
+      );
+    })
+    .map(({ id, name, visible, sort_order }) => ({ id, name, visible, sort_order }));
+  const saved = await writer.write({
+    features: changedFeatures,
+    deleted_ids: payload.deletedIds,
+    layers,
+  });
+  return { snapshot, result: saved.features, layers: saved.plan.layers, plan: saved.plan };
 }

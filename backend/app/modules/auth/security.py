@@ -41,6 +41,7 @@ class TokenClaims:
     token_type: TokenType
     jti: uuid.UUID
     expires_at: datetime
+    token_version: int = 0
 
 
 def encode_token(
@@ -51,6 +52,7 @@ def encode_token(
     jti: uuid.UUID,
     issued_at: datetime,
     expires_at: datetime,
+    token_version: int = 0,
 ) -> str:
     payload = {
         "sub": str(user_id),
@@ -58,6 +60,7 @@ def encode_token(
         "jti": str(jti),
         "iat": issued_at,
         "exp": expires_at,
+        "ver": token_version,
     }
     return jwt.encode(payload, secret, algorithm=JWT_ALGORITHM)
 
@@ -77,4 +80,5 @@ def decode_token(token: str, *, secret: str, expected_type: TokenType) -> TokenC
         token_type=expected_type,
         jti=uuid.UUID(payload["jti"]),
         expires_at=datetime.fromtimestamp(payload["exp"], tz=UTC),
+        token_version=int(payload.get("ver", 0)),
     )

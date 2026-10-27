@@ -19,6 +19,7 @@ from app.modules.planning.repository import (
     FeatureWriteConflict,
     MeasuredFeature,
     PlanningRepository,
+    StaleDesign,
 )
 from app.modules.planning.validation import (
     FeatureValidationError,
@@ -105,6 +106,55 @@ class PlanningService:
     async def get_plan(self, plan_id: uuid.UUID, owner_id: uuid.UUID) -> tuple[Plan, list[Layer]]:
         plan = await self._plan(plan_id, owner_id)
         return plan, await self._repo.list_layers(plan.id)
+
+    async def get_design(
+        self, plan_id: uuid.UUID, owner_id: uuid.UUID
+    ) -> tuple[Plan, list[Layer], list[MeasuredFeature]]:
+        await self._plan(plan_id, owner_id)
+        plan = await self._repo.get_plan(plan_id, lock=True)
+        if plan is None:
+            raise NotFoundError("Plan")
+        return plan, await self._repo.list_layers(plan_id), await self._repo.list_features(plan_id)
+
+    async def save_design(
+        self,
+        plan_id: uuid.UUID,
+        owner_id: uuid.UUID,
+        expected_revision: int,
+        items: Sequence[FeatureInput],
+        deleted_ids: Sequence[uuid.UUID],
+        layers: Sequence[dict[str, Any]],
+        changes: dict[str, Any],
+    ) -> tuple[Plan, list[Layer], list[MeasuredFeature]]:
+        plan = await self._plan(plan_id, owner_id)
+        try:
+            await self._repo.advance_plan(plan_id, expected_revision)
+        except StaleDesign as exc:
+            raise ConflictError(
+                "This design changed in another tab or device. Your draft is still here. "
+                "Download your draft before reloading the latest saved design."
+            ) from exc
+        rows = [self._prepare(item) for item in items]
+        await self._check_references(plan_id, rows)
+        layer_ids = {layer["id"] for layer in layers}
+        if layer_ids != await self._repo.layer_ids_in_plan(plan_id, layer_ids):
+            raise InvalidFeatureError("Unknown layer_id for this plan")
+        try:
+            await self._repo.upsert_features(plan_id, rows, deleted_ids, commit=False)
+        except FeatureWriteConflict as exc:
+            raise ConflictError("Feature ids already used by another plan") from exc
+        await self._repo.write_layers(plan_id, layers)
+        if "goals" in changes:
+            await self._repo.write_goals(plan, changes["goals"])
+        refreshed = await self._repo.get_plan(plan_id)
+        assert refreshed is not None
+        result = (
+            refreshed,
+            await self._repo.list_layers(plan_id),
+            await self._repo.list_features(plan_id),
+        )
+        await self._repo.commit()
+        return result
 
     async def update_plan(self, plan_id: uuid.UUID, owner_id: uuid.UUID, **changes: Any) -> Plan:
         plan = await self._plan(plan_id, owner_id)

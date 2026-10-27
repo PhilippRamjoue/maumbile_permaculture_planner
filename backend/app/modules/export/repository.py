@@ -14,6 +14,9 @@ class ExportRepository:
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
 
+    async def release_reads(self) -> None:
+        await self._session.rollback()
+
     async def get_by_hash(self, token_hash: str) -> PlanShare | None:
         stmt = select(PlanShare).where(PlanShare.token_hash == token_hash)
         return (await self._session.execute(stmt)).scalar_one_or_none()

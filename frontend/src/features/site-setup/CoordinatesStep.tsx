@@ -71,7 +71,12 @@ export function CoordinatesStep() {
     if (!canSubmit || !countryCode) return;
     create.mutate(
       { name: trimmedName, country_code: countryCode, coordinates: closeRing(validation.ring) },
-      { onSuccess: (site) => navigate(`/sites/${site.id}`) },
+      {
+        onSuccess: (site) => {
+          store().reset();
+          navigate(`/sites/${site.id}`);
+        },
+      },
     );
   }
 

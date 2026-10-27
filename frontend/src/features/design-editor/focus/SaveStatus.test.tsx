@@ -11,6 +11,7 @@ describe("saveStateOf", () => {
     expect(saveStateOf({ saving: false, dirty: true, failed: true })).toBe("failed");
     expect(saveStateOf({ saving: false, dirty: true, failed: false })).toBe("unsaved");
     expect(saveStateOf({ saving: false, dirty: false, failed: false })).toBe("saved");
+    expect(saveStateOf({ saving: false, dirty: true, failed: false, invalid: true })).toBe("invalid");
   });
 });
 

@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { mockApi, problem, requestedRoutes } from "../testing/mockApi";
 import { ApiError, apiFetch } from "./client";
@@ -13,6 +13,55 @@ async function failure(request: Promise<unknown>): Promise<ApiError> {
 }
 
 describe("apiFetch", () => {
+  it("coordinates renewal between separate tab runtimes", async () => {
+    let queue: Promise<unknown> = Promise.resolve();
+    vi.stubGlobal("navigator", {
+      locks: {
+        request: (_name: string, callback: () => Promise<unknown>) => {
+          const result = queue.then(callback);
+          queue = result.catch(() => {});
+          return result;
+        },
+      },
+    });
+    let renewed = false;
+    const seen = new Set<string>();
+    const fetchMock = mockApi({
+      "GET /a": () => (seen.has("a") ? { json: 1 } : (seen.add("a"), problem(401, "expired"))),
+      "GET /b": () => (seen.has("b") ? { json: 2 } : (seen.add("b"), problem(401, "expired"))),
+      "GET /auth/me": () => (renewed ? { json: {} } : problem(401, "expired")),
+      "POST /auth/refresh": () => {
+        renewed = true;
+        return { json: {} };
+      },
+    });
+    vi.resetModules();
+    const firstTab = await import("./client");
+    vi.resetModules();
+    const secondTab = await import("./client");
+    expect(await Promise.all([firstTab.apiFetch("/a"), secondTab.apiFetch("/b")])).toEqual([1, 2]);
+    expect(
+      requestedRoutes(fetchMock).filter((route) => route === "POST /auth/refresh"),
+    ).toHaveLength(1);
+  });
+
+  it("renews expired authentication for binary map resources", async () => {
+    let calls = 0;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string) => {
+        if (url.endsWith("/auth/refresh")) return new Response("{}", { status: 200 });
+        if (++calls === 1) return new Response("{}", { status: 401 });
+        return new Response(new Uint8Array([137, 80, 78, 71]), {
+          headers: { "Cache-Control": "private, max-age=60" },
+        });
+      }),
+    );
+    const { apiResource } = await import("./client");
+    const result = await apiResource("/sites/site/imagery/1/0/0.png");
+    expect(Array.from(new Uint8Array(result.data))).toEqual([137, 80, 78, 71]);
+    expect(result.cacheControl).toBe("private, max-age=60");
+  });
   it("calls /api/v1 with credentials included and parses JSON", async () => {
     const fetchMock = mockApi({ "GET /sites": { json: { items: [] } } });
 

@@ -90,6 +90,7 @@ class PlanRead(BaseModel):
     name: str
     description: str | None
     goals: PlanGoals | None
+    revision: int
     created_at: datetime
     updated_at: datetime
 
@@ -203,6 +204,30 @@ class FeatureBatch(BaseModel):
         if len(set(self.deleted_ids)) != len(self.deleted_ids) or set(ids) & set(self.deleted_ids):
             raise ValueError("Deleted ids must be unique and cannot also be upserted.")
         return self
+
+
+class DesignLayer(LayerUpdate):
+    id: uuid.UUID
+
+
+class DesignWrite(FeatureBatch):
+    """One guarded transaction; omitted domains are left untouched."""
+
+    expected_revision: int = Field(ge=0)
+    features: list[FeatureUpsert] = Field(default_factory=list, max_length=MAX_BATCH_SIZE)
+    layers: list[DesignLayer] = Field(default_factory=list, max_length=100)
+    goals: PlanGoals | None = None
+
+    @model_validator(mode="after")
+    def _unique_layers(self) -> DesignWrite:
+        if len({layer.id for layer in self.layers}) != len(self.layers):
+            raise ValueError("Layer ids must be unique.")
+        return self
+
+
+class DesignRead(BaseModel):
+    plan: PlanDetail
+    features: FeatureCollection
 
 
 # ── measurement ────────────────────────────────────────────────────────────────────────────

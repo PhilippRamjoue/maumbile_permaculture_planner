@@ -17,8 +17,10 @@ from app.core.pagination import Page, PageParams
 from app.modules.auth.dependencies import CurrentUser
 from app.modules.planning.dependencies import get_planning_service
 from app.modules.planning.models import ElementType, Layer, Plan
-from app.modules.planning.repository import MeasuredFeature
+from app.modules.planning.repository import MeasuredFeature, StaleDesign
 from app.modules.planning.schemas import (
+    DesignRead,
+    DesignWrite,
     ElementTypeRead,
     FeatureBatch,
     FeatureCollection,
@@ -58,7 +60,13 @@ Service = Annotated[PlanningService, Depends(get_planning_service)]
 OwnerId = Annotated[uuid.UUID, Depends(get_owner_id)]
 
 
-def _http_error(exc: PlanningError) -> HTTPException:
+def _http_error(exc: PlanningError | StaleDesign) -> HTTPException:
+    if isinstance(exc, StaleDesign):
+        return HTTPException(
+            409,
+            "This plan requires protected saves. Reload the app before editing; "
+            "keep a copy of any unsaved draft.",
+        )
     if isinstance(exc, NotFoundError):
         return HTTPException(status.HTTP_404_NOT_FOUND, detail=str(exc))
     if isinstance(exc, ForbiddenError):
@@ -109,7 +117,7 @@ async def measure(body: MeasureRequest, service: Service, _: OwnerId) -> Measure
     """Authoritative length/area from PostGIS (geography); nothing is saved."""
     try:
         length_m, area_m2 = await service.measure(body.geometry)
-    except PlanningError as exc:
+    except (PlanningError, StaleDesign) as exc:
         raise _http_error(exc) from exc
     return Measurement(length_m=length_m, area_m2=area_m2)
 
@@ -121,7 +129,7 @@ async def list_plans(
 ) -> Page[PlanRead]:
     try:
         plans, total = await service.list_plans(site_id, owner_id, params.limit, params.offset)
-    except PlanningError as exc:
+    except (PlanningError, StaleDesign) as exc:
         raise _http_error(exc) from exc
     return Page(
         items=[PlanRead.model_validate(p) for p in plans],
@@ -146,7 +154,7 @@ async def create_plan(
             site_id, owner_id, name=body.name, description=body.description
         )
         _, layers = await service.get_plan(plan.id, owner_id)
-    except PlanningError as exc:
+    except (PlanningError, StaleDesign) as exc:
         raise _http_error(exc) from exc
     return _plan_detail(plan, layers)
 
@@ -162,7 +170,7 @@ def _plan_detail(plan: Plan, layers: list[Layer]) -> PlanDetail:
 async def get_plan(plan_id: uuid.UUID, service: Service, owner_id: OwnerId) -> PlanDetail:
     try:
         plan, layers = await service.get_plan(plan_id, owner_id)
-    except PlanningError as exc:
+    except (PlanningError, StaleDesign) as exc:
         raise _http_error(exc) from exc
     return _plan_detail(plan, layers)
 
@@ -175,7 +183,45 @@ async def update_plan(
         raise HTTPException(422, detail="name cannot be null")
     try:
         return await service.update_plan(plan_id, owner_id, **body.model_dump(exclude_unset=True))
-    except PlanningError as exc:
+    except (PlanningError, StaleDesign) as exc:
+        raise _http_error(exc) from exc
+
+
+def _design_read(result: tuple[Plan, list[Layer], list[MeasuredFeature]]) -> DesignRead:
+    plan, layers, features = result
+    return DesignRead(
+        plan=_plan_detail(plan, layers),
+        features=FeatureCollection(features=[_feature_read(f) for f in features]),
+    )
+
+
+@router.get("/plans/{plan_id}/design", response_model=DesignRead, tags=["plans"])
+async def get_design(plan_id: uuid.UUID, service: Service, owner_id: OwnerId) -> DesignRead:
+    """Read a consistent revision, layers, goals and feature snapshot."""
+    try:
+        return _design_read(await service.get_design(plan_id, owner_id))
+    except (PlanningError, StaleDesign) as exc:
+        raise _http_error(exc) from exc
+
+
+@router.put("/plans/{plan_id}/design", response_model=DesignRead, tags=["plans"])
+async def save_design(
+    plan_id: uuid.UUID, body: DesignWrite, service: Service, owner_id: OwnerId
+) -> DesignRead:
+    """Save changed domains together; reject stale revisions without changing anything."""
+    try:
+        return _design_read(
+            await service.save_design(
+                plan_id,
+                owner_id,
+                body.expected_revision,
+                [_input(f) for f in body.features],
+                body.deleted_ids,
+                [layer.model_dump(exclude_unset=True) for layer in body.layers],
+                body.model_dump(include={"goals"}, exclude_unset=True),
+            )
+        )
+    except (PlanningError, StaleDesign) as exc:
         raise _http_error(exc) from exc
 
 
@@ -183,7 +229,7 @@ async def update_plan(
 async def delete_plan(plan_id: uuid.UUID, service: Service, owner_id: OwnerId) -> Response:
     try:
         await service.delete_plan(plan_id, owner_id)
-    except PlanningError as exc:
+    except (PlanningError, StaleDesign) as exc:
         raise _http_error(exc) from exc
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
@@ -193,7 +239,7 @@ async def delete_plan(plan_id: uuid.UUID, service: Service, owner_id: OwnerId) -
 async def list_layers(plan_id: uuid.UUID, service: Service, owner_id: OwnerId) -> list[Layer]:
     try:
         return await service.list_layers(plan_id, owner_id)
-    except PlanningError as exc:
+    except (PlanningError, StaleDesign) as exc:
         raise _http_error(exc) from exc
 
 
@@ -214,7 +260,7 @@ async def create_layer(
             sort_order=body.sort_order,
             visible=body.visible,
         )
-    except PlanningError as exc:
+    except (PlanningError, StaleDesign) as exc:
         raise _http_error(exc) from exc
 
 
@@ -225,7 +271,7 @@ async def update_layer(
     changes = {k: v for k, v in body.model_dump(exclude_unset=True).items() if v is not None}
     try:
         return await service.update_layer(layer_id, owner_id, **changes)
-    except PlanningError as exc:
+    except (PlanningError, StaleDesign) as exc:
         raise _http_error(exc) from exc
 
 
@@ -234,7 +280,7 @@ async def delete_layer(layer_id: uuid.UUID, service: Service, owner_id: OwnerId)
     """Delete a layer and every feature on it."""
     try:
         await service.delete_layer(layer_id, owner_id)
-    except PlanningError as exc:
+    except (PlanningError, StaleDesign) as exc:
         raise _http_error(exc) from exc
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
@@ -253,7 +299,7 @@ async def list_features(
         found = await service.list_features(
             plan_id, owner_id, layer_id=layer_id, feature_type=feature_type
         )
-    except PlanningError as exc:
+    except (PlanningError, StaleDesign) as exc:
         raise _http_error(exc) from exc
     return FeatureCollection(features=[_feature_read(m) for m in found])
 
@@ -269,7 +315,7 @@ async def create_feature(
 ) -> FeatureRead:
     try:
         return _feature_read(await service.create_feature(plan_id, owner_id, _input(body)))
-    except PlanningError as exc:
+    except (PlanningError, StaleDesign) as exc:
         raise _http_error(exc) from exc
 
 
@@ -282,7 +328,7 @@ async def upsert_features(
         saved = await service.upsert_features(
             plan_id, owner_id, [_input(f) for f in body.features], body.deleted_ids
         )
-    except PlanningError as exc:
+    except (PlanningError, StaleDesign) as exc:
         raise _http_error(exc) from exc
     return FeatureCollection(features=[_feature_read(m) for m in saved])
 
@@ -291,7 +337,7 @@ async def upsert_features(
 async def get_feature(feature_id: uuid.UUID, service: Service, owner_id: OwnerId) -> FeatureRead:
     try:
         return _feature_read(await service.get_feature(feature_id, owner_id))
-    except PlanningError as exc:
+    except (PlanningError, StaleDesign) as exc:
         raise _http_error(exc) from exc
 
 
@@ -305,7 +351,7 @@ async def update_feature(
             raise HTTPException(422, detail=f"{required} cannot be null")
     try:
         return _feature_read(await service.update_feature(feature_id, owner_id, **changes))
-    except PlanningError as exc:
+    except (PlanningError, StaleDesign) as exc:
         raise _http_error(exc) from exc
 
 
@@ -313,6 +359,6 @@ async def update_feature(
 async def delete_feature(feature_id: uuid.UUID, service: Service, owner_id: OwnerId) -> Response:
     try:
         await service.delete_feature(feature_id, owner_id)
-    except PlanningError as exc:
+    except (PlanningError, StaleDesign) as exc:
         raise _http_error(exc) from exc
     return Response(status_code=status.HTTP_204_NO_CONTENT)

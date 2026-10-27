@@ -22,13 +22,24 @@ const message = (error: unknown) =>
  * Download the saved plan as PNG / PDF / GeoJSON and manage its read-only share link.
  * Self-contained: needs only the plan id.
  */
-export function ExportMenu({ planId, unsaved = false }: { planId: string; unsaved?: boolean }) {
+export function ExportMenu({
+  planId,
+  unsaved = false,
+  busy = false,
+  beforeDownload,
+}: {
+  planId: string;
+  unsaved?: boolean;
+  busy?: boolean;
+  beforeDownload?(): Promise<void>;
+}) {
   const queryClient = useQueryClient();
   const [link, setLink] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
   const download = useMutation({
     mutationFn: async (format: ExportFormat) => {
+      if (beforeDownload) await beforeDownload();
       const { blob, filename } = await exportApi.download(planId, format);
       saveBlob(blob, filename ?? `plan.${format}`);
     },
@@ -38,7 +49,10 @@ export function ExportMenu({ planId, unsaved = false }: { planId: string; unsave
     queryFn: () => exportApi.shareStatus(planId),
   });
   const create = useMutation({
-    mutationFn: () => exportApi.createShare(planId),
+    mutationFn: async () => {
+      if (beforeDownload) await beforeDownload();
+      return exportApi.createShare(planId);
+    },
     onSuccess: (created) => {
       setLink(sharePageUrl(created.token));
       setCopied(false);
@@ -68,17 +82,31 @@ export function ExportMenu({ planId, unsaved = false }: { planId: string; unsave
       <summary className="btn">Export &amp; share</summary>
       <div className="export-menu__panel" role="group" aria-label="Export and share">
         <h2>Download</h2>
-        {unsaved && <p className="muted">Unsaved changes are not included. Save first.</p>}
+        {unsaved && (
+          <p className="muted">
+            {beforeDownload
+              ? "Your changes will be saved before the download starts."
+              : "Unsaved changes are not included. Save first."}
+          </p>
+        )}
+        <p className="muted">
+          PNG and PDF are printable drawings without aerial imagery. GeoJSON includes geographic
+          data and hidden features.
+        </p>
         <div className="export-menu__row">
           {FORMATS.map(({ format, label }) => (
             <button
               key={format}
               type="button"
               className="btn"
-              disabled={download.isPending}
+              disabled={
+                download.isPending || create.isPending || busy || (unsaved && !beforeDownload)
+              }
               onClick={() => download.mutate(format)}
             >
-              {download.isPending && download.variables === format ? "Preparing…" : label}
+              {download.isPending && download.variables === format
+                ? "Preparing…"
+                : `${unsaved && beforeDownload ? "Save and download: " : ""}${label}`}
             </button>
           ))}
         </div>
@@ -104,7 +132,9 @@ export function ExportMenu({ planId, unsaved = false }: { planId: string; unsave
           <button
             type="button"
             className="btn"
-            disabled={create.isPending}
+            disabled={
+              create.isPending || download.isPending || busy || (unsaved && !beforeDownload)
+            }
             onClick={() => create.mutate()}
           >
             {status.data?.shared ? "Create a new link" : "Create link"}

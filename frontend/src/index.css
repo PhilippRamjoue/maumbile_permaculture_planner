@@ -1071,7 +1071,8 @@ h1 {
 .save-status[data-state="saving"] .save-status__state {
   color: #8a5a00;
 }
-.save-status[data-state="failed"] .save-status__state {
+.save-status[data-state="failed"] .save-status__state,
+.save-status[data-state="invalid"] .save-status__state {
   color: #b00020;
 }
 .save-status__note {

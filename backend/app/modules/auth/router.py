@@ -4,8 +4,9 @@ from __future__ import annotations
 
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, Response, status
 
+from app.core.capacity import Capacity
 from app.core.config import Settings, get_settings
 from app.modules.auth.dependencies import (
     ACCESS_COOKIE,
@@ -16,7 +17,14 @@ from app.modules.auth.dependencies import (
     unauthorized,
 )
 from app.modules.auth.rate_limit import RateLimiter
-from app.modules.auth.schemas import LoginRequest, RegisterRequest, UserRead
+from app.modules.auth.recovery import recovery_enabled, send_password_reset
+from app.modules.auth.schemas import (
+    LoginRequest,
+    PasswordResetConfirm,
+    PasswordResetRequest,
+    RegisterRequest,
+    UserRead,
+)
 from app.modules.auth.service import (
     EmailAlreadyRegisteredError,
     InvalidCredentialsError,
@@ -26,6 +34,7 @@ from app.modules.auth.service import (
 )
 
 router = APIRouter()
+_hash_capacity = Capacity(4)
 
 # The refresh cookie is only ever sent to the auth endpoints.
 _REFRESH_COOKIE_PATH = "/api/v1/auth"
@@ -59,9 +68,22 @@ def _clear_auth_cookies(response: Response) -> None:
 
 
 @router.post("/register", response_model=UserRead, status_code=status.HTTP_201_CREATED)
-async def register(data: RegisterRequest, service: AuthServiceDep) -> UserRead:
+async def register(
+    data: RegisterRequest,
+    request: Request,
+    service: AuthServiceDep,
+    limiter: Annotated[RateLimiter, Depends(get_login_limiter)],
+) -> UserRead:
+    retry_after = limiter.hit(f"register:{request.client.host if request.client else 'unknown'}")
+    if retry_after is not None:
+        raise HTTPException(
+            429,
+            "Too many registration attempts. Try again later.",
+            headers={"Retry-After": str(int(retry_after))},
+        )
     try:
-        user = await service.register(data)
+        async with _hash_capacity.acquire():
+            user = await service.register(data)
     except EmailAlreadyRegisteredError:
         raise HTTPException(status.HTTP_409_CONFLICT, detail="Email already registered") from None
     return UserRead.model_validate(user)
@@ -86,7 +108,8 @@ async def login(
                 headers={"Retry-After": str(int(retry_after))},
             )
     try:
-        user = await service.authenticate(data.email, data.password)
+        async with _hash_capacity.acquire():
+            user = await service.authenticate(data.email, data.password)
     except InvalidCredentialsError:
         raise unauthorized("Invalid email or password") from None
     _set_auth_cookies(response, await service.issue_tokens(user), settings)
@@ -122,3 +145,67 @@ async def logout(request: Request, service: AuthServiceDep) -> Response:
 @router.get("/me", response_model=UserRead)
 async def me(user: CurrentUser) -> UserRead:
     return user
+
+
+@router.get("/recovery/status")
+async def recovery_status(settings: Annotated[Settings, Depends(get_settings)]) -> dict[str, bool]:
+    return {"enabled": recovery_enabled(settings)}
+
+
+@router.post("/password-reset", status_code=202)
+async def request_password_reset(
+    data: PasswordResetRequest,
+    request: Request,
+    background: BackgroundTasks,
+    service: AuthServiceDep,
+    settings: Annotated[Settings, Depends(get_settings)],
+    limiter: Annotated[RateLimiter, Depends(get_login_limiter)],
+) -> dict[str, str]:
+    if not recovery_enabled(settings):
+        raise HTTPException(
+            503,
+            "Password recovery is not configured on this instance. "
+            "Contact the operator privately for help.",
+        )
+    for key in (
+        f"reset-ip:{request.client.host if request.client else 'unknown'}",
+        f"reset-email:{normalize_email(data.email)}",
+    ):
+        retry = limiter.hit(key)
+        if retry is not None:
+            raise HTTPException(
+                429,
+                "Too many reset requests. Try again later.",
+                headers={"Retry-After": str(int(retry))},
+            )
+    result = await service.request_password_reset(data.email)
+    if result is not None:
+        background.add_task(send_password_reset, *result, settings)
+    return {
+        "message": (
+            "If an active account uses that email, a password reset link will be sent. "
+            "Check your inbox and spam folder."
+        )
+    }
+
+
+@router.post("/password-reset/confirm", status_code=204)
+async def confirm_password_reset(
+    data: PasswordResetConfirm,
+    request: Request,
+    service: AuthServiceDep,
+    limiter: Annotated[RateLimiter, Depends(get_login_limiter)],
+) -> Response:
+    retry = limiter.hit(f"reset-confirm:{request.client.host if request.client else 'unknown'}")
+    if retry is not None:
+        raise HTTPException(429, "Too many attempts. Try again later.")
+    try:
+        async with _hash_capacity.acquire():
+            await service.reset_password(data.token, data.password)
+    except InvalidTokenError:
+        raise HTTPException(
+            400, "This reset link is invalid or expired. Request a new one."
+        ) from None
+    response = Response(status_code=204)
+    _clear_auth_cookies(response)
+    return response

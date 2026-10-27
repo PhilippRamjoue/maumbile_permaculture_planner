@@ -65,6 +65,13 @@ interface SetupState {
   undo(): void;
   redo(): void;
   reset(initial?: { countryCode?: string | null }): void;
+  restore(draft: {
+    name: string;
+    countryCode: string;
+    order: CoordinateOrder;
+    step: SetupStep;
+    rows: CoordinateCell[];
+  }): void;
 }
 
 let nextRowId = 1;
@@ -105,6 +112,8 @@ function edit(
 /** Draft of the site being set up. Lives only while the setup page is open. */
 export const useSetupStore = create<SetupState>((set) => ({
   ...initial(),
+  restore: (draft) =>
+    set({ ...initial(draft.countryCode), ...draft, rows: draft.rows.map((row) => newRow(row)) }),
   setStep: (step) => set({ step }),
   setCountry: (countryCode) => set({ countryCode }),
   setFocusPoint: (focusPoint) => set({ focusPoint }),

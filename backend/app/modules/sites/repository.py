@@ -31,10 +31,14 @@ class SiteRepository:
         await self._session.commit()
         return site
 
-    async def get(self, site_id: uuid.UUID) -> Site | None:
+    async def get(self, site_id: uuid.UUID, *, lock: bool = False) -> Site | None:
         """Fetch a non-deleted site."""
         stmt = select(Site).where(Site.id == site_id, Site.deleted_at.is_(None))
-        return (await self._session.execute(stmt)).scalar_one_or_none()
+        if lock:
+            stmt = stmt.with_for_update()
+        return (
+            await self._session.execute(stmt.execution_options(populate_existing=True))
+        ).scalar_one_or_none()
 
     async def list_for_owner(
         self, owner_id: uuid.UUID | None, limit: int, offset: int

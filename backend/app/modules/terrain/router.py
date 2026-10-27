@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import uuid
-from typing import Annotated
+from datetime import UTC, datetime
+from typing import Annotated, cast
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Response, status
 from geoalchemy2.shape import to_shape
@@ -24,8 +25,10 @@ from app.modules.terrain.schemas import (
     SlopeSummary,
     TerrainRead,
     TerrainRequestBody,
+    TerrainStatus,
 )
 from app.modules.terrain.service import (
+    STALE_AFTER,
     NoElevationProviderError,
     SessionFactory,
     TerrainService,
@@ -66,13 +69,23 @@ def _read(site_id: uuid.UUID, result: TerrainResult | None) -> TerrainRead:
         return TerrainRead(site_id=site_id, status="not_requested")
     return TerrainRead(
         site_id=site_id,
-        status=result.status,  # type: ignore[arg-type]
+        status=cast(
+            TerrainStatus,
+            (
+                "interrupted"
+                if result.status in ("pending", "running")
+                and datetime.now(UTC) - result.updated_at > STALE_AFTER
+                else result.status
+            ),
+        ),
         contour_interval_m=result.contour_interval_m,
         dem_source=result.dem_source,
         attribution=result.attribution,
         resolution_m=result.resolution_m,
         error=result.error,
-        requested_at=result.created_at,
+        requested_at=result.updated_at
+        if result.status in ("pending", "running")
+        else result.created_at,
         computed_at=result.computed_at,
     )
 

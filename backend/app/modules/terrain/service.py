@@ -14,6 +14,7 @@ from datetime import UTC, datetime, timedelta
 import structlog
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.capacity import Capacity, CapacityExceeded
 from app.core.geo import BBox
 from app.modules.regions.profiles import GLOBAL_PROFILE_CODE
 from app.modules.regions.resolver import NoProviderAvailableError, RegionResolver
@@ -35,6 +36,7 @@ from app.modules.terrain.providers import (
 from app.modules.terrain.repository import TerrainRepository
 
 log = structlog.get_logger(__name__)
+_terrain_capacity = Capacity(2)
 
 # A pending/running row that has not moved for this long belongs to a job that died with its
 # process (background tasks do not survive a restart); the next POST re-queues it.
@@ -184,8 +186,9 @@ class TerrainService:
                     return
                 padded = pad_bbox(bbox, provider.resolution_m)
                 validate_dem_extent(padded)
-                dem = await provider.get_dem(padded)
-                derived = await asyncio.to_thread(derive_terrain, dem, bbox, interval_m)
+                async with _terrain_capacity.acquire():
+                    dem = await provider.get_dem(padded)
+                    derived = await asyncio.to_thread(derive_terrain, dem, bbox, interval_m)
                 await repo.save_ready(
                     terrain_id,
                     derived,
@@ -195,6 +198,8 @@ class TerrainService:
                     resolution_m=provider.resolution_m,
                     now=datetime.now(UTC),
                 )
+            except CapacityExceeded as exc:
+                await self._fail(repo, session, terrain_id, job_id, str(exc))
             except DemUnavailableError as exc:
                 await self._fail(repo, session, terrain_id, job_id, f"No elevation data: {exc}")
             except DemFetchError as exc:

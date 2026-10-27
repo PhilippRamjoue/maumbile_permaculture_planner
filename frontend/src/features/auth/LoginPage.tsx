@@ -32,6 +32,9 @@ export function LoginPage() {
       />
       <h1>Sign in</h1>
       <p className="muted">Welcome back to Maumbile — design your land.</p>
+      {!!(location.state as { passwordReset?: boolean } | null)?.passwordReset && (
+        <p role="status">Your password was reset. Sign in with your new password.</p>
+      )}
       <form onSubmit={onSubmit} className="form">
         <TextField
           label="Email"
@@ -58,6 +61,9 @@ export function LoginPage() {
           {login.isPending ? "Signing in…" : "Sign in"}
         </button>
       </form>
+      <p>
+        <Link to="/forgot-password">Forgot your password?</Link>
+      </p>
       <p className="muted">
         New here? <Link to="/register">Create an account</Link>
       </p>

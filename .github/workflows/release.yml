@@ -10,6 +10,10 @@ on:
     tags: ["v*"]
 
 jobs:
+  verify:
+    name: Verify release commit
+    uses: ./.github/workflows/ci.yml
+
   check:
     name: Check tag against CHANGELOG
     runs-on: ubuntu-latest
@@ -28,7 +32,7 @@ jobs:
 
   images:
     name: Build and push ${{ matrix.image }}
-    needs: check
+    needs: [check, verify]
     runs-on: ubuntu-latest
     permissions:
       contents: read

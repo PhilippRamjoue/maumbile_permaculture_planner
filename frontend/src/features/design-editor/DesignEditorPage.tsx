@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Site } from "../../entities/site";
 import type { Plan } from "../../entities/planning";
 import { useSite } from "../../entities/siteQueries";
@@ -23,9 +23,14 @@ export function DesignEditorPage() {
 function PlanPicker({ site }: { site: Site }) {
   const navigate = useNavigate();
   const [name, setName] = useState("My permaculture plan");
-  const plans = useQuery({
+  const plans = useInfiniteQuery({
     queryKey: planningKeys.plans(site.id),
-    queryFn: () => planningApi.list(site.id),
+    queryFn: ({ pageParam }) => planningApi.list(site.id, pageParam),
+    initialPageParam: 0,
+    getNextPageParam: (last) =>
+      last.items.length && last.offset + last.items.length < last.total
+        ? last.offset + last.items.length
+        : undefined,
   });
   const create = useMutation({
     mutationFn: () => planningApi.create(site.id, name.trim()),
@@ -40,11 +45,24 @@ function PlanPicker({ site }: { site: Site }) {
       {plans.isError && <p role="alert">{message(plans.error)}</p>}
       {plans.data && (
         <ul className="plan-list">
-          {plans.data.items.map((plan) => (
-            <PlanRow key={plan.id} siteId={site.id} plan={plan} />
-          ))}
+          {plans.data.pages
+            .flatMap((page) => page.items)
+            .map((plan) => (
+              <PlanRow key={plan.id} siteId={site.id} plan={plan} />
+            ))}
         </ul>
       )}
+      {plans.hasNextPage && (
+        <button
+          type="button"
+          className="btn"
+          disabled={plans.isFetchingNextPage}
+          onClick={() => void plans.fetchNextPage()}
+        >
+          {plans.isFetchingNextPage ? "Loading…" : "Load more plans"}
+        </button>
+      )}
+      {plans.data?.pages[0].total === 0 && <p>No plans yet. Create your first design below.</p>}
       <form
         className="card"
         onSubmit={(event) => {
@@ -154,16 +172,12 @@ function PlanRow({ siteId, plan }: { siteId: string; plan: Plan }) {
 }
 
 function PlanLoader({ site, planId }: { site: Site; planId: string }) {
-  const plan = useQuery({
-    queryKey: planningKeys.plan(planId),
-    queryFn: () => planningApi.get(planId),
-  });
-  const features = useQuery({
-    queryKey: planningKeys.features(planId),
-    queryFn: () => planningApi.features(planId),
+  const design = useQuery({
+    queryKey: planningKeys.design(planId),
+    queryFn: () => planningApi.design(planId),
   });
   const types = useQuery({ queryKey: planningKeys.types, queryFn: planningApi.types });
-  const error = plan.error ?? features.error ?? types.error;
+  const error = design.error ?? types.error;
   if (error)
     return (
       <div role="alert">
@@ -171,8 +185,15 @@ function PlanLoader({ site, planId }: { site: Site; planId: string }) {
         <Link to={`/sites/${site.id}/design`}>Back to plans</Link>
       </div>
     );
-  if (!plan.data || !features.data || !types.data) return <p role="status">Loading design…</p>;
-  if (plan.data.site_id !== site.id)
+  if (!design.data || !types.data) return <p role="status">Loading design…</p>;
+  if (design.data.plan.site_id !== site.id)
     return <p role="alert">This plan belongs to a different site.</p>;
-  return <Workspace site={site} plan={plan.data} initial={features.data} types={types.data} />;
+  return (
+    <Workspace
+      site={site}
+      plan={design.data.plan}
+      initial={design.data.features}
+      types={types.data}
+    />
+  );
 }

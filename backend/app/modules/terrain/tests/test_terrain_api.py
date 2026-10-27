@@ -264,6 +264,7 @@ async def test_a_dead_job_is_requeued(
 ) -> None:
     site = await make_site(api)
     await set_row(engine, site, "running", timedelta(hours=1))  # process died mid-job
+    assert (await api.get(f"/api/v1/sites/{site}/terrain")).json()["status"] == "interrupted"
 
     resp = await post_terrain(api, site)
 

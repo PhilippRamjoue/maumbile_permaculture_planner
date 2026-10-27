@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { LoginRequest, RegisterRequest, User } from "../../entities/user";
 import { ApiError } from "../../shared/api/client";
 import { authApi } from "./api";
+import { clearAllSetupDrafts } from "../site-setup/draftRecovery";
 
 export const ME_QUERY_KEY = ["auth", "me"] as const;
 
@@ -48,6 +49,7 @@ export function useLogout() {
   return useMutation<void, Error, void>({
     mutationFn: authApi.logout,
     onSuccess: () => {
+      clearAllSetupDrafts();
       // Drop everything owned by the previous user, then record the anonymous state.
       queryClient.clear();
       queryClient.setQueryData(ME_QUERY_KEY, null);

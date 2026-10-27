@@ -98,6 +98,7 @@ class ImageryService:
             if cached is not None:
                 return TileResult(cached.content, cached.media_type, provider, "HIT")
 
+        await self._cache.release_reads()
         data = await provider.get_tile(z, x, y)
         if data is None:
             raise TileNotFoundError(f"{provider.key!r} has no tile {z}/{x}/{y}")

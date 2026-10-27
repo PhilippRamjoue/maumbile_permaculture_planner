@@ -44,6 +44,12 @@ services:
     environment:
       APP_ENVIRONMENT: production
       APP_DEBUG: ${APP_DEBUG:-false}
+      APP_PUBLIC_ORIGIN: ${APP_PUBLIC_ORIGIN:-}
+      APP_SMTP_HOST: ${APP_SMTP_HOST:-}
+      APP_SMTP_PORT: ${APP_SMTP_PORT:-587}
+      APP_SMTP_USERNAME: ${APP_SMTP_USERNAME:-}
+      APP_SMTP_PASSWORD: ${APP_SMTP_PASSWORD:-}
+      APP_SMTP_FROM: ${APP_SMTP_FROM:-}
       # Boot fails in production if this is unset or the dev default (see app/core/config.py).
       APP_SECRET_KEY: ${APP_SECRET_KEY:?set APP_SECRET_KEY in infra/.env or Coolify}
       APP_COOKIE_SECURE: ${APP_COOKIE_SECURE:-true}

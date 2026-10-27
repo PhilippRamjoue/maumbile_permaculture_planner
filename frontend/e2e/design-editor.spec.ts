@@ -115,7 +115,7 @@ test("keeps the draft after a save failure and warns before leaving", async ({ p
 
   // A failed save keeps the draft in place; a retry succeeds.
   await page.route(
-    /\/features:batch$/,
+    /\/plans\/[^/]+\/design$/,
     (route) =>
       route.fulfill({
         status: 503,

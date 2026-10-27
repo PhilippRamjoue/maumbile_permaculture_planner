@@ -24,7 +24,12 @@ export interface Plan {
   updated_at: string;
 }
 export interface PlanDetail extends Plan {
+  revision: number;
   layers: PlanLayer[];
+}
+export interface DesignRead {
+  plan: PlanDetail;
+  features: FeatureCollection;
 }
 export interface DesignFeature {
   type: "Feature";

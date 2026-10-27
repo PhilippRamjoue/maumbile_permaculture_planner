@@ -19,6 +19,8 @@ def plan_to_geojson(doc: PlanDocument) -> dict[str, Any]:
     return {
         "type": "FeatureCollection",
         "name": doc.name,
+        "maumbile_version": 1,
+        "site": {"name": doc.site_name, "boundary": doc.boundary},
         "plan": {
             "id": str(doc.plan_id),
             "name": doc.name,

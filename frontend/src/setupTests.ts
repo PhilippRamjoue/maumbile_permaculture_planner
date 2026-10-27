@@ -7,4 +7,5 @@ configure({ asyncUtilTimeout: 4000 });
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  sessionStorage.clear();
 });

@@ -8,7 +8,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
-TerrainStatus = Literal["not_requested", "pending", "running", "ready", "failed"]
+TerrainStatus = Literal["not_requested", "pending", "running", "ready", "failed", "interrupted"]
 
 # 30 m DEMs carry metre-level vertical error; below ~0.5 m a contour is pure noise, and above
 # 100 m a site shows none.

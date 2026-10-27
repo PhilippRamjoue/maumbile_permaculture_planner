@@ -1,22 +1,26 @@
 import { Link } from "react-router-dom";
 
-export type SaveState = "saving" | "unsaved" | "failed" | "saved";
+export type SaveState = "saving" | "unsaved" | "failed" | "saved" | "invalid";
 
 export function saveStateOf({
   saving,
   dirty,
   failed,
+  invalid = false,
 }: {
   saving: boolean;
   dirty: boolean;
   failed: boolean;
+  invalid?: boolean;
 }): SaveState {
   if (saving) return "saving";
+  if (invalid) return "invalid";
   if (failed) return "failed";
   return dirty ? "unsaved" : "saved";
 }
 
 const TEXT: Record<SaveState, string> = {
+  invalid: "Not saved — fix the border",
   saving: "Saving…",
   unsaved: "Unsaved changes — saving automatically",
   failed: "Not saved yet — see the message below",
@@ -62,7 +66,13 @@ export function PlacedNotice({
     <section className="placed-notice" aria-label="Added to your design">
       <p role="status">
         <strong>✓ {name} added.</strong>{" "}
-        {saveState === "saved" ? "Saved to your design." : "It will be saved automatically."}
+        {saveState === "saved"
+          ? "Saved to your design."
+          : saveState === "failed"
+            ? "It is still in your draft. Retry saving below."
+            : saveState === "invalid"
+              ? "Fix your border to finish saving."
+              : "It will be saved automatically."}
       </p>
       <div className="editor-tools">
         <button type="button" className="btn btn--primary" onClick={onAnother}>

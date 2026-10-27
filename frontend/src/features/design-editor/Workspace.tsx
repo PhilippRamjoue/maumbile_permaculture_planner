@@ -27,7 +27,9 @@ import { useViewportBounds } from "../map/useViewportBounds";
 import { ZoomToBoundaryButton } from "../map/ZoomToBoundaryButton";
 import { ImageryAttribution } from "../map/ImageryAttribution";
 import { useImageryMeta } from "../map/imageryMeta";
-import { persistDesign, planningApi, planningKeys } from "./api";
+import { createDesignWriter, persistDesign, planningApi, planningKeys } from "./api";
+import { saveBlob } from "../export/api";
+import { ModalDialog } from "../../shared/ui/ModalDialog";
 import { isParametricSector, type SectorKind } from "./sectors";
 import { createEditorStore, signature } from "./store";
 import { formatArea, formatLength } from "../../shared/format";
@@ -125,7 +127,12 @@ export function Workspace({
   const [defaultFocus] = useState(() =>
     initialFocus({ layers: plan.layers, features: initial.features }, plan.goals),
   );
-  const goals = useGoals(plan);
+  const [writer] = useState(() => createDesignWriter(plan.id, plan.revision));
+  const savedLayers = useRef(plan.layers);
+  const savedFeatures = useRef(initial.features.map(editable));
+  const goals = useGoals(plan, writer);
+  const liveGoalsSignature = useRef(goals.signature);
+  liveGoalsSignature.current = goals.signature;
   const [params, setParams] = useSearchParams();
   // Simple vs guided: new/elements-only plans open simple (straight to placing things); a plan with
   // goals/sectors/zones opens guided. A remembered choice wins. In simple mode the only step is
@@ -208,19 +215,26 @@ export function Workspace({
       const snapshot = structuredClone(store.getState().document);
       try {
         return await persistDesign(
-          plan.id,
+          writer,
           snapshot,
           store.getState().persistedIds,
-          (persistedIds) => store.setState({ persistedIds }),
+          savedLayers.current,
+          savedFeatures.current,
         );
       } catch (error) {
         setFailedSignature(signature(snapshot));
         throw error;
       }
     },
-    onSuccess: ({ snapshot, result, layers }) => {
+    onSuccess: ({ snapshot, result, layers, plan: updatedPlan }) => {
+      savedLayers.current = layers;
+      savedFeatures.current = snapshot.features;
       store.getState().markSaved(snapshot);
       queryClient.setQueryData(planningKeys.features(plan.id), result);
+      queryClient.setQueryData(planningKeys.design(plan.id), {
+        plan: updatedPlan,
+        features: result,
+      });
       queryClient.setQueryData<PlanDetail>(planningKeys.plan(plan.id), (old) => ({
         ...(old ?? plan),
         layers,
@@ -235,9 +249,21 @@ export function Workspace({
   const boundaryDirty = useStore(draft, isBoundaryDirty);
   const boundaryVertices = useStore(draft, (s) => s.vertices);
   const boundaryValid = validateDraft(boundaryVertices).status === "valid";
+  const boundarySignature = JSON.stringify(boundaryVertices.map((vertex) => vertex.point));
+  const [failedBoundarySignature, setFailedBoundarySignature] = useState<string | null>(null);
   const saveBoundary = useMutation({
-    mutationFn: () =>
-      sitesApi.update(site.id, { coordinates: draftCoordinates(draft.getState().vertices) }),
+    mutationFn: async () => {
+      const vertices = draft.getState().vertices;
+      try {
+        return await sitesApi.update(site.id, {
+          coordinates: draftCoordinates(vertices),
+          expected_updated_at: site.updated_at,
+        });
+      } catch (error) {
+        setFailedBoundarySignature(JSON.stringify(vertices.map((vertex) => vertex.point)));
+        throw error;
+      }
+    },
     onSuccess: (updated) => {
       // The border is the Site: everything derived from it (terrain, imagery coverage) is stale.
       queryClient.setQueryData(siteKeys.detail(site.id), updated);
@@ -245,6 +271,7 @@ export function Workspace({
       void queryClient.invalidateQueries({ queryKey: imageryMetaKey(site.id) });
       void queryClient.invalidateQueries({ queryKey: siteKeys.list() });
       draft.getState().reset(updated.boundary);
+      setFailedBoundarySignature(null);
     },
   });
   const boundaryUi = useBoundaryEditing(map, focus === "boundary", draft, saveBoundary.isPending);
@@ -328,6 +355,34 @@ export function Workspace({
     waitWhileTyping: false,
   });
 
+  useAutosave({
+    enabled: boundaryValid && !saveBoundary.isPending && blocker.state !== "blocked",
+    dirty: boundaryDirty,
+    signature: boundarySignature,
+    failedSignature: failedBoundarySignature,
+    save: () => saveBoundary.mutate(),
+  });
+
+  const flush = async () => {
+    const beforeFeatures = signature(store.getState().document);
+    const beforeGoals = liveGoalsSignature.current;
+    if (boundaryDirty && !boundaryValid)
+      throw new Error("Fix the invalid border before saving or exporting.");
+    if (save.isPending || saveBoundary.isPending || goals.saving)
+      throw new Error("A save is still running. Please try again when it finishes.");
+    await Promise.all([
+      dirty ? save.mutateAsync() : Promise.resolve(),
+      boundaryDirty ? saveBoundary.mutateAsync() : Promise.resolve(),
+      goals.dirty ? goals.saveAsync() : Promise.resolve(),
+    ]);
+    if (
+      beforeFeatures !== signature(store.getState().document) ||
+      beforeGoals !== liveGoalsSignature.current
+    )
+      throw new Error("Your design changed while saving. Save again to include your latest edits.");
+  };
+  const [leaveError, setLeaveError] = useState<string | null>(null);
+
   useEffect(() => {
     const beforeUnload = (event: BeforeUnloadEvent) => {
       if (dirty || boundaryDirty || goals.dirty) {
@@ -358,6 +413,7 @@ export function Workspace({
       }
       if (
         save.isPending ||
+        saveBoundary.isPending ||
         (event.target instanceof HTMLElement && event.target.closest("input, textarea, select"))
       )
         return;
@@ -378,7 +434,16 @@ export function Workspace({
       window.removeEventListener("beforeunload", beforeUnload);
       window.removeEventListener("keydown", key);
     };
-  }, [dirty, boundaryDirty, goals.dirty, save.isPending, store, draft, focus]);
+  }, [
+    dirty,
+    boundaryDirty,
+    goals.dirty,
+    save.isPending,
+    saveBoundary.isPending,
+    store,
+    draft,
+    focus,
+  ]);
 
   // The site border is a registry layer; "show the boundary as context" is its visibility.
   const boundaryShown = focus === "boundary" || !hidden.has("boundary");
@@ -440,6 +505,7 @@ export function Workspace({
     );
   };
   const showSimple = () => {
+    saveRef.current();
     setLevel("simple");
     store.getState().select(null);
     setPlaced(null);
@@ -473,8 +539,12 @@ export function Workspace({
   const progress = progressOf(state.document, goals.goals);
   const saveState = saveStateOf({
     saving: save.isPending || saveBoundary.isPending || goals.saving,
-    dirty: dirty || (boundaryDirty && boundaryValid) || goals.dirty,
-    failed: (save.isError && failedSignature === currentSignature) || goals.failed,
+    dirty: dirty || boundaryDirty || goals.dirty,
+    invalid: boundaryDirty && !boundaryValid,
+    failed:
+      (save.isError && failedSignature === currentSignature) ||
+      goals.failed ||
+      (saveBoundary.isError && failedBoundarySignature === boundarySignature),
   });
   const placedFeature = placed ? features.find((f) => f.id === placed.id) : undefined;
   const paletteName = types.find((t) => t.id === elementId)?.name ?? "element";
@@ -508,7 +578,12 @@ export function Workspace({
         <Link to={`/sites/${site.id}/design`}>← Plans</Link>
         <h1>{plan.name}</h1>
         <span>{site.name}</span>
-        <ExportMenu planId={plan.id} unsaved={dirty} />
+        <ExportMenu
+          planId={plan.id}
+          unsaved={dirty || boundaryDirty || goals.dirty}
+          busy={save.isPending || saveBoundary.isPending || goals.saving}
+          beforeDownload={flush}
+        />
         {/* The design autosaves, so a Save button appears only when there is actually something to
             save (briefly) or a failed save to retry — otherwise the status says it is all saved. */}
         {(saveState === "unsaved" || saveState === "failed") && (
@@ -569,17 +644,96 @@ export function Workspace({
           Could not save your goals: {message(goals.error)} They are still here. Retry saving.
         </p>
       )}
-      {drawing.error && <p role="alert">{drawing.error}</p>}
-      {blocker.state === "blocked" && (
-        <div className="notice" role="dialog" aria-label="Unsaved design">
-          <p>You have unsaved changes. Leave this design?</p>
-          <button className="btn" onClick={() => blocker.reset()}>
-            Keep editing
+      {boundaryDirty && !boundaryValid && (
+        <p role="alert">
+          Your border has unsaved, invalid changes. Return to Boundary to fix or discard them.
+        </p>
+      )}
+      {saveBoundary.isError && boundaryDirty && (
+        <p role="alert">
+          Could not save the border: {message(saveBoundary.error)}. Your draft is still here.
+        </p>
+      )}
+      {(save.isError || goals.failed || saveBoundary.isError) && (
+        <div className="editor-tools">
+          <button
+            type="button"
+            className="btn"
+            onClick={() =>
+              saveBlob(
+                new Blob(
+                  [
+                    JSON.stringify(
+                      {
+                        version: 1,
+                        plan: { ...plan, goals: goals.goals },
+                        site: {
+                          ...site,
+                          boundary: {
+                            type: "Polygon",
+                            coordinates: [draftCoordinates(draft.getState().vertices)],
+                          },
+                        },
+                        ...store.getState().document,
+                      },
+                      null,
+                      2,
+                    ),
+                  ],
+                  { type: "application/json" },
+                ),
+                "maumbile-unsaved-draft.json",
+              )
+            }
+          >
+            Download unsaved draft
           </button>
-          <button className="btn" onClick={() => blocker.proceed()}>
-            Discard changes and leave
+          <button type="button" className="btn" onClick={() => window.location.reload()}>
+            Reload saved design
           </button>
         </div>
+      )}
+      {drawing.error && <p role="alert">{drawing.error}</p>}
+      {blocker.state === "blocked" && (
+        <ModalDialog
+          label="Unsaved design"
+          onCancel={() => {
+            if (!save.isPending && !saveBoundary.isPending && !goals.saving) blocker.reset();
+          }}
+        >
+          <p>You have unsaved changes. Leave this design?</p>
+          <button
+            className="btn"
+            disabled={save.isPending || saveBoundary.isPending || goals.saving}
+            onClick={() => blocker.reset()}
+          >
+            Keep editing
+          </button>
+          <button
+            className="btn"
+            disabled={
+              save.isPending ||
+              saveBoundary.isPending ||
+              goals.saving ||
+              (boundaryDirty && !boundaryValid)
+            }
+            onClick={() => {
+              void flush()
+                .then(() => blocker.proceed())
+                .catch((error: unknown) => setLeaveError(message(error)));
+            }}
+          >
+            Save and leave
+          </button>
+          {leaveError && <p role="alert">{leaveError}</p>}
+          <button
+            className="btn"
+            disabled={save.isPending || saveBoundary.isPending || goals.saving}
+            onClick={() => blocker.proceed()}
+          >
+            Discard changes and leave
+          </button>
+        </ModalDialog>
       )}
       <div className="editor-layout">
         <aside className="editor-sidebar" aria-label="Design controls" data-focus={focus}>

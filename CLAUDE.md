@@ -2,6 +2,8 @@
 
 Read these before changing behavior:
 
+0. [2026-10-27 handoff](docs/CLAUDE_HANDOFF_2026-10-27.md): committed audit fixes and your
+   remaining uncommitted panel task; start here when continuing this work.
 1. [Architecture](docs/ARCHITECTURE.md): intended boundaries, geometry and API conventions.
 2. [Project status](docs/PROJECT_STATUS.md): completed packages and deliberate deferrals.
 3. [2026-10-21 review follow-up](docs/REVIEW_FOLLOWUP_2026-10-21.md): bugs fixed, rationale,
@@ -21,8 +23,10 @@ Key implementation constraints:
 - DEM extent limits must run before opening upstream tiles and before raster allocation.
 - Batch feature writes are atomic. UUID conflict guards must also prevent cross-plan readback.
   Optional `deleted_ids` are applied in the same transaction as upserts; omitted ids are preserved.
-  Editor layer metadata uses separate idempotent PATCH calls. Keep the persisted feature baseline
-  even if one of those later calls fails, so retries can remove newly persisted features.
+  The editor now uses `GET/PUT /plans/{id}/design`: a consistent snapshot and one atomic,
+  revision-guarded transaction for feature deletions/upserts, layer changes and goals. Its writes
+  share a client queue. Legacy writes advance the revision, and are rejected after a plan has
+  entered protected saving; keep this guard so old tabs cannot overwrite newer work.
 - Use `sites.dependencies.OwnedSite` for imagery/terrain access, rather than importing the
   sites router or ORM model. Services remain independent of FastAPI.
 - Add a new Alembic migration for schema changes; never rewrite migrations already deployed.

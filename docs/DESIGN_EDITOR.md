@@ -53,6 +53,15 @@ never added to persisted domain properties.
 
 ## Save contract and failure behavior
 
+**Updated 2026-10-26:** the browser editor now uses the atomic, revision-guarded `GET/PUT
+/plans/{id}/design` contract described in [`ARCHITECTURE.md`](ARCHITECTURE.md). The older batch
+contract below remains for initial legacy/API writes, but unversioned feature/layer/goal writes
+are rejected once a plan has entered protected saving. The editor sends changed features and
+layer metadata in one transaction; it no longer performs separate layer PATCHes. Goals use the
+same revision queue. Valid boundaries autosave through a timestamp-guarded site update. Conflicts
+and failures retain the local document and offer a draft download. Downloads save first, and the
+navigation dialog offers **Save and leave** as well as keeping or discarding the draft.
+
 `POST /api/v1/plans/{id}/features:batch` now accepts:
 
 ```json

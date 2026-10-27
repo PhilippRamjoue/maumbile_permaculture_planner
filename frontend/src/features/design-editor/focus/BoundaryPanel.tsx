@@ -104,8 +104,8 @@ export function BoundaryPanel({
       </div>
       <p className="muted">
         {dirty
-          ? "Unsaved border changes. They are saved when you leave this step, if the border is valid."
-          : "Moving the border does not move what you have drawn. Terrain is worked out for the border, so recompute it in Sectors & terrain after a change."}
+          ? "Your valid border changes save automatically. Invalid borders stay here until you fix or discard them."
+          : "This border is shared by all plans for this site. Moving it does not move your drawings. Recompute terrain after a change."}
       </p>
     </fieldset>
   );

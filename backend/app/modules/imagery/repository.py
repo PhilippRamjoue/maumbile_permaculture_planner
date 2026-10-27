@@ -15,6 +15,10 @@ class TileCacheRepository:
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
 
+    async def release_reads(self) -> None:
+        """Return the ownership/cache lookup connection before slow upstream I/O."""
+        await self._session.rollback()
+
     async def get(
         self, provider_key: str, z: int, x: int, y: int, *, now: datetime
     ) -> ImageryTile | None:

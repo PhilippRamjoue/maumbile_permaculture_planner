@@ -8,6 +8,7 @@ import { mockApi, problem, requestedRoutes } from "../../shared/testing/mockApi"
 import { ExportMenu } from "./ExportMenu";
 import { SharedPlanPage } from "./SharedPlanPage";
 import { sharedExportUrl } from "./api";
+import { exportApi } from "./api";
 
 const PLAN = "11111111-1111-1111-1111-111111111111";
 
@@ -23,6 +24,26 @@ function renderMenu(unsaved = false) {
 afterEach(() => vi.unstubAllGlobals());
 
 describe("ExportMenu", () => {
+  it("does not export an older document when saving the latest changes fails", async () => {
+    mockApi({ [`GET /plans/${PLAN}/share`]: { json: { shared: false, created_at: null } } });
+    const download = vi.spyOn(exportApi, "download");
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <QueryClientProvider client={queryClient}>
+        <ExportMenu
+          planId={PLAN}
+          unsaved
+          beforeDownload={async () => {
+            throw new Error("Border could not be saved");
+          }}
+        />
+      </QueryClientProvider>,
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Save and download: Image (PNG)" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Border could not be saved");
+    expect(download).not.toHaveBeenCalled();
+    download.mockRestore();
+  });
   it("downloads the chosen format with the server's filename", async () => {
     const saved: string[] = [];
     URL.createObjectURL = vi.fn(() => "blob:fake");

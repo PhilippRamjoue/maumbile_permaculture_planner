@@ -4,7 +4,12 @@ Snapshot for a reviewer (human or AI) doing a **consistency, bug, and requiremen
 Pair this with [`ARCHITECTURE.md`](ARCHITECTURE.md) (intended design), [`WORK_PACKAGES.md`](WORK_PACKAGES.md)
 (the plan + acceptance criteria), and [`DATA_SOURCES.md`](DATA_SOURCES.md) (rights).
 
-_Last updated: 2026-10-21._
+_Last updated: 2026-10-26._
+
+**Latest reliability work:** [`AUDIT_FIXES_2026-10-26.md`](AUDIT_FIXES_2026-10-26.md) records the
+local audit fixes, migrations `0011_plan_revision` and `0012_password_recovery`, regression checks
+and operator rollout steps. The hosted instance at <https://maumbile.ecosoul.tech> reports v0.1.4;
+these follow-up fixes are local/unreleased and have not been deployed there.
 
 **Review follow-up:** integration fixes and hardening are documented in
 [`REVIEW_FOLLOWUP_2026-10-21.md`](REVIEW_FOLLOWUP_2026-10-21.md). Claude's entry point is
@@ -35,14 +40,17 @@ API is versioned under `/api/v1`; OpenAPI at `/docs`. Alembic chain:
 `0001 → 0002_auth → 0002_sites → 0003_imagery → 0003_planning → 0004_terrain → 0005_terrain_generations → 0006_plan_shares`
 (single head). Existing terrain is lazily recomputed after the new migration; site/design data is retained.
 
-**Tests:** backend 208 passing + one opt-in live test (pytest; unit + PostGIS integration via
-Testcontainers + the migration chain), frontend 257 (Vitest; MapLibre + fetch are faked).
+**Tests:** backend 226 passing + one skipped opt-in live test (pytest; unit + PostGIS integration via
+Testcontainers + the migration chain), frontend 391 (Vitest; MapLibre + fetch are faked), and 11
+Chromium acceptance tests against built containers.
 CI (`.github/workflows/ci.yml`) runs lint/type checks, backend formatting, API contract drift checks,
 both suites, the frontend build, and Chromium acceptance tests against a disposable Compose stack.
 
 ## Not yet built (planned)
 
-- **WP12** (Coolify deployment) is implemented: see [`DEPLOY.md`](DEPLOY.md). Remaining WP12 items: optional Sentry and a live Coolify deploy of the real instance (needs a server and domain).
+- **WP12** (Coolify deployment) is implemented and the owner-confirmed hosted instance is live:
+  see [`DEPLOY.md`](DEPLOY.md). Optional Sentry, verified off-host backup restoration and operator
+  configuration for the next release remain operational follow-up work.
 - **Map-reliability pass** is **done** (satellite setup basemap; precise corner placement, drag, snap,
   select, delete, undo/redo, zoom-to-boundary; zoom-stable drawing). See `frontend/README.md`.
 - **Guided focus-mode shell** is **done**: the editor is a focus switcher
@@ -51,8 +59,8 @@ both suites, the frontend build, and Chromium acceptance tests against a disposa
   order and progress rail but free navigation and autosave. See
   `frontend/src/features/design-editor/focus/` and [`UX_GUIDED_MODES.md`](UX_GUIDED_MODES.md).
 
-All planned feature work is now implemented. Remaining is a real Coolify deploy (needs a server +
-domain) and ongoing polish — see [`UX_GUIDED_MODES.md`](UX_GUIDED_MODES.md) for refinements (e.g. mid-ring
+All planned feature work is now implemented and the hosted instance is deployed. Ongoing polish
+remains — see [`UX_GUIDED_MODES.md`](UX_GUIDED_MODES.md) for refinements (e.g. mid-ring
 corner insertion, edge snapping, deeper focus-mode integration tests).
 
 `frontend/` now includes Terra Draw and Turf. See [`DESIGN_EDITOR.md`](DESIGN_EDITOR.md) for controls,
