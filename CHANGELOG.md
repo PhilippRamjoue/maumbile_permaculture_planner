@@ -6,10 +6,10 @@ All notable changes to Maumbile are documented here. The format follows
 
 ## [Unreleased]
 
-## [0.2.0] - 2026-10-27
+## [0.2.1] - 2026-10-27
 
 A reliability and UX pass: safer saves and operational hardening (audit), plus editor and
-site-setup improvements from hands-on testing.
+site-setup improvements from hands-on testing. (0.2.0 was superseded before release.)
 
 ### Fixed
 
@@ -132,8 +132,8 @@ First public release.
 - Released under AGPL-3.0. All instance configuration and secrets live in the environment, never
   in the repository.
 
-[Unreleased]: https://github.com/PhilippRamjoue/maumbile_permaculture_planner/compare/v0.2.0...HEAD
-[0.2.0]: https://github.com/PhilippRamjoue/maumbile_permaculture_planner/compare/v0.1.4...v0.2.0
+[Unreleased]: https://github.com/PhilippRamjoue/maumbile_permaculture_planner/compare/v0.2.1...HEAD
+[0.2.1]: https://github.com/PhilippRamjoue/maumbile_permaculture_planner/compare/v0.1.4...v0.2.1
 [0.1.4]: https://github.com/PhilippRamjoue/maumbile_permaculture_planner/compare/v0.1.3...v0.1.4
 [0.1.3]: https://github.com/PhilippRamjoue/maumbile_permaculture_planner/compare/v0.1.2...v0.1.3
 [0.1.2]: https://github.com/PhilippRamjoue/maumbile_permaculture_planner/compare/v0.1.1...v0.1.2
