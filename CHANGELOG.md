@@ -6,6 +6,11 @@ All notable changes to Maumbile are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-27
+
+A reliability and UX pass: safer saves and operational hardening (audit), plus editor and
+site-setup improvements from hands-on testing.
+
 ### Fixed
 
 - Stale editor tabs cannot overwrite newer changes or restore deleted features. Document writes
@@ -20,6 +25,14 @@ All notable changes to Maumbile are documented here. The format follows
 
 ### Added
 
+- Editor **add-vs-edit panel modes**: with nothing selected the panel shows the palette and the list
+  of placed items; select one and it shows just that item, with a "← Back to adding" control, so
+  adding, browsing and editing no longer mix (Elements, Zones, Sectors, Functions).
+- **Flexible coordinate paste** in site setup: decimal, hemisphere letters, degrees/minutes/seconds,
+  and Plus Codes — full codes decode locally, and a short code with its town ("9R6P+HQ, Kilifi") is
+  resolved via OpenStreetMap Nominatim (free, keyless).
+- **Clearer next-step guidance**: a "Next, design it" banner on the site map and a plain explanation
+  of plans on the plans list.
 - Site rename/deletion controls, account-scoped unfinished-site recovery in the current tab,
   clearer placement actions, and a land boundary in GeoJSON exports.
 - Optional SMTP password recovery with hashed one-time tokens and immediate session invalidation.
@@ -119,7 +132,8 @@ First public release.
 - Released under AGPL-3.0. All instance configuration and secrets live in the environment, never
   in the repository.
 
-[Unreleased]: https://github.com/PhilippRamjoue/maumbile_permaculture_planner/compare/v0.1.4...HEAD
+[Unreleased]: https://github.com/PhilippRamjoue/maumbile_permaculture_planner/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/PhilippRamjoue/maumbile_permaculture_planner/compare/v0.1.4...v0.2.0
 [0.1.4]: https://github.com/PhilippRamjoue/maumbile_permaculture_planner/compare/v0.1.3...v0.1.4
 [0.1.3]: https://github.com/PhilippRamjoue/maumbile_permaculture_planner/compare/v0.1.2...v0.1.3
 [0.1.2]: https://github.com/PhilippRamjoue/maumbile_permaculture_planner/compare/v0.1.1...v0.1.2
