@@ -113,33 +113,36 @@ test("invalid borders never report saved, while valid border changes autosave", 
   await page.goto(`/sites/${site.id}/design/${id}?focus=boundary`);
   await expect(page.getByTestId("map-view")).toHaveAttribute("data-map-ready", "true");
   const canvas = page.getByTestId("map-view").locator("canvas.maplibregl-canvas");
-  await canvas.scrollIntoViewIfNeeded();
-  const box = (await canvas.boundingBox())!;
-  const x = (lng: number) => (lng + 180) / 360;
-  const y = (lat: number) =>
-    (1 - Math.log(Math.tan(Math.PI / 4 + (lat * Math.PI) / 360)) / Math.PI) / 2;
-  const dx = x(site.bbox[2]) - x(site.bbox[0]);
-  const dy = y(site.bbox[1]) - y(site.bbox[3]);
-  const world =
-    512 *
-    2 **
-      Math.min(
-        18,
-        Math.log2((box.width - 96) / (512 * dx)),
-        Math.log2((box.height - 96) / (512 * dy)),
-      );
-  const corner = {
-    x: box.x + (box.width - dx * world) / 2,
-    y: box.y + (box.height - dy * world) / 2,
+  // Where the plot's corners sit on screen, from the current map fit — recomputed after a reload,
+  // since dragging re-frames the map.
+  const cornersFor = async () => {
+    await canvas.scrollIntoViewIfNeeded();
+    const box = (await canvas.boundingBox())!;
+    const x = (lng: number) => (lng + 180) / 360;
+    const y = (lat: number) =>
+      (1 - Math.log(Math.tan(Math.PI / 4 + (lat * Math.PI) / 360)) / Math.PI) / 2;
+    const dx = x(site.bbox[2]) - x(site.bbox[0]);
+    const dy = y(site.bbox[1]) - y(site.bbox[3]);
+    const world =
+      512 *
+      2 **
+        Math.min(
+          18,
+          Math.log2((box.width - 96) / (512 * dx)),
+          Math.log2((box.height - 96) / (512 * dy)),
+        );
+    return {
+      corner: { x: box.x + (box.width - dx * world) / 2, y: box.y + (box.height - dy * world) / 2 },
+      opposite: {
+        x: box.x + (box.width + dx * world) / 2,
+        y: box.y + (box.height + dy * world) / 2,
+      },
+    };
   };
-  const opposite = {
-    x: box.x + (box.width + dx * world) / 2,
-    y: box.y + (box.height + dy * world) / 2,
-  };
-  const drag = async (to: { x: number; y: number }) => {
-    // Hover first so the vertex handle is grabbed, with small pauses: software-GL CI renders the map
-    // slowly and otherwise misses the grab or reads a quick drag as a click.
-    await page.mouse.move(corner.x, corner.y, { steps: 6 });
+  // Hover first so the vertex handle is grabbed, with small pauses: software-GL CI renders the map
+  // slowly and otherwise misses the grab or reads a quick drag as a click.
+  const drag = async (from: { x: number; y: number }, to: { x: number; y: number }) => {
+    await page.mouse.move(from.x, from.y, { steps: 6 });
     await page.waitForTimeout(150);
     await page.mouse.down();
     await page.waitForTimeout(50);
@@ -147,16 +150,24 @@ test("invalid borders never report saved, while valid border changes autosave", 
     await page.waitForTimeout(50);
     await page.mouse.up();
   };
-  await drag(opposite);
+
+  const first = await cornersFor();
+  await drag(first.corner, first.opposite);
   await expect(
     page.getByRole("status").filter({ hasText: "Not saved — fix the border" }),
   ).toBeVisible();
   await expect(page.getByText("All changes saved")).toHaveCount(0);
   await page.getByRole("button", { name: "Discard changes", exact: true }).click();
   await expect(page.getByText("All changes saved")).toBeVisible();
-  // Let the restored border re-render before grabbing the corner again, then move it clearly.
-  await page.waitForTimeout(400);
-  await drag({ x: corner.x - 40, y: corner.y - 40 });
+
+  // A valid change autosaves. Reload first: the invalid drag re-framed the map and Discard restores
+  // the border but not the view, so a fresh load fitted to the restored border makes the corner
+  // grabbable at a known position again.
+  await page.reload();
+  await expect(page.getByTestId("map-view")).toHaveAttribute("data-map-ready", "true");
+  await page.waitForTimeout(300);
+  const second = await cornersFor();
+  await drag(second.corner, { x: second.corner.x - 40, y: second.corner.y - 40 });
   await expect
     .poll(
       async () => (await (await page.request.get(`/api/v1/sites/${site.id}`)).json()).boundary,
