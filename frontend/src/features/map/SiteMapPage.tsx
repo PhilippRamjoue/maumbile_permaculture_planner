@@ -38,6 +38,11 @@ export function SiteMapPage() {
           Design plans
         </Link>
       </header>
+      <p className="site-map__next">
+        Your land is ready. <strong>Next, design it:</strong> open{" "}
+        <Link to={`/sites/${site.data.id}/design`}>Design plans</Link> to place elements, mark sun
+        and wind, sketch zones, and measure.
+      </p>
       {imagery.data && !imagery.data.covered ? (
         <p role="status" className="notice">
           Aerial imagery is not available for this location yet.

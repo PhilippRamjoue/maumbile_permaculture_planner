@@ -117,6 +117,7 @@ export function CoordinatesStep() {
           onSelect={(id) => store().select(id)}
           onOrderChange={(o) => store().setOrder(o)}
           onPaste={(pasted) => store().addPoints(pasted)}
+          countryCode={countryCode}
           onChange={(id, field, value) => store().updateRow(id, field, value)}
           onRemove={(id) => store().removeRow(id)}
           onAddEmpty={() => store().addEmptyRow()}

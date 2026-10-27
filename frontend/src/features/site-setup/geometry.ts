@@ -1,5 +1,9 @@
 /** Pure boundary maths for the site-setup flow (no React, no MapLibre). Coordinates are [lng, lat]. */
+import { OpenLocationCode } from "open-location-code";
+
 import type { BBox } from "../../entities/site";
+
+const olc = new OpenLocationCode();
 
 export type LngLat = [number, number];
 export type CoordinateOrder = "lat-lng" | "lng-lat";
@@ -67,38 +71,118 @@ export interface ParsedLine {
   message: string;
 }
 
+const PLUS_CODE_RE = /\b[23456789CFGHJMPQRVWX]{2,8}\+[23456789CFGHJMPQRVWX]{0,7}\b/i;
+
 /**
- * Turns pasted text into points. One corner per line, two numbers separated by comma, semicolon,
- * tab or spaces (e.g. a Google Maps "-1.2921, 36.8219" copy). `order` says which number comes first.
+ * One angle (a latitude or longitude) in decimal, DMS or with a hemisphere letter — "-3.64",
+ * "3.64 S", "3°38'24\"S", "3 38 24 S". Returns the signed decimal degrees and which axis a
+ * hemisphere letter implies (null when there is none, so the column order decides).
+ */
+function parseAngle(text: string): { value: number; axis: "lat" | "lng" | null } | null {
+  const hemi = text.match(/[NSEWnsew]/)?.[0].toUpperCase() ?? null;
+  const nums = (text.match(/\d+(?:[.,]\d+)?/g) ?? []).map((n) => Number(n.replace(",", ".")));
+  if (nums.length === 0 || nums.length > 3 || nums.some((n) => !Number.isFinite(n))) return null;
+  const [deg = 0, min = 0, sec = 0] = nums;
+  let value = deg + min / 60 + sec / 3600;
+  if (hemi) value = hemi === "S" || hemi === "W" ? -value : value;
+  else if (/-\s*\d/.test(text)) value = -value;
+  const axis = hemi === "N" || hemi === "S" ? "lat" : hemi === "E" || hemi === "W" ? "lng" : null;
+  return { value, axis };
+}
+
+/** One pasted line → a point, a short Plus Code to look up later, or an error. Empty line: {}. */
+export function parseCoordinateLine(
+  raw: string,
+  order: CoordinateOrder,
+): { point?: LngLat; shortPlusCode?: { code: string; locality: string }; error?: string } {
+  const clean = raw.replace(/[()[\]]/g, " ").trim();
+  if (clean === "") return {};
+
+  const plus = clean.match(PLUS_CODE_RE);
+  if (plus) {
+    const code = plus[0].toUpperCase();
+    if (olc.isFull(code)) {
+      const a = olc.decode(code);
+      const cell = { lat: roundCoord(a.latitudeCenter), lng: roundCoord(a.longitudeCenter) };
+      return cellError(cell)
+        ? { error: "that Plus Code is out of range." }
+        : { point: cellToPoint(cell)! };
+    }
+    if (olc.isShort(code)) {
+      const locality = clean
+        .slice((plus.index ?? 0) + code.length)
+        .replace(/^[\s,;]+/, "")
+        .trim();
+      return locality
+        ? { shortPlusCode: { code, locality } }
+        : { error: `add the town after the Plus Code, e.g. "${code}, Kilifi".` };
+    }
+    return { error: "that does not look like a valid Plus Code." };
+  }
+
+  const hasHemi = /[NSEWnsew]/.test(clean);
+  const hasMarkers = /[°º'′"″]/.test(clean);
+  let angles: string[];
+  if (hasHemi) angles = clean.match(/[^NSEWnsew]*[NSEWnsew]/g) ?? [];
+  else if (hasMarkers) angles = clean.match(/-?\d[\d.,]*\s*[°º][^°º]*/g) ?? [];
+  else angles = clean.split(/[\s,;]+/).filter(Boolean);
+  if (angles.length !== 2) return { error: "expected a latitude and a longitude." };
+
+  const a = parseAngle(angles[0]);
+  const b = parseAngle(angles[1]);
+  if (!a || !b) return { error: "could not read the coordinates." };
+  let lat: number | null = null;
+  let lng: number | null = null;
+  if (a.axis || b.axis) {
+    for (const p of [a, b]) {
+      if (p.axis === "lat") lat = p.value;
+      if (p.axis === "lng") lng = p.value;
+    }
+  }
+  if (lat === null || lng === null) {
+    [lat, lng] = order === "lat-lng" ? [a.value, b.value] : [b.value, a.value];
+  }
+  const cell = { lat: String(lat), lng: String(lng) };
+  const problem = cellError(cell);
+  return problem ? { error: problem } : { point: cellToPoint(cell)! };
+}
+
+/**
+ * Turns pasted text into points. One corner per line, in any common style copied from a map: decimal
+ * "-1.2921, 36.8219", hemisphere "1.29 S, 36.82 E", DMS "1°17'32\"S 36°49'15\"E", or a full Plus Code.
+ * Short Plus Codes with a town ("9R6P+HQ, Kilifi") need a lookup and are surfaced separately.
  */
 export function parseCoordinateText(
   text: string,
   order: CoordinateOrder,
-): { points: LngLat[]; errors: ParsedLine[] } {
+): {
+  points: LngLat[];
+  errors: ParsedLine[];
+  pending: { line: number; code: string; locality: string }[];
+} {
   const points: LngLat[] = [];
   const errors: ParsedLine[] = [];
+  const pending: { line: number; code: string; locality: string }[] = [];
   text.split(/\r?\n/).forEach((raw, index) => {
-    const line = raw.replace(/[()[\]]/g, " ").trim();
-    if (line === "") return;
-    const tokens = line.split(/[\s,;]+/).filter(Boolean);
-    const numbers = tokens.map((t) => parseNumber(t));
-    if (tokens.length !== 2 || numbers.some((n) => n === null)) {
-      errors.push({ line: index + 1, message: `Line ${index + 1}: expected two numbers.` });
-      return;
-    }
-    const [first, second] = numbers as [number, number];
-    const cell: CoordinateCell =
-      order === "lat-lng"
-        ? { lat: String(first), lng: String(second) }
-        : { lat: String(second), lng: String(first) };
-    const problem = cellError(cell);
-    if (problem) {
-      errors.push({ line: index + 1, message: `Line ${index + 1}: ${problem}` });
-      return;
-    }
-    points.push(cellToPoint(cell)!);
+    const result = parseCoordinateLine(raw, order);
+    if (result.point) points.push(result.point);
+    else if (result.shortPlusCode) pending.push({ line: index + 1, ...result.shortPlusCode });
+    else if (result.error)
+      errors.push({ line: index + 1, message: `Line ${index + 1}: ${result.error}` });
   });
-  return { points, errors };
+  return { points, errors, pending };
+}
+
+/** Recover a short Plus Code ("9R6P+HQ") to a point, using a nearby reference [lng, lat]. */
+export function recoverShortPlusCode(code: string, ref: LngLat): LngLat | null {
+  try {
+    const full = olc.recoverNearest(code, ref[1], ref[0]);
+    const a = olc.decode(full);
+    const cell = { lat: roundCoord(a.latitudeCenter), lng: roundCoord(a.longitudeCenter) };
+    return cellError(cell) ? null : cellToPoint(cell);
+  } catch {
+    return null;
+  }
 }
 
 export function bboxOf(points: LngLat[]): BBox | null {

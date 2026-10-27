@@ -1,25 +1,54 @@
 import { useId, useState } from "react";
 
-import { parseCoordinateText, type CoordinateOrder, type LngLat } from "./geometry";
+import {
+  parseCoordinateText,
+  recoverShortPlusCode,
+  type CoordinateOrder,
+  type LngLat,
+} from "./geometry";
+import { geocodePlace } from "./geocode";
 import type { DraftRow } from "./store";
 
 interface PasteBoxProps {
   order: CoordinateOrder;
   onOrderChange(order: CoordinateOrder): void;
   onAdd(points: LngLat[]): void;
+  /** Biases a short Plus Code's town lookup to the chosen country. */
+  countryCode?: string | null;
 }
 
-/** Paste a list of coordinates (one corner per line). */
-export function PasteBox({ order, onOrderChange, onAdd }: PasteBoxProps) {
+/** Paste a list of coordinates (one corner per line), in any common style. */
+export function PasteBox({ order, onOrderChange, onAdd, countryCode }: PasteBoxProps) {
   const id = useId();
   const [text, setText] = useState("");
   const [errors, setErrors] = useState<string[]>([]);
+  const [busy, setBusy] = useState(false);
 
-  function add() {
-    const { points, errors: problems } = parseCoordinateText(text, order);
-    setErrors(problems.map((p) => p.message));
-    if (problems.length === 0 && points.length > 0) {
-      onAdd(points);
+  async function add() {
+    const { points, errors: problems, pending } = parseCoordinateText(text, order);
+    const resolved: LngLat[] = [...points];
+    const messages = problems.map((p) => p.message);
+    if (pending.length > 0) {
+      // Short Plus Codes ("9R6P+HQ, Kilifi") need the town located first; look each town up once.
+      setBusy(true);
+      const refs = new Map<string, LngLat | null>();
+      for (const item of pending) {
+        const key = item.locality.toLowerCase();
+        if (!refs.has(key)) refs.set(key, await geocodePlace(item.locality, countryCode));
+        const ref = refs.get(key) ?? null;
+        if (!ref) {
+          messages.push(`Line ${item.line}: couldn't find “${item.locality}”.`);
+          continue;
+        }
+        const point = recoverShortPlusCode(item.code, ref);
+        if (point) resolved.push(point);
+        else messages.push(`Line ${item.line}: couldn't place Plus Code “${item.code}”.`);
+      }
+      setBusy(false);
+    }
+    setErrors(messages);
+    if (messages.length === 0 && resolved.length > 0) {
+      onAdd(resolved);
       setText("");
     }
   }
@@ -39,7 +68,9 @@ export function PasteBox({ order, onOrderChange, onAdd }: PasteBoxProps) {
         spellCheck={false}
       />
       <p id={`${id}-hint`} className="field__hint">
-        One corner per line, in order around the edge of the land.
+        One corner per line, in order around the edge. Paste any common style: decimal (−1.2921,
+        36.8219), with N/S/E/W, degrees°minutes′seconds″, or a Plus Code (6GFXMR6P+HQ, or a short
+        one with its town: 9R6P+HQ, Kilifi).
       </p>
       <fieldset className="order-choice">
         <legend className="visually-hidden">Order of the numbers</legend>
@@ -69,8 +100,8 @@ export function PasteBox({ order, onOrderChange, onAdd }: PasteBoxProps) {
           ))}
         </ul>
       ) : null}
-      <button type="button" className="btn" onClick={add} disabled={text.trim() === ""}>
-        Add pasted points
+      <button type="button" className="btn" onClick={add} disabled={busy || text.trim() === ""}>
+        {busy ? "Looking up…" : "Add pasted points"}
       </button>
     </div>
   );
@@ -180,6 +211,7 @@ interface CoordinateInputsProps extends PointsTableProps {
   order: CoordinateOrder;
   onOrderChange(order: CoordinateOrder): void;
   onPaste(points: LngLat[]): void;
+  countryCode?: string | null;
   canUndo: boolean;
   canRedo: boolean;
   onUndo(): void;
@@ -193,6 +225,7 @@ export function CoordinateInputs({
   order,
   onOrderChange,
   onPaste,
+  countryCode,
   canUndo,
   canRedo,
   onUndo,
@@ -208,7 +241,12 @@ export function CoordinateInputs({
         around the edge in order. Drag a corner to move it; select one and press Delete to remove
         it.
       </p>
-      <PasteBox order={order} onOrderChange={onOrderChange} onAdd={onPaste} />
+      <PasteBox
+        order={order}
+        onOrderChange={onOrderChange}
+        onAdd={onPaste}
+        countryCode={countryCode}
+      />
       <PointsTable {...table} />
       <div className="form__actions">
         <button type="button" className="btn" onClick={onUndo} disabled={!canUndo}>

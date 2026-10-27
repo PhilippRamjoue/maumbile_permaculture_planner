@@ -7,8 +7,10 @@ import {
   closeRing,
   hasSelfIntersection,
   normalizeLngLat,
+  parseCoordinateLine,
   parseCoordinateText,
   pointToCell,
+  recoverShortPlusCode,
   ringAreaM2,
   roundCoord,
   validateRing,
@@ -50,6 +52,38 @@ describe("parseCoordinateText", () => {
 
   it("hints at swapped latitude/longitude", () => {
     expect(parseCoordinateText("-91, 36.8", "lat-lng").errors[0].message).toMatch(/swapped/i);
+  });
+});
+
+describe("flexible coordinate formats", () => {
+  const near = (a: LngLat, b: LngLat, tol = 1e-4) =>
+    Math.abs(a[0] - b[0]) < tol && Math.abs(a[1] - b[1]) < tol;
+
+  it("reads hemisphere letters and ignores column order when they are present", () => {
+    expect(parseCoordinateLine("1.2 S, 36.8 E", "lat-lng").point).toEqual([36.8, -1.2]);
+    // Longitude first, but the N/S/E/W letters say which is which.
+    expect(parseCoordinateLine("36.8 E, 1.2 S", "lat-lng").point).toEqual([36.8, -1.2]);
+  });
+
+  it("reads degrees/minutes/seconds", () => {
+    const p = parseCoordinateLine("1°12'00\"S 36°48'00\"E", "lat-lng").point!;
+    expect(near(p, [36.8, -1.2])).toBe(true);
+  });
+
+  it("reads a full Plus Code", () => {
+    const p = parseCoordinateLine("6GFXMR6P+HQ", "lat-lng").point!;
+    expect(near(p, [39.83694, -0.33856], 1e-3)).toBe(true);
+  });
+
+  it("surfaces a short Plus Code with its town as pending (needs a lookup)", () => {
+    const { points, pending } = parseCoordinateText("9R6P+HQ, Kilifi", "lat-lng");
+    expect(points).toEqual([]);
+    expect(pending).toEqual([{ line: 1, code: "9R6P+HQ", locality: "Kilifi" }]);
+  });
+
+  it("recovers a short Plus Code from a nearby reference", () => {
+    const p = recoverShortPlusCode("9R6P+HQ", [39.85, -3.63])!; // reference near Kilifi
+    expect(near(p, [39.85, -3.63], 0.5)).toBe(true);
   });
 });
 

@@ -609,6 +609,14 @@ h1 {
 .editor-back {
   margin-bottom: 0.5rem;
 }
+/* Gentle "what to do next" banner (e.g. on the site map, pointing to Design plans). */
+.site-map__next {
+  margin: 0.4rem 0 0.6rem;
+  padding: 0.6rem 0.8rem;
+  background: color-mix(in srgb, var(--accent) 8%, var(--surface));
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+}
 .editor-sidebar .btn[aria-pressed="true"] {
   background: color-mix(in srgb, var(--accent) 14%, var(--surface));
   color: var(--text);

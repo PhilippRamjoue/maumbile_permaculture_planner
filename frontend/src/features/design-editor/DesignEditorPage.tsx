@@ -40,7 +40,10 @@ function PlanPicker({ site }: { site: Site }) {
     <section className="plans-page">
       <Link to={`/sites/${site.id}`}>← Site map</Link>
       <h1>Design plans for {site.name}</h1>
-      <p>Explore different designs for the same land. Each plan saves independently.</p>
+      <p>
+        A plan is one design of this land. <strong>Open a plan to keep designing</strong>, or make a
+        new one below — start with one, and add more later to compare ideas.
+      </p>
       {plans.isPending && <p role="status">Loading plans…</p>}
       {plans.isError && <p role="alert">{message(plans.error)}</p>}
       {plans.data && (

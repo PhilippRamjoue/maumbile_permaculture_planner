@@ -250,7 +250,9 @@ describe("site setup flow", () => {
     await userEvent.click(box);
     await userEvent.paste("-1.2, 36.8\nnonsense");
     await userEvent.click(screen.getByRole("button", { name: "Add pasted points" }));
-    expect(screen.getByRole("alert")).toHaveTextContent("Line 2: expected two numbers.");
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Line 2: expected a latitude and a longitude.",
+    );
     expect(screen.queryByLabelText("Point 1 latitude")).not.toBeInTheDocument();
 
     await userEvent.clear(box);
