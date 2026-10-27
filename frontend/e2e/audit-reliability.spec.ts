@@ -137,9 +137,14 @@ test("invalid borders never report saved, while valid border changes autosave", 
     y: box.y + (box.height + dy * world) / 2,
   };
   const drag = async (to: { x: number; y: number }) => {
-    await page.mouse.move(corner.x, corner.y);
+    // Hover first so the vertex handle is grabbed, with small pauses: software-GL CI renders the map
+    // slowly and otherwise misses the grab or reads a quick drag as a click.
+    await page.mouse.move(corner.x, corner.y, { steps: 6 });
+    await page.waitForTimeout(150);
     await page.mouse.down();
-    await page.mouse.move(to.x, to.y, { steps: 10 });
+    await page.waitForTimeout(50);
+    await page.mouse.move(to.x, to.y, { steps: 20 });
+    await page.waitForTimeout(50);
     await page.mouse.up();
   };
   await drag(opposite);
@@ -149,7 +154,9 @@ test("invalid borders never report saved, while valid border changes autosave", 
   await expect(page.getByText("All changes saved")).toHaveCount(0);
   await page.getByRole("button", { name: "Discard changes", exact: true }).click();
   await expect(page.getByText("All changes saved")).toBeVisible();
-  await drag({ x: corner.x - 20, y: corner.y - 20 });
+  // Let the restored border re-render before grabbing the corner again, then move it clearly.
+  await page.waitForTimeout(400);
+  await drag({ x: corner.x - 40, y: corner.y - 40 });
   await expect
     .poll(
       async () => (await (await page.request.get(`/api/v1/sites/${site.id}`)).json()).boundary,
