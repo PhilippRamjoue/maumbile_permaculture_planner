@@ -46,8 +46,8 @@ test("one click drops a to-scale footprint; the exact size is editable", async (
   await expect(page.getByLabel("Feature name")).toHaveValue("Water tank");
   await expect(page.getByLabel("Diameter (m)")).toHaveValue("2");
 
-  // Placing selects the new element (edit mode); go back to the palette to add another.
-  await page.getByRole("button", { name: "Back to adding" }).click();
+  // Placing selects the new element (edit mode); the breadcrumb goes back to the list to add another.
+  await page.getByRole("button", { name: /All elements/ }).click();
   // A garden bed is a 1.2 x 4 m rectangle, with a rotation to turn it.
   await page.getByLabel("Element palette").selectOption({ label: "Garden bed" });
   await click(0.6, 0.5);

@@ -1,7 +1,7 @@
 import { useState } from "react";
 
 import type { DesignFeature, ElementType } from "../../../entities/planning";
-import { BackToAdding, FeatureList, type PanelProps } from "./common";
+import { BackToList, FeatureList, type PanelProps } from "./common";
 import {
   FUNCTION_PRESETS,
   connectionsOf,
@@ -207,7 +207,7 @@ export function FunctionsPanel({
   const selectedFillable = selected && withTypicalFunctions(selected, types) !== selected;
   return selected ? (
     <>
-      <BackToAdding onBack={() => state.select(null)} />
+      <BackToList onBack={() => state.select(null)} label="All elements" />
       <fieldset disabled={disabled} className="editor-properties">
         <legend>{name}</legend>
         {selectedFillable && selected && (

@@ -35,11 +35,11 @@ test("draws a zone and places an element across focus modes, then saves and relo
   await click(0.43, 0.65);
   await click(0.2, 0.65);
   await click(0.2, 0.35); // click the first corner again to finish
-  // Drawing selects the new feature (edit mode); its name is edited there, then Back to adding
+  // Drawing selects the new feature (edit mode); its name is edited there, then the breadcrumb
   // returns to the list.
   await expect(page.getByLabel("Feature name")).toHaveValue("zone");
   await page.getByLabel("Feature name").fill("Kitchen zone");
-  await page.getByRole("button", { name: "Back to adding" }).click();
+  await page.getByRole("button", { name: /All zones/ }).click();
   await expect(page.getByRole("heading", { name: "Zones (1)" })).toBeVisible();
 
   // Elements focus: pick from the palette and place it.
@@ -48,7 +48,7 @@ test("draws a zone and places an element across focus modes, then saves and relo
   await click(0.6, 0.45); // a house is one click: an 8 x 6 m footprint, to scale
   await expect(page.getByLabel("Feature name")).toHaveValue("House");
   await page.getByLabel("Feature name").fill("Main house");
-  await page.getByRole("button", { name: "Back to adding" }).click();
+  await page.getByRole("button", { name: /All elements/ }).click();
   await expect(page.getByRole("heading", { name: "Elements (1)" })).toBeVisible();
 
   // The design autosaves, so the Save button shows only until it has saved; click it if it is still

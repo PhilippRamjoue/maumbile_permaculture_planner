@@ -1266,3 +1266,37 @@ h1 {
 .terrain-legend__name {
   min-width: 0;
 }
+
+/* ---- layers control (map popover: visibility, order, draw-into) ---- */
+.layers-control {
+  width: max-content;
+  max-width: min(18rem, 76vw);
+}
+.layers-control fieldset {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+}
+.layers-control .editor-layer {
+  padding: 0.1rem 0;
+}
+.layers-control__draw {
+  display: block;
+  margin-top: 0.5rem;
+  font-size: 0.85rem;
+}
+.layers-control__draw select {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  margin-top: 0.2rem;
+}
+/* Fold the compass-bearings adder so the sector list sits near the top of the step. */
+.sector-add__bearings {
+  margin-top: 0.5rem;
+}
+.sector-add__bearings > summary {
+  cursor: pointer;
+  color: var(--muted);
+}

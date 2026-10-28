@@ -6,6 +6,32 @@ All notable changes to Maumbile are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.2.4] - 2026-10-28
+
+Clearer editor panels and map controls, from more hands-on testing.
+
+### Changed
+
+- **One consistent "list is home" flow** in every step (Elements, Sectors, Zones, Functions):
+  the panel shows how to add at the top and the list of what you have placed below; selecting an
+  item (in the list or on the map) drills into just that item's editor, with a plain "← All …"
+  breadcrumb back to the list. The floating "added — place another / Done" box is gone, so adding
+  and editing no longer overlap.
+- **Adding a sector is kind-first**, not sun-first: pick wind, water, fire, sun, … and add. The
+  sun's-path shortcut and the compass-bearings adder are still there, folded so the sector list
+  sits near the top.
+
+### Added
+
+- A **"Layers" control on the map** (beside Legend and Terrain) for layer visibility, draw order
+  and which layer new shapes go into — whole-map settings now live in one place instead of being
+  repeated inside every step as "Layers & context".
+
+### Fixed
+
+- A self-crossing shape now shows a plain "this shape crosses itself — drag the corner back or
+  press Undo" instead of a raw save error.
+
 ## [0.2.3] - 2026-10-28
 
 Terrain and sectors become hands-on, from more online testing.
@@ -153,7 +179,8 @@ First public release.
 - Released under AGPL-3.0. All instance configuration and secrets live in the environment, never
   in the repository.
 
-[Unreleased]: https://github.com/PhilippRamjoue/maumbile_permaculture_planner/compare/v0.2.3...HEAD
+[Unreleased]: https://github.com/PhilippRamjoue/maumbile_permaculture_planner/compare/v0.2.4...HEAD
+[0.2.4]: https://github.com/PhilippRamjoue/maumbile_permaculture_planner/compare/v0.2.3...v0.2.4
 [0.2.3]: https://github.com/PhilippRamjoue/maumbile_permaculture_planner/compare/v0.2.2...v0.2.3
 [0.2.2]: https://github.com/PhilippRamjoue/maumbile_permaculture_planner/compare/v0.1.4...v0.2.2
 [0.1.4]: https://github.com/PhilippRamjoue/maumbile_permaculture_planner/compare/v0.1.3...v0.1.4

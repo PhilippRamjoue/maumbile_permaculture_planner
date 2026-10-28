@@ -131,8 +131,13 @@ Fixes from the owner's first run on a real plot in Tanzania:
   a test keeps them equal, so a catalog change ships with a new migration.
 - **Clarity.** Boundary has a primary "Looks good → Sectors & terrain"; setup's "Create site" is a sticky
   button that says what is missing. `focus/SaveStatus.tsx` shows Saved / Unsaved / Saving / Not saved, says
-  the design autosaves and links to Design plans, and `PlacedNotice` confirms "X added" with a
-  place-another button. Element icons are done: see "Element icons" below.
+  the design autosaves and links to Design plans. Element icons are done: see "Element icons" below.
+- **Master–detail panels.** Every step (`ElementsPanel`, `SectorsPanel`, `ZonesPanel`, `FunctionsPanel`)
+  is one flow: with nothing selected it shows the "add" tools and a `FeatureList` of what is placed; drawing
+  or placing auto-selects the new feature, which drills into just its editor (`FeatureProperties`) with a
+  `BackToList` breadcrumb ("← All sectors", …) back up. There is no separate "added, place another" box.
+  Adding a sector is kind-first (the sun's-path shortcut and compass-bearings adder are secondary/folded).
+  A self-intersecting polygon's save failure is caught in `Workspace` and shown as plain guidance.
 
 ## Map tools (measuring, grid, sizes)
 
@@ -200,6 +205,15 @@ contour overlays via the shared `useMapLayerStore` (visibility only — `MapView
 recomputes terrain after a border change, and jumps to the Boundary step (`onEditBoundary`, omitted when
 already there). The slope legend (`SlopeLegend`) is one compact line per class. This is what makes changing
 the boundary and recomputing slope reachable from the simple editor and while placing elements.
+
+## Layers control
+
+`LayersControl.tsx` is a popover in the `.map-tools` row (every focus) holding the whole-map layer
+settings — per-layer visibility, draw order (↑/↓) and which layer new shapes go into. These were once
+repeated inside each step as a "Layers & context" disclosure (`AdvancedTools` + `ContextToggles`), which is
+gone; other feature families now always render as faint context. Plan-layer state lives in the editor
+document (`state.commit`); the terrain overlays and site boundary are registry layers, controlled from the
+Terrain control, not here.
 
 ## Element icons
 

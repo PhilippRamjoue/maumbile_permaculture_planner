@@ -1,9 +1,8 @@
 import { render, screen } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 
-import { PlacedNotice, SaveStatus, saveStateOf } from "./SaveStatus";
+import { SaveStatus, saveStateOf } from "./SaveStatus";
 
 describe("saveStateOf", () => {
   it("puts a running save first, then a failure, then unsaved work", () => {
@@ -11,7 +10,9 @@ describe("saveStateOf", () => {
     expect(saveStateOf({ saving: false, dirty: true, failed: true })).toBe("failed");
     expect(saveStateOf({ saving: false, dirty: true, failed: false })).toBe("unsaved");
     expect(saveStateOf({ saving: false, dirty: false, failed: false })).toBe("saved");
-    expect(saveStateOf({ saving: false, dirty: true, failed: false, invalid: true })).toBe("invalid");
+    expect(saveStateOf({ saving: false, dirty: true, failed: false, invalid: true })).toBe(
+      "invalid",
+    );
   });
 });
 
@@ -40,41 +41,5 @@ describe("SaveStatus", () => {
   ] as const)("shows the %s state", (state, text) => {
     show(state);
     expect(screen.getByRole("status")).toHaveTextContent(text);
-  });
-});
-
-describe("PlacedNotice", () => {
-  it("confirms the new feature and offers to place another or finish", async () => {
-    const onAnother = vi.fn();
-    const onDone = vi.fn();
-    render(
-      <PlacedNotice
-        name="Tree"
-        saveState="unsaved"
-        anotherLabel="Place another tree"
-        onAnother={onAnother}
-        onDone={onDone}
-      />,
-    );
-    expect(screen.getByRole("status")).toHaveTextContent("Tree added");
-    expect(screen.getByRole("status")).toHaveTextContent(/saved automatically/i);
-
-    await userEvent.click(screen.getByRole("button", { name: "Place another tree" }));
-    await userEvent.click(screen.getByRole("button", { name: "Done" }));
-    expect(onAnother).toHaveBeenCalledTimes(1);
-    expect(onDone).toHaveBeenCalledTimes(1);
-  });
-
-  it("says it is saved once it is", () => {
-    render(
-      <PlacedNotice
-        name="Tree"
-        saveState="saved"
-        anotherLabel="x"
-        onAnother={vi.fn()}
-        onDone={vi.fn()}
-      />,
-    );
-    expect(screen.getByRole("status")).toHaveTextContent("Saved to your design");
   });
 });

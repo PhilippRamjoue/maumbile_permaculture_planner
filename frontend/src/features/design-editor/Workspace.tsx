@@ -38,7 +38,8 @@ import { measureGeometry, type Measurement } from "./measure";
 import { useEditorMap, type Tool } from "./useEditorMap";
 import { useSectorHandles } from "./useSectorHandles";
 import { MapToolsControl } from "./MapToolsControl";
-import { AdvancedTools, HistoryButtons } from "./focus/AdvancedTools";
+import { HistoryButtons } from "./focus/AdvancedTools";
+import { LayersControl } from "./LayersControl";
 import { BoundaryPanel } from "./focus/BoundaryPanel";
 import { MeasurementPanel } from "./focus/MeasurementPanel";
 import { editorLayerRegistry } from "./focus/boundaryLayer";
@@ -53,7 +54,7 @@ import { ElementsPanel } from "./focus/ElementsPanel";
 import { labelOf } from "./focus/goals";
 import { GoalsPanel, GoalsReminder } from "./focus/GoalsPanel";
 import { useGoals } from "./focus/useGoals";
-import { ContextToggles, FocusRail } from "./focus/FocusRail";
+import { FocusRail } from "./focus/FocusRail";
 import { FunctionsPanel } from "./focus/FunctionsPanel";
 import { connectionLines } from "./focus/functions";
 import {
@@ -69,7 +70,7 @@ import {
   type FocusId,
 } from "./focus/modes";
 import { loadEditorLevel, saveEditorLevel } from "./focus/editorLevelStore";
-import { PlacedNotice, SaveStatus, saveStateOf } from "./focus/SaveStatus";
+import { SaveStatus, saveStateOf } from "./focus/SaveStatus";
 import { SectorsPanel } from "./focus/SectorsPanel";
 import { useAutosave } from "./focus/useAutosave";
 import { useBoundaryEditing } from "./focus/useBoundaryEditing";
@@ -95,6 +96,8 @@ const layerNameFor = (tool: Tool) =>
       : tool === "path"
         ? "Paths"
         : "Elements";
+
+const EMPTY_GROUPS: ReadonlySet<ContextGroup> = new Set();
 
 const HINTS: Record<FocusId, string> = {
   goals: "Your land is shown for reference — goals do not need the map",
@@ -159,11 +162,12 @@ export function Workspace({
     plan.layers.find((l) => l.name === "Elements")?.id ?? plan.layers[0]?.id ?? "",
   );
   const [zoneNumber, setZoneNumber] = useState(1);
-  const [hidden, setHidden] = useState<ReadonlySet<ContextGroup>>(() => new Set());
+  // Other feature families are always shown as faint context now; their visibility (and that of the
+  // boundary) is controlled from the Layers map control instead of per-step toggles.
+  const hidden: ReadonlySet<ContextGroup> = EMPTY_GROUPS;
   const [hiddenSectorKinds, setHiddenSectorKinds] = useState<ReadonlySet<SectorKind>>(
     () => new Set(),
   );
-  const [placed, setPlaced] = useState<{ id: string; tool: Tool } | null>(null);
   const [failedSignature, setFailedSignature] = useState<string | null>(null);
   const [authoritative, setAuthoritative] = useState<{ key: string; value: Measurement } | null>(
     null,
@@ -293,21 +297,8 @@ export function Workspace({
     map.fitBounds(site.bbox, { padding: 48, maxZoom: MAX_FIT_ZOOM, duration: 0 });
   }, [map, site.bbox]);
 
-  // Drawing a feature ends with the select tool; remember what was just made so the panel can
-  // confirm it and offer to make another.
-  const toolRef = useRef(tool);
-  toolRef.current = tool;
-  const finishTool = useCallback(
-    (next: Tool) => {
-      const previous = toolRef.current;
-      const id = store.getState().selectedId;
-      if (previous !== "select" && !previous.startsWith("measure") && id) {
-        setPlaced({ id, tool: previous });
-      }
-      setTool(next);
-    },
-    [store],
-  );
+  // Drawing a feature ends on the select tool with the new feature already selected for editing.
+  const finishTool = useCallback((next: Tool) => setTool(next), []);
   const drawing = useEditorMap(
     map,
     store,
@@ -462,12 +453,10 @@ export function Workspace({
       return;
     setTool(next);
     store.getState().select(null);
-    setPlaced(null);
     const layer = state.document.layers.find((l) => l.name === layerNameFor(next) && l.visible);
     if (layer) setActiveLayer(layer.id);
   };
   const pick = (id: string) => {
-    setPlaced((previous) => (previous?.id === id ? previous : null));
     setTool("select");
     store.getState().select(id);
   };
@@ -482,7 +471,6 @@ export function Workspace({
     if (goals.dirty && !goals.saving) goals.save();
     setTool("select");
     store.getState().select(null);
-    setPlaced(null);
     setParams(
       (previous) => {
         const nextParams = new URLSearchParams(previous);
@@ -498,7 +486,6 @@ export function Workspace({
   const showGuided = () => {
     setLevel("guided");
     store.getState().select(null);
-    setPlaced(null);
     setParams(
       (previous) => {
         const next = new URLSearchParams(previous);
@@ -512,7 +499,6 @@ export function Workspace({
     saveRef.current();
     setLevel("simple");
     store.getState().select(null);
-    setPlaced(null);
     setTool("select");
   };
   // Quick jump to the land boundary from any step (even simple mode), so changing the border and
@@ -556,14 +542,6 @@ export function Workspace({
       goals.failed ||
       (saveBoundary.isError && failedBoundarySignature === boundarySignature),
   });
-  const placedFeature = placed ? features.find((f) => f.id === placed.id) : undefined;
-  const paletteName = types.find((t) => t.id === elementId)?.name ?? "element";
-  const anotherLabel =
-    placed?.tool === "element"
-      ? `Place another ${paletteName.toLowerCase()}`
-      : placed?.tool === "sector-rect"
-        ? "Draw another rectangle sector"
-        : `Draw another ${placed?.tool ?? "feature"}`;
   const live = drawing.live;
   // Once a feature is picked, the hint explains how to edit and remove it (right-click a point to
   // drop it, Delete to remove the whole shape) — a wedge is reshaped from the panel instead.
@@ -648,11 +626,17 @@ export function Workspace({
           Place the things you want on your map — house, water, trees, beds, paths.
         </p>
       )}
-      {save.isError && (
-        <p role="alert">
-          Could not save: {message(save.error)} Your draft is still here. Retry saving.
-        </p>
-      )}
+      {save.isError &&
+        (/self-intersection|invalid polygon/i.test(message(save.error)) ? (
+          <p role="alert">
+            A shape crosses itself, so it can’t be saved. Drag the stray corner back onto the
+            others, or press Ctrl+Z (⌘Z) to undo the last change. Your draft is still here.
+          </p>
+        ) : (
+          <p role="alert">
+            Could not save: {message(save.error)} Your draft is still here. Retry saving.
+          </p>
+        ))}
       {goals.failed && (
         <p role="alert">
           Could not save your goals: {message(goals.error)} They are still here. Retry saving.
@@ -755,15 +739,6 @@ export function Workspace({
             <h2>{mode.question}</h2>
             <p className="muted">{mode.help}</p>
           </section>
-          {placed && placedFeature && tool === "select" && (
-            <PlacedNotice
-              name={String(placedFeature.properties.name ?? placedFeature.feature_type)}
-              saveState={saveState}
-              anotherLabel={anotherLabel}
-              onAnother={() => choose(placed.tool)}
-              onDone={() => setPlaced(null)}
-            />
-          )}
           {focus !== "goals" && level === "guided" && (
             <GoalsReminder goals={goals.goals} labelOf={labelOf} onOpen={() => go("goals")} />
           )}
@@ -838,29 +813,6 @@ export function Workspace({
               }}
             />
           )}
-          {focus !== "goals" && (
-            <details className="editor-more">
-              <summary>Layers &amp; context</summary>
-              <ContextToggles
-                current={focus}
-                hidden={hidden}
-                onToggle={(group, shown) => {
-                  setHidden((previous) => {
-                    const next = new Set(previous);
-                    if (shown) next.delete(group);
-                    else next.add(group);
-                    return next;
-                  });
-                }}
-              />
-              <AdvancedTools
-                state={state}
-                disabled={disabled}
-                activeLayer={activeLayer}
-                setActiveLayer={setActiveLayer}
-              />
-            </details>
-          )}
         </aside>
         <div className="site-map__canvas editor-canvas">
           <MapView
@@ -874,6 +826,12 @@ export function Workspace({
           <div className="map-tools map-tools--bottom">
             <ZoomToBoundaryButton map={map} bounds={site.bbox} />
             <MapLegend entries={legend} />
+            <LayersControl
+              state={state}
+              disabled={disabled}
+              activeLayer={activeLayer}
+              setActiveLayer={setActiveLayer}
+            />
             {/* Terrain lives in the sidebar during the Sectors & terrain step; everywhere else it
                 is reachable here, so slope/contours can be shown or hidden and the land re-measured
                 while placing things. */}

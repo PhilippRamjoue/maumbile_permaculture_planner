@@ -4,7 +4,7 @@ import { TerrainPanel } from "../../terrain";
 import { FeatureProperties } from "../FeatureProperties";
 import { SectorHelper } from "../SectorHelper";
 import { defaultSectorRadius, sectorKindOf, sunPathFeature, type SectorKind } from "../sectors";
-import { BackToAdding, ToolButton, type PanelProps } from "./common";
+import { BackToList, ToolButton, type PanelProps } from "./common";
 import { SectorOverview } from "./SectorOverview";
 
 /**
@@ -44,51 +44,44 @@ export function SectorsPanel({
   return (
     <>
       {selected ? (
-        <BackToAdding onBack={() => state.select(null)} />
+        <BackToList onBack={() => state.select(null)} label="All sectors" />
       ) : (
         <>
-          <fieldset disabled={disabled}>
+          <fieldset className="sector-add" disabled={disabled}>
             <legend>Add a sector</legend>
             <p className="muted">
-              A sector is a direction something reaches your land from. Start with the sun, then add
-              wind. You can add several of the same kind.
+              A sector is a direction something reaches your land from — sun, wind, water, fire,
+              views or noise. Add any kind, and several of the same.
             </p>
-            <button
-              type="button"
-              className="btn btn--primary"
-              disabled={!sectorsLayerId}
-              onClick={addSun}
-            >
-              ☀ Add the sun's path (today)
-            </button>
             <div className="editor-tools">
               <ToolButton tool="select" current={tool} label="Select / edit" choose={choose} />
-              <ToolButton
-                tool="sector"
-                current={tool}
-                label="Draw sector by hand"
-                choose={choose}
-              />
-              <ToolButton
-                tool="sector-rect"
-                current={tool}
-                label="Rectangle sector"
-                choose={choose}
-              />
+              <ToolButton tool="sector" current={tool} label="Draw by hand" choose={choose} />
+              <ToolButton tool="sector-rect" current={tool} label="Rectangle" choose={choose} />
+              <button
+                type="button"
+                className="btn"
+                disabled={!sectorsLayerId}
+                onClick={addSun}
+                title="A wedge covering today's sun path across the sky"
+              >
+                ☀ Sun path (today)
+              </button>
             </div>
             <p className="muted">
               A wedge suits what radiates from a direction (sun, wind); a rectangle suits a straight
-              edge like a road or fence. Both can be any sector kind.
+              edge like a road or fence.
             </p>
-            <SectorHelper
-              origin={site.centroid.coordinates}
-              defaultRadiusM={radiusM}
-              layerId={sectorsLayerId}
-              disabled={disabled}
-              onAdd={onAdd}
-            />
+            <details className="sector-add__bearings">
+              <summary>Add from compass bearings</summary>
+              <SectorHelper
+                origin={site.centroid.coordinates}
+                defaultRadiusM={radiusM}
+                layerId={sectorsLayerId}
+                disabled={disabled}
+                onAdd={onAdd}
+              />
+            </details>
           </fieldset>
-          <TerrainPanel siteId={site.id} />
           <SectorOverview
             sectors={sectors}
             selectedId={state.selectedId}
@@ -103,6 +96,7 @@ export function SectorsPanel({
             onDelete={state.remove}
             onToggleKind={onToggleKind}
           />
+          <TerrainPanel siteId={site.id} />
         </>
       )}
       <FeatureProperties

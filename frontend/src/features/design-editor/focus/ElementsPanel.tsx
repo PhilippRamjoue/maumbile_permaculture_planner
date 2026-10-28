@@ -3,7 +3,7 @@ import { ELEMENT_HINTS } from "../elementHints";
 import { FeatureProperties } from "../FeatureProperties";
 import { defaultFootprint, footprintLabel } from "../footprint";
 import { GlyphIcon } from "../GlyphIcon";
-import { BackToAdding, FeatureList, ToolButton, type PanelProps } from "./common";
+import { BackToList, FeatureList, ToolButton, type PanelProps } from "./common";
 
 const paletteColor = (type: ElementType | undefined) => {
   const color = type?.default_style.fill ?? type?.default_style.stroke;
@@ -37,7 +37,7 @@ export function ElementsPanel({
   return (
     <>
       {selected ? (
-        <BackToAdding onBack={() => state.select(null)} />
+        <BackToList onBack={() => state.select(null)} label="All elements" />
       ) : (
         <>
           <fieldset disabled={disabled}>

@@ -1,10 +1,7 @@
 import {
-  CONTEXT_GROUPS,
   FOCUS_MODES,
-  contextGroups,
   focusMode,
   nudgeFor,
-  type ContextGroup,
   type FocusId,
   type NudgeContext,
   type Progress,
@@ -80,38 +77,5 @@ export function FocusRail({
         )}
       </p>
     </nav>
-  );
-}
-
-/**
- * Switches the other layers of the design on or off as faint context while working in `current`.
- * Only the families the current step is *not* editing are offered.
- */
-export function ContextToggles({
-  current,
-  hidden,
-  onToggle,
-}: {
-  current: FocusId;
-  hidden: ReadonlySet<ContextGroup>;
-  onToggle(group: ContextGroup, shown: boolean): void;
-}) {
-  const groups = contextGroups(current);
-  return (
-    <fieldset className="focus-context">
-      <legend>Also show, faintly</legend>
-      <div>
-        {CONTEXT_GROUPS.filter((g) => groups.includes(g.id)).map((group) => (
-          <label key={group.id}>
-            <input
-              type="checkbox"
-              checked={!hidden.has(group.id)}
-              onChange={(event) => onToggle(group.id, event.target.checked)}
-            />{" "}
-            {group.label}
-          </label>
-        ))}
-      </div>
-    </fieldset>
   );
 }

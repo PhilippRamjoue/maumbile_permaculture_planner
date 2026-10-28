@@ -1,6 +1,6 @@
 import type { DesignFeature } from "../../../entities/planning";
 import { FeatureProperties } from "../FeatureProperties";
-import { BackToAdding, FeatureList, ToolButton, type PanelProps } from "./common";
+import { BackToList, FeatureList, ToolButton, type PanelProps } from "./common";
 
 export const ZONE_HELP: readonly string[] = [
   "The house and its immediate surroundings — where you are almost always.",
@@ -27,7 +27,7 @@ export function ZonesPanel({
   return (
     <>
       {selected ? (
-        <BackToAdding onBack={() => state.select(null)} />
+        <BackToList onBack={() => state.select(null)} label="All zones" />
       ) : (
         <>
           <fieldset disabled={disabled}>

@@ -19,14 +19,14 @@ export interface PanelProps {
 }
 
 /**
- * The editor panel works in two modes so adding, browsing and editing never mix: with nothing
- * selected it shows the palette/tools and the list of what is placed; select one and it shows just
- * that item, with this control to go back to adding.
+ * Master–detail: with nothing selected a step shows its "add" tools and the list of what is placed;
+ * selecting one (from the list or the map) drills into just that item's editor, with this breadcrumb
+ * back up to the list. `label` names the list, e.g. "All sectors", so "back" always says where to.
  */
-export function BackToAdding({ onBack }: { onBack(): void }) {
+export function BackToList({ onBack, label }: { onBack(): void; label: string }) {
   return (
     <button type="button" className="btn editor-back" onClick={onBack}>
-      ← Back to adding
+      ← {label}
     </button>
   );
 }
