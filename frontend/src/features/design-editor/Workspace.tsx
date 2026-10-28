@@ -17,6 +17,7 @@ import { useMapLayerStore } from "../map/store";
 import { siteKeys, sitesApi } from "../../entities/siteQueries";
 import { terrainKeys, useTerrain } from "../../entities/terrainQueries";
 import { ExportMenu } from "../export";
+import { TerrainControl } from "../terrain";
 import { glyphFor } from "./icons";
 import { buildLegend } from "./legend";
 import { MapLegend } from "./MapLegend";
@@ -35,6 +36,7 @@ import { createEditorStore, signature } from "./store";
 import { formatArea, formatLength } from "../../shared/format";
 import { measureGeometry, type Measurement } from "./measure";
 import { useEditorMap, type Tool } from "./useEditorMap";
+import { useSectorHandles } from "./useSectorHandles";
 import { MapToolsControl } from "./MapToolsControl";
 import { AdvancedTools, HistoryButtons } from "./focus/AdvancedTools";
 import { BoundaryPanel } from "./focus/BoundaryPanel";
@@ -88,7 +90,7 @@ const editable = (f: SavedFeature): DesignFeature => ({
 const layerNameFor = (tool: Tool) =>
   tool === "zone"
     ? "Zones"
-    : tool === "sector"
+    : tool === "sector" || tool === "sector-rect"
       ? "Sectors"
       : tool === "path"
         ? "Paths"
@@ -319,6 +321,8 @@ export function Workspace({
     site.boundary,
     view,
   );
+  // Drag handles for the selected parametric sector (move / open / resize), only in the Sectors step.
+  useSectorHandles(map, store, focus === "sectors" && !save.isPending);
   const blocker = useBlocker(
     ({ currentLocation, nextLocation }) =>
       (dirty ||
@@ -511,6 +515,12 @@ export function Workspace({
     setPlaced(null);
     setTool("select");
   };
+  // Quick jump to the land boundary from any step (even simple mode), so changing the border and
+  // recomputing slope is never buried. The boundary step lives in the guided view, so reveal it.
+  const editBoundary = () => {
+    if (level !== "guided") setLevel("guided");
+    go("boundary");
+  };
 
   const measurement =
     authoritative?.key === selectedGeometryKey
@@ -551,7 +561,9 @@ export function Workspace({
   const anotherLabel =
     placed?.tool === "element"
       ? `Place another ${paletteName.toLowerCase()}`
-      : `Draw another ${placed?.tool ?? "feature"}`;
+      : placed?.tool === "sector-rect"
+        ? "Draw another rectangle sector"
+        : `Draw another ${placed?.tool ?? "feature"}`;
   const live = drawing.live;
   // Once a feature is picked, the hint explains how to edit and remove it (right-click a point to
   // drop it, Delete to remove the whole shape) — a wedge is reshaped from the panel instead.
@@ -559,7 +571,7 @@ export function Workspace({
     ? selected.geometry.type === "Point"
       ? "Drag to move it · press Delete to remove it"
       : isParametricSector(selected)
-        ? "Reshape it from the panel · press Delete to remove it"
+        ? "Drag the dots to move, open or resize it · or reshape it from the panel · Delete removes it"
         : "Drag a point to move it · right-click a point to remove it · Delete removes the whole shape"
     : HINTS[focus];
   const hint = tool.startsWith("measure")
@@ -570,7 +582,9 @@ export function Workspace({
       : "Click points on the map to measure — nothing is saved"
     : tool === "select"
       ? selectHint
-      : "Draw on the map to add a feature";
+      : tool === "sector-rect"
+        ? "Click one corner, then the opposite corner, to draw a rectangle sector"
+        : "Draw on the map to add a feature";
 
   return (
     <section className="design-editor">
@@ -860,6 +874,15 @@ export function Workspace({
           <div className="map-tools map-tools--bottom">
             <ZoomToBoundaryButton map={map} bounds={site.bbox} />
             <MapLegend entries={legend} />
+            {/* Terrain lives in the sidebar during the Sectors & terrain step; everywhere else it
+                is reachable here, so slope/contours can be shown or hidden and the land re-measured
+                while placing things. */}
+            {focus !== "sectors" && (
+              <TerrainControl
+                siteId={site.id}
+                onEditBoundary={focus === "boundary" ? undefined : editBoundary}
+              />
+            )}
             <MapToolsControl
               tool={tool}
               choose={choose}

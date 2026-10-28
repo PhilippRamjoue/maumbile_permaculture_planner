@@ -6,6 +6,27 @@ All notable changes to Maumbile are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.2.3] - 2026-10-28
+
+Terrain and sectors become hands-on, from more online testing.
+
+### Added
+
+- **Drag a sector on the map.** A sun or from-bearings sector now has handles: drag the centre to
+  move the whole wedge, drag an edge to open or close it, and drag the arc to resize it — the same
+  shape the panel edits by number. Hand-drawn sectors keep their by-vertex editing.
+- **Rectangle sectors.** Besides the wedge (good for what radiates from a direction, like sun and
+  wind) and freehand drawing, a sector can be drawn as a clean rectangle — a band along a road,
+  fence or other straight edge — and set to any sector kind.
+- **A Terrain control over the map**, in every step and in both simple and guided modes: show or
+  hide the slope fill and contour lines while you place things (without recomputing), recompute the
+  terrain after moving the border, and jump straight to editing the land boundary.
+
+### Changed
+
+- The slope legend is compact — one line per class (colour, range and its share of the mapped
+  slope) — so it no longer wraps and crowds the panel.
+
 ## [0.2.2] - 2026-10-27
 
 A reliability and UX pass: safer saves and operational hardening (audit), plus editor and
@@ -132,7 +153,8 @@ First public release.
 - Released under AGPL-3.0. All instance configuration and secrets live in the environment, never
   in the repository.
 
-[Unreleased]: https://github.com/PhilippRamjoue/maumbile_permaculture_planner/compare/v0.2.2...HEAD
+[Unreleased]: https://github.com/PhilippRamjoue/maumbile_permaculture_planner/compare/v0.2.3...HEAD
+[0.2.3]: https://github.com/PhilippRamjoue/maumbile_permaculture_planner/compare/v0.2.2...v0.2.3
 [0.2.2]: https://github.com/PhilippRamjoue/maumbile_permaculture_planner/compare/v0.1.4...v0.2.2
 [0.1.4]: https://github.com/PhilippRamjoue/maumbile_permaculture_planner/compare/v0.1.3...v0.1.4
 [0.1.3]: https://github.com/PhilippRamjoue/maumbile_permaculture_planner/compare/v0.1.2...v0.1.3

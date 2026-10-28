@@ -1234,3 +1234,35 @@ h1 {
 .map-legend .glyph-icon {
   margin: 0 0.1rem;
 }
+
+/* ---- terrain control: a map-legend-styled popover anchored to its own button ---- */
+.map-tool-popover {
+  position: relative;
+  display: inline-flex;
+}
+.terrain-control {
+  width: max-content;
+  max-width: min(18rem, 76vw);
+}
+.terrain-control__toggles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.15rem 0.9rem;
+  margin-bottom: 0.1rem;
+}
+.terrain-control__toggles label {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.8rem;
+}
+.terrain-control p {
+  margin: 0.3rem 0;
+  font-size: 0.8rem;
+}
+.terrain-control .editor-tools {
+  margin-top: 0.4rem;
+}
+.terrain-legend__name {
+  min-width: 0;
+}

@@ -114,6 +114,16 @@ Fixes from the owner's first run on a real plot in Tanzania:
   workspace and applies in every focus via `createFocusView`), and a list to select/delete each sector, with
   several per kind. "Add the sun's path (today)" adds a sun sector from `sunPath`. Editing a sector's kind or
   bearings keeps its generated name and colour in step (`syncSectorLook`).
+- **Parametric sector handles.** A selected parametric wedge (sun / from-bearings — it carries an origin,
+  radius and two bearings) is edited on the map by `useSectorHandles.ts`: a circle layer draws handles at the
+  origin (move), each edge tip (open/close) and the arc midpoint (resize); dragging recomputes the spec
+  (`moveSectorOrigin` / `setSectorBearing` / `setSectorRadius` in `sectors.ts`, opening clamped to
+  `[MIN_SECTOR_SPAN, MAX_SECTOR_SPAN]`) and upserts on each animation frame. Parametric wedges are kept out of
+  Terra Draw vertex editing (`editedFeature`); hand-drawn sectors have no origin/radius and stay by-vertex.
+- **Rectangle / freehand sectors.** Besides the wedge, "Draw sector by hand" is Terra Draw polygon mode and
+  "Rectangle sector" (`tool: "sector-rect"`) is its rectangle mode; both finish as an ordinary hand-drawn
+  sector (kind defaults to wind, set it afterwards). A wedge suits directional influences, a rectangle a
+  straight edge such as a road.
 - **Functions by default.** `element_types.default_properties` (migration `0007_element_type_defaults`,
   additive) holds each palette entry's typical `needs`/`yields`; placing an element copies them, so a tree
   (needs water) links to a tank (yields water) at once. The Functions step can top older elements up without
@@ -181,6 +191,15 @@ sector kind and element type with the colour of its first feature, in that order
 layers or switched off by the current focus are left out, so it explains exactly what the map shows.
 `MapLegend.tsx` renders it. The PNG/PDF export has its own server-side legend of the same kinds
 (`export/render.py`, see `EXPORT.md`) and now also prints the plan's goals under the title.
+
+## Terrain control
+
+`terrain/TerrainControl.tsx` is a compact popover in the `.map-tools` row, shown in every focus **except**
+Sectors & terrain (whose sidebar `TerrainPanel` already covers terrain). It toggles the slope fill and
+contour overlays via the shared `useMapLayerStore` (visibility only — `MapView` applies the overrides),
+recomputes terrain after a border change, and jumps to the Boundary step (`onEditBoundary`, omitted when
+already there). The slope legend (`SlopeLegend`) is one compact line per class. This is what makes changing
+the boundary and recomputing slope reachable from the simple editor and while placing elements.
 
 ## Element icons
 

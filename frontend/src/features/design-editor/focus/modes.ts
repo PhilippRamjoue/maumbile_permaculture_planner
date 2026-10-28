@@ -26,7 +26,7 @@ export const SIMPLE_FOCUS: FocusId = "elements";
 /** What the user can toggle as faint context: the site border and the three feature families. */
 export type ContextGroup = "boundary" | "sectors" | "zones" | "elements";
 
-export type FocusTool = "select" | "zone" | "sector" | "element" | "path";
+export type FocusTool = "select" | "zone" | "sector" | "sector-rect" | "element" | "path";
 
 export interface FocusMode {
   id: FocusId;
@@ -86,7 +86,7 @@ export const FOCUS_MODES: readonly FocusMode[] = [
     help: "Mark where sun, wind, water, fire and views come from, and see how the land slopes.",
     editableTypes: ["sector"],
     group: "sectors",
-    tools: ["sector"],
+    tools: ["sector", "sector-rect"],
     geometryEditable: true,
     layerName: "Sectors",
   },

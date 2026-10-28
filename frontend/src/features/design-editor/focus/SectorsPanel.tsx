@@ -69,7 +69,17 @@ export function SectorsPanel({
                 label="Draw sector by hand"
                 choose={choose}
               />
+              <ToolButton
+                tool="sector-rect"
+                current={tool}
+                label="Rectangle sector"
+                choose={choose}
+              />
             </div>
+            <p className="muted">
+              A wedge suits what radiates from a direction (sun, wind); a rectangle suits a straight
+              edge like a road or fence. Both can be any sector kind.
+            </p>
             <SectorHelper
               origin={site.centroid.coordinates}
               defaultRadiusM={radiusM}

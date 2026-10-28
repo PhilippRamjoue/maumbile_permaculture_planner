@@ -27,26 +27,29 @@ const message = (error: unknown) =>
 const formatRange = (c: SlopeClass) =>
   c.max_pct === null ? `> ${c.min_pct}%` : `${c.min_pct}–${c.max_pct}%`;
 
-/** Slope colour key. Shown whenever terrain is ready, so the overlay is never unexplained. */
+/**
+ * Slope colour key. Shown whenever terrain is ready, so the overlay is never unexplained. Each row
+ * is one line — swatch, class, its slope range and its share of the mapped slope — so the key stays
+ * compact enough to sit over the map.
+ */
 export function SlopeLegend({ legend }: { legend: SlopeClass[] }) {
   return (
     <ul className="terrain-legend" aria-label="Slope legend">
       {legend.map((c) => (
         <li key={c.label}>
           <span className="terrain-legend__swatch" style={{ background: c.color }} aria-hidden />
-          <span>
+          <span className="terrain-legend__name">
             {c.label} <span className="muted">{formatRange(c)}</span>
           </span>
-          <span className="muted">
-            {Math.round(c.area_fraction * 100)}% of available slope data
-          </span>
+          <span className="muted">{Math.round(c.area_fraction * 100)}%</span>
         </li>
       ))}
     </ul>
   );
 }
 
-function Summary({ terrain }: { terrain: TerrainRead }) {
+/** One-line elevation/slope summary for a ready terrain. */
+export function TerrainSummary({ terrain }: { terrain: TerrainRead }) {
   const { slope } = terrain;
   if (!slope) return null;
   return (
@@ -146,7 +149,7 @@ export function TerrainPanel({
                 {definition.label}
               </label>
             ))}
-            <Summary terrain={data} />
+            <TerrainSummary terrain={data} />
             <p className="muted">
               Estimates cover the rectangle around your land, including neighboring land, using
               available 30 m elevation data.

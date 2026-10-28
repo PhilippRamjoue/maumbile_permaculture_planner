@@ -192,6 +192,104 @@ export function redrawSector(feature: DesignFeature): DesignFeature {
   };
 }
 
+/** The parametric spec of a sector feature, or `null` when it is hand-drawn (no origin/radius). */
+export function sectorSpecOf(feature: DesignFeature): SectorSpec | null {
+  if (!isParametricSector(feature)) return null;
+  const { origin, radius_m, bearing_from, bearing_to } = feature.properties;
+  return {
+    kind: sectorKindOf(feature),
+    origin: origin as [number, number],
+    radiusM: radius_m as number,
+    from: bearing_from as number,
+    to: bearing_to as number,
+  };
+}
+
+/** The compass bearing (0 = north, 90 = east) from `origin` to `point`; inverse of `offsetPoint`. */
+export function bearingBetween(origin: [number, number], point: [number, number]): number {
+  const east = (point[0] - origin[0]) * METERS_PER_DEGREE * Math.cos(rad(origin[1]));
+  const north = (point[1] - origin[1]) * METERS_PER_DEGREE;
+  return normalizeBearing((Math.atan2(east, north) * 180) / Math.PI);
+}
+
+/** Flat-earth metres between `origin` and `point` (fine at site scale). */
+export function distanceBetween(origin: [number, number], point: [number, number]): number {
+  const east = (point[0] - origin[0]) * METERS_PER_DEGREE * Math.cos(rad(origin[1]));
+  const north = (point[1] - origin[1]) * METERS_PER_DEGREE;
+  return Math.hypot(east, north);
+}
+
+/** The narrowest and widest a wedge may open to, so a dragged edge never collapses or wraps fully. */
+export const MIN_SECTOR_SPAN = 5;
+export const MAX_SECTOR_SPAN = 355;
+const MIN_SECTOR_RADIUS = 5;
+const MAX_SECTOR_RADIUS = 100_000;
+const clampSpan = (span: number) => Math.min(MAX_SECTOR_SPAN, Math.max(MIN_SECTOR_SPAN, span));
+
+/**
+ * The on-map drag handles of a parametric sector: its origin (move the whole wedge), the two edge
+ * tips (open or close it) and the arc midpoint (resize it). Empty for a hand-drawn sector.
+ */
+export type SectorHandleRole = "origin" | "from" | "to" | "radius";
+export function sectorHandles(
+  feature: DesignFeature,
+): { role: SectorHandleRole; point: [number, number] }[] {
+  const spec = sectorSpecOf(feature);
+  if (!spec) return [];
+  const mid = normalizeBearing(spec.from + sectorSpan(spec.from, spec.to) / 2);
+  return [
+    { role: "origin", point: spec.origin },
+    { role: "from", point: offsetPoint(spec.origin, spec.from, spec.radiusM) },
+    { role: "to", point: offsetPoint(spec.origin, spec.to, spec.radiusM) },
+    { role: "radius", point: offsetPoint(spec.origin, mid, spec.radiusM) },
+  ];
+}
+
+/** Rebuilds a parametric sector from changed spec fields, keeping its auto name and colour in step. */
+function rebuildSector(feature: DesignFeature, patch: Partial<SectorSpec>): DesignFeature {
+  const next: DesignFeature = {
+    ...feature,
+    properties: {
+      ...feature.properties,
+      ...(patch.origin ? { origin: patch.origin } : {}),
+      ...(patch.radiusM !== undefined ? { radius_m: patch.radiusM } : {}),
+      ...(patch.from !== undefined ? { bearing_from: normalizeBearing(patch.from) } : {}),
+      ...(patch.to !== undefined ? { bearing_to: normalizeBearing(patch.to) } : {}),
+    },
+  };
+  return syncSectorLook(feature, redrawSector(next));
+}
+
+/** Moves the whole wedge so it radiates from `origin`, keeping its opening and radius. */
+export function moveSectorOrigin(feature: DesignFeature, origin: [number, number]): DesignFeature {
+  return rebuildSector(feature, { origin: [round(origin[0], 8), round(origin[1], 8)] });
+}
+
+/** Resizes the wedge to `radiusM` (clamped), keeping its origin and opening. */
+export function setSectorRadius(feature: DesignFeature, radiusM: number): DesignFeature {
+  const clamped = Math.min(MAX_SECTOR_RADIUS, Math.max(MIN_SECTOR_RADIUS, Math.round(radiusM)));
+  return rebuildSector(feature, { radiusM: clamped });
+}
+
+/**
+ * Drags one edge of the wedge to `bearing`, opening or closing it. The opposite edge stays put, and
+ * the opening is clamped to [MIN_SECTOR_SPAN, MAX_SECTOR_SPAN] so the wedge never collapses or wraps.
+ */
+export function setSectorBearing(
+  feature: DesignFeature,
+  which: "from" | "to",
+  bearing: number,
+): DesignFeature {
+  const spec = sectorSpecOf(feature);
+  if (!spec) return feature;
+  if (which === "from") {
+    const span = clampSpan(sectorSpan(bearing, spec.to));
+    return rebuildSector(feature, { from: normalizeBearing(spec.to - span) });
+  }
+  const span = clampSpan(sectorSpan(spec.from, bearing));
+  return rebuildSector(feature, { to: normalizeBearing(spec.from + span) });
+}
+
 /** Day of year (1 = 1 Jan) of a `YYYY-MM-DD` date, or `null` when it is not a real date. */
 export function dayOfYear(isoDate: string): number | null {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(isoDate);

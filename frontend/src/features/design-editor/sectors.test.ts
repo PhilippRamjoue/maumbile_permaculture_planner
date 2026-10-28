@@ -1,18 +1,27 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  bearingBetween,
   dayOfYear,
   defaultSectorRadius,
+  distanceBetween,
   isParametricSector,
+  MAX_SECTOR_SPAN,
+  MIN_SECTOR_SPAN,
+  moveSectorOrigin,
   normalizeBearing,
   offsetPoint,
   redrawSector,
   SECTOR_COLORS,
   sectorFeature,
+  sectorHandles,
   sectorKindOf,
   sectorProblem,
   sectorSpan,
+  sectorSpecOf,
   sectorWedge,
+  setSectorBearing,
+  setSectorRadius,
   sunPath,
   sunPathFeature,
   syncSectorLook,
@@ -278,5 +287,66 @@ describe("isParametricSector", () => {
     };
     expect(isParametricSector(handDrawn)).toBe(false);
     expect(isParametricSector({ ...sun, feature_type: "zone" })).toBe(false);
+  });
+});
+
+describe("dragging a parametric sector on the map", () => {
+  const origin: [number, number] = [36.82, -1.29];
+  const sun = sectorFeature({ kind: "sun", from: 315, to: 45, origin, radiusM: 80 }, "s1", "layer");
+
+  it("inverts offsetPoint: bearing and distance back to the same point", () => {
+    const tip = offsetPoint(origin, 120, 250);
+    expect(bearingBetween(origin, tip)).toBeCloseTo(120, 1);
+    expect(distanceBetween(origin, tip)).toBeCloseTo(250, 0);
+  });
+
+  it("places a handle at the centre, each edge tip and the arc midpoint", () => {
+    const handles = sectorHandles(sun);
+    expect(handles.map((h) => h.role)).toEqual(["origin", "from", "to", "radius"]);
+    expect(handles[0].point).toEqual(origin);
+    expect(handles[1].point).toEqual(offsetPoint(origin, 315, 80));
+    expect(handles[2].point).toEqual(offsetPoint(origin, 45, 80));
+    // The arc midpoint sits due north (315 → 45 sweeps through 0).
+    expect(handles[3].point).toEqual(offsetPoint(origin, 0, 80));
+    expect(sectorHandles({ ...sun, properties: { ...sun.properties, origin: undefined } })).toEqual(
+      [],
+    );
+  });
+
+  it("moves the whole wedge, keeping its opening and radius", () => {
+    const moved = moveSectorOrigin(sun, [36.9, -1.2]);
+    expect(sectorSpecOf(moved)).toMatchObject({
+      origin: [36.9, -1.2],
+      from: 315,
+      to: 45,
+      radiusM: 80,
+    });
+    expect(moved.geometry).toEqual(sectorWedge([36.9, -1.2], 315, 45, 80));
+  });
+
+  it("opens the wedge by dragging an edge, the opposite edge staying put", () => {
+    const wider = setSectorBearing(sun, "to", 120);
+    expect(sectorSpecOf(wider)).toMatchObject({ from: 315, to: 120 });
+    expect(sectorSpan(315, 120)).toBe(165);
+    // Dragging the "from" edge leaves "to" where it was.
+    const fromDrag = setSectorBearing(sun, "from", 270);
+    expect(sectorSpecOf(fromDrag)).toMatchObject({ from: 270, to: 45 });
+  });
+
+  it("never lets the opening collapse or wrap fully", () => {
+    const tiny = setSectorBearing(sun, "to", 316); // would be a 1° sliver past "from"
+    expect(sectorSpan(sectorSpecOf(tiny)!.from, sectorSpecOf(tiny)!.to)).toBe(MIN_SECTOR_SPAN);
+    const huge = setSectorBearing(sun, "to", 310); // would wrap almost all the way round
+    expect(sectorSpan(sectorSpecOf(huge)!.from, sectorSpecOf(huge)!.to)).toBe(MAX_SECTOR_SPAN);
+  });
+
+  it("resizes by the arc handle, clamping the radius to a sane range", () => {
+    expect(sectorSpecOf(setSectorRadius(sun, 150))!.radiusM).toBe(150);
+    expect(sectorSpecOf(setSectorRadius(sun, 1))!.radiusM).toBe(5);
+    expect(sectorSpecOf(setSectorRadius(sun, 1e9))!.radiusM).toBe(100_000);
+  });
+
+  it("keeps the generated name in step as the wedge is dragged", () => {
+    expect(setSectorBearing(sun, "to", 90).properties.name).toBe("Sun 315°–90°");
   });
 });

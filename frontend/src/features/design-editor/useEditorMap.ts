@@ -32,7 +32,14 @@ import { CONTEXT_OPACITY, OPEN_VIEW, renderableFeatures, type FocusView } from "
 import { useStore } from "zustand";
 
 export type Tool =
-  "select" | "zone" | "sector" | "element" | "path" | "measure-line" | "measure-area";
+  | "select"
+  | "zone"
+  | "sector"
+  | "sector-rect"
+  | "element"
+  | "path"
+  | "measure-line"
+  | "measure-area";
 
 const flag = (name: string): ExpressionSpecification => ["==", ["get", name], true];
 /** `normal`, or `faint` for features drawn as context rather than as the focus. */
@@ -159,8 +166,13 @@ export function useEditorMap(
         return;
       }
       if (!current.activeLayer) return;
+      // "sector-rect" draws a clean rectangle but is just another hand-drawn sector once placed.
       const featureType =
-        current.tool === "element" ? (current.element?.feature_type ?? "element") : current.tool;
+        current.tool === "element"
+          ? (current.element?.feature_type ?? "element")
+          : current.tool === "sector-rect"
+            ? "sector"
+            : current.tool;
       if (!["zone", "sector", "element", "path", "annotation"].includes(featureType)) return;
       const palette = current.tool === "element" ? current.element : undefined;
       const properties: DesignFeature["properties"] = {
@@ -272,9 +284,11 @@ export function useEditorMap(
         const mode =
           tool === "path" || tool === "measure-line"
             ? "linestring"
-            : tool === "element"
-              ? placementMode(element)
-              : "polygon";
+            : tool === "sector-rect"
+              ? "rectangle"
+              : tool === "element"
+                ? placementMode(element)
+                : "polygon";
         draw.setMode(mode);
       }
       setError("");
