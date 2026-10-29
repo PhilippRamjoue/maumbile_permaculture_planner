@@ -6,6 +6,14 @@ All notable changes to Maumbile are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.5.1] - 2026-10-29
+
+### Fixed
+
+- **Zones are coloured by their number.** Every Zone 1 (2, 3, …) now shares one colour, new zones
+  get distinct defaults (home-red through wild-purple instead of all-orange), and recolouring a
+  zone recolours every zone of that number at once — so the map legend always matches what's drawn.
+
 ## [0.5.0] - 2026-10-29
 
 A maintainability and robustness pass (no new user-facing features): editor restructure, stable
@@ -260,7 +268,8 @@ First public release.
 - Released under AGPL-3.0. All instance configuration and secrets live in the environment, never
   in the repository.
 
-[Unreleased]: https://github.com/PhilippRamjoue/maumbile_permaculture_planner/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/PhilippRamjoue/maumbile_permaculture_planner/compare/v0.5.1...HEAD
+[0.5.1]: https://github.com/PhilippRamjoue/maumbile_permaculture_planner/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/PhilippRamjoue/maumbile_permaculture_planner/compare/v0.4.1...v0.5.0
 [0.4.1]: https://github.com/PhilippRamjoue/maumbile_permaculture_planner/compare/v0.3.0...v0.4.1
 [0.3.0]: https://github.com/PhilippRamjoue/maumbile_permaculture_planner/compare/v0.2.4...v0.3.0

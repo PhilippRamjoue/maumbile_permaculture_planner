@@ -1,5 +1,6 @@
 import type { DesignFeature } from "../../../entities/planning";
 import { FeatureProperties } from "../FeatureProperties";
+import { recolorZones, zoneColorOf } from "../zoneColors";
 import { EditHeader, FeatureList, PlacingBanner, ToolButton, type PanelProps } from "./common";
 
 const ZONE_HELP: readonly string[] = [
@@ -81,6 +82,14 @@ export function ZonesPanel({
         onChange={state.upsert}
         onDelete={state.remove}
         onRotate={onRotate}
+        // A zone's colour belongs to its number: recolour every zone of that number at once.
+        onRecolorZones={(zoneNumber, color) =>
+          state.commit({
+            ...state.document,
+            features: recolorZones(state.document.features, zoneNumber, color),
+          })
+        }
+        zoneColorFor={(zoneNumber) => zoneColorOf(state.document.features, zoneNumber)}
       />
     </>
   );

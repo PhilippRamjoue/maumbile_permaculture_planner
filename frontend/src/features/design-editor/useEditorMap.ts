@@ -37,6 +37,7 @@ import { widthMOf } from "./lineWidth";
 import { rowOf } from "./rowIcons";
 import { liveMeasureGeometry, measureGeometry, measureMode, type Measurement } from "./measure";
 import { isParametricSector, SECTOR_COLORS, type SectorKind } from "./sectors";
+import { zoneColor } from "./zoneColors";
 import type { EditorDocument, EditorStore } from "./store";
 import { typicalFunctions } from "./focus/functions";
 import { OPEN_VIEW, type FocusView } from "./focus/view";
@@ -212,10 +213,10 @@ export function useEditorMap(
       properties.color =
         featureType === "sector"
           ? SECTOR_COLORS[current.sectorKind]
-          : typeof color === "string"
-            ? color
-            : featureType === "zone"
-              ? "#f59e0b"
+          : featureType === "zone"
+            ? zoneColor(Number(properties.zone_number ?? 1))
+            : typeof color === "string"
+              ? color
               : "#2f855a";
       store.getState().upsert({
         type: "Feature",

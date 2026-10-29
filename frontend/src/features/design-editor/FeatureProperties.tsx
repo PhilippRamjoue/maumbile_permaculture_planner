@@ -10,6 +10,9 @@ import {
   SECTOR_KINDS,
   syncSectorLook,
 } from "./sectors";
+import { zoneColor } from "./zoneColors";
+
+const HEX = /^#[0-9a-f]{6}$/i;
 
 export function FeatureProperties({
   selected,
@@ -17,12 +20,18 @@ export function FeatureProperties({
   onChange,
   onDelete,
   onRotate,
+  onRecolorZones,
+  zoneColorFor,
 }: {
   selected: DesignFeature | undefined;
   layers: PlanLayer[];
   onChange(feature: DesignFeature): void;
   onDelete(id: string): void;
   onRotate(angle: number): void;
+  /** Recolour every zone of a number together; the zones panel wires it to the store. */
+  onRecolorZones?(zoneNumber: number, color: string): void;
+  /** The colour a zone number currently uses, so the picker and number changes stay in step. */
+  zoneColorFor?(zoneNumber: number): string;
 }) {
   if (!selected) return null;
   const patchProperties = (changes: Record<string, unknown>) =>
@@ -41,6 +50,13 @@ export function FeatureProperties({
       bearing_to: normalizeBearing(Number(selected.properties.bearing_to ?? 0) + delta),
     });
   const parametricSector = isParametricSector(selected);
+  // A zone's colour follows its number, so the picker edits the number's colour, not one shape.
+  const zoneNumber = Number(selected.properties.zone_number ?? 1);
+  const zoneColorValue = zoneColorFor
+    ? zoneColorFor(zoneNumber)
+    : HEX.test(String(selected.properties.color))
+      ? String(selected.properties.color)
+      : zoneColor(zoneNumber);
   // A line can be drawn as a row of icons (a windbreak of trees): an icon and the gap between them.
   const rowIcon = rowOf(selected.properties)?.icon ?? "";
   const rowSpacing = rowOf(selected.properties)?.spacing_m ?? 3;
@@ -131,14 +147,16 @@ export function FeatureProperties({
             onChange={(event) => patchProperties({ notes: event.target.value })}
           />
         </label>
-        <label>
-          Feature color
-          <input
-            type="color"
-            value={String(selected.properties.color ?? "#2f855a")}
-            onChange={(event) => patchProperties({ color: event.target.value })}
-          />
-        </label>
+        {selected.feature_type !== "zone" && (
+          <label>
+            Feature color
+            <input
+              type="color"
+              value={String(selected.properties.color ?? "#2f855a")}
+              onChange={(event) => patchProperties({ color: event.target.value })}
+            />
+          </label>
+        )}
         <label>
           Feature layer
           <select
@@ -154,17 +172,40 @@ export function FeatureProperties({
         </label>
       </details>
       {selected.feature_type === "zone" && (
-        <label>
-          Zone number
-          <select
-            value={Number(selected.properties.zone_number ?? 1)}
-            onChange={(event) => patchProperties({ zone_number: Number(event.target.value) })}
-          >
-            {[0, 1, 2, 3, 4, 5].map((n) => (
-              <option key={n}>{n}</option>
-            ))}
-          </select>
-        </label>
+        <>
+          <label>
+            Zone number
+            <select
+              value={zoneNumber}
+              onChange={(event) => {
+                const next = Number(event.target.value);
+                // Adopt that number's colour so every zone of a number stays in step.
+                const color = zoneColorFor ? zoneColorFor(next) : zoneColor(next);
+                onChange({
+                  ...selected,
+                  properties: { ...selected.properties, zone_number: next, color },
+                });
+              }}
+            >
+              {[0, 1, 2, 3, 4, 5].map((n) => (
+                <option key={n}>{n}</option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Zone colour
+            <input
+              type="color"
+              value={zoneColorValue}
+              onChange={(event) => {
+                const color = event.target.value;
+                if (onRecolorZones) onRecolorZones(zoneNumber, color);
+                else patchProperties({ color });
+              }}
+            />
+          </label>
+          <p className="muted">Colours every Zone {zoneNumber} the same.</p>
+        </>
       )}
       {selected.feature_type === "sector" && (
         <>
