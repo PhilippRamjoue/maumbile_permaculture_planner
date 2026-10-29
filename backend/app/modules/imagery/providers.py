@@ -130,7 +130,31 @@ class Sentinel2CloudlessProvider(HttpTileProvider):
         return f"{self._URL}/{z}/{y}/{x}.jpg"
 
 
+class OpenStreetMapProvider(HttpTileProvider):
+    """OpenStreetMap standard tiles: keyless XYZ (z/x/y) PNG.
+
+    Streets, roads and labels rather than aerial, but sharp to zoom 19 — useful for tracing roads
+    and boundaries. Proxied with a descriptive User-Agent and cached, to stay within the OSMF tile
+    usage policy (light, non-bulk use); see https://operations.osmfoundation.org/policies/tiles/.
+    """
+
+    key = "osm_standard"
+    label = "OpenStreetMap (streets & roads)"
+    attribution = "© OpenStreetMap contributors"
+    license = "Map data ODbL 1.0; map tiles © OpenStreetMap Foundation (tile usage policy)"
+    terms_url = "https://www.openstreetmap.org/copyright"
+    cacheable = True
+    max_zoom = 19
+
+    def tile_url(self, z: int, x: int, y: int) -> str:
+        return f"https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+
+
 def register_imagery_providers(registry: ProviderRegistry) -> None:
     """Replace the metadata-only catalog entries with the real adapters (same keys)."""
-    for provider in (EsriWorldImageryProvider(), Sentinel2CloudlessProvider()):
+    for provider in (
+        EsriWorldImageryProvider(),
+        OpenStreetMapProvider(),
+        Sentinel2CloudlessProvider(),
+    ):
         registry.register(provider, replace=True)

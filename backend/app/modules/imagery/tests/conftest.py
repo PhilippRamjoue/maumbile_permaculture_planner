@@ -21,7 +21,11 @@ from sqlalchemy.ext.asyncio import (
 
 from app.core.db import get_session
 from app.main import app
-from app.modules.imagery.providers import EsriWorldImageryProvider, Sentinel2CloudlessProvider
+from app.modules.imagery.providers import (
+    EsriWorldImageryProvider,
+    OpenStreetMapProvider,
+    Sentinel2CloudlessProvider,
+)
 from app.modules.imagery.tests.stubs import StubUpstream
 from app.modules.regions.catalog import builtin_registry
 from app.modules.regions.deps import get_resolver
@@ -39,6 +43,7 @@ BACKEND_DIR = Path(__file__).resolve().parents[4]
 class Upstreams:
     esri: StubUpstream
     eox: StubUpstream
+    osm: StubUpstream
 
 
 @pytest.fixture(scope="session")
@@ -62,7 +67,7 @@ async def engine(migrated_url: str) -> AsyncIterator[AsyncEngine]:
 
 @pytest.fixture
 def upstreams() -> Upstreams:
-    return Upstreams(esri=StubUpstream(), eox=StubUpstream())
+    return Upstreams(esri=StubUpstream(), eox=StubUpstream(), osm=StubUpstream())
 
 
 @pytest_asyncio.fixture
@@ -76,6 +81,7 @@ async def api(engine: AsyncEngine, upstreams: Upstreams) -> AsyncIterator[AsyncC
 
     registry = builtin_registry()
     registry.register(EsriWorldImageryProvider(client=upstreams.esri.client()), replace=True)
+    registry.register(OpenStreetMapProvider(client=upstreams.osm.client()), replace=True)
     registry.register(Sentinel2CloudlessProvider(client=upstreams.eox.client()), replace=True)
     resolver = RegionResolver(registry, seed_profile_store())
 

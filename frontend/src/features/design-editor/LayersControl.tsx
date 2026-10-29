@@ -1,6 +1,5 @@
 import { useState } from "react";
 
-import type { ImageryProviders } from "../../entities/imagery";
 import type { EditorState } from "./store";
 
 const STORAGE_KEY = "permaculture.layersControl.open";
@@ -14,28 +13,17 @@ const readOpen = () => {
 };
 
 /**
- * Layer visibility, draw order and which layer new shapes go into — a floating control over the map,
- * beside Legend and Terrain, since these are whole-map settings rather than anything to do with the
- * step you are in. Replaces the per-step "Layers & context" sidebar block.
+ * Layer visibility and draw order — a floating control over the map, beside Legend, Basemap and
+ * Terrain, since these are whole-map settings rather than anything to do with the step you are in.
+ * New shapes are filed into their own kind's layer automatically (see `layerNameFor`), and the
+ * basemap is switched from its own control, so neither is a knob here any more.
  */
 export function LayersControl({
   state,
   disabled,
-  activeLayer,
-  setActiveLayer,
-  imagery,
 }: {
   state: EditorState;
   disabled: boolean;
-  activeLayer: string;
-  setActiveLayer(id: string): void;
-  /** The satellite sources covering the site; the choice is offered when there is more than one. */
-  imagery?: {
-    providers: ImageryProviders | undefined;
-    /** The key in use (the default's, when nothing else was chosen). */
-    selected: string | null;
-    onSelect(key: string): void;
-  };
 }) {
   const [open, setOpen] = useState(readOpen);
   const toggle = () =>
@@ -110,37 +98,6 @@ export function LayersControl({
                 </button>
               </div>
             ))}
-            {imagery && (imagery.providers?.providers.length ?? 0) > 1 && (
-              <label className="layers-control__draw">
-                Satellite source
-                <select
-                  value={imagery.selected ?? imagery.providers?.default_key ?? ""}
-                  onChange={(e) => imagery.onSelect(e.target.value)}
-                >
-                  {imagery.providers?.providers.map((p) => (
-                    <option key={p.key} value={p.key}>
-                      {p.label}
-                    </option>
-                  ))}
-                </select>
-                <span className="muted">
-                  Only the picture changes: lines, areas and measurements stay exactly where they
-                  are.
-                </span>
-              </label>
-            )}
-            <label className="layers-control__draw">
-              New shapes go into
-              <select value={activeLayer} onChange={(e) => setActiveLayer(e.target.value)}>
-                {state.document.layers
-                  .filter((l) => l.visible)
-                  .map((l) => (
-                    <option key={l.id} value={l.id}>
-                      {l.name}
-                    </option>
-                  ))}
-              </select>
-            </label>
           </fieldset>
         </section>
       )}

@@ -135,11 +135,17 @@ async def test_providers_lists_every_source_covering_the_site(api: AsyncClient) 
     assert (
         body["default_key"] == "esri_world_imagery"
     )  # what the meta endpoint says without a choice
-    assert [p["key"] for p in body["providers"]] == ["esri_world_imagery", "sentinel2_cloudless"]
-    esri, sentinel = body["providers"]
-    assert esri["max_zoom"] == 19 and sentinel["max_zoom"] == 13
-    assert esri["label"] and sentinel["label"] and esri["label"] != sentinel["label"]
+    assert [p["key"] for p in body["providers"]] == [
+        "esri_world_imagery",
+        "osm_standard",
+        "sentinel2_cloudless",
+    ]
+    esri, osm, sentinel = body["providers"]
+    assert esri["max_zoom"] == 19 and osm["max_zoom"] == 19 and sentinel["max_zoom"] == 13
+    labels = {esri["label"], osm["label"], sentinel["label"]}
+    assert len(labels) == 3 and all(labels)
     assert esri["attribution"].startswith("Source: Esri")
+    assert osm["attribution"] == "© OpenStreetMap contributors"
 
     # No profile for Germany: only the global source covers it, so there is nothing to choose.
     de = await make_site(api, "DE", BERLIN)

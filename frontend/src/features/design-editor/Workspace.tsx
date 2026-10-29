@@ -42,6 +42,7 @@ import { CompassControl } from "./CompassControl";
 import { MapToolsControl } from "./MapToolsControl";
 import { PlanSwitcher } from "./PlanSwitcher";
 import { HistoryButtons } from "./focus/AdvancedTools";
+import { BasemapSwitcher } from "./BasemapSwitcher";
 import { LayersControl } from "./LayersControl";
 import { BoundaryPanel } from "./focus/BoundaryPanel";
 import { MeasurementPanel } from "./focus/MeasurementPanel";
@@ -848,18 +849,14 @@ export function Workspace({
           <div className="map-tools map-tools--bottom">
             <ZoomToBoundaryButton map={map} bounds={site.bbox} />
             <MapLegend entries={legend} />
-            <LayersControl
-              state={state}
-              disabled={disabled}
-              activeLayer={activeLayer}
-              setActiveLayer={setActiveLayer}
-              imagery={{
-                providers: imageryProviders.data,
-                selected: imageryProvider,
-                // Picking the region's own default is "no choice", so the remembered key goes away.
-                onSelect: (key) =>
-                  setImageryChoice(key === imageryProviders.data?.default_key ? null : key),
-              }}
+            <LayersControl state={state} disabled={disabled} />
+            <BasemapSwitcher
+              providers={imageryProviders.data}
+              selected={imageryProvider}
+              // Picking the region's own default is "no choice", so the remembered key goes away.
+              onSelect={(key) =>
+                setImageryChoice(key === imageryProviders.data?.default_key ? null : key)
+              }
             />
             {/* Terrain lives in the sidebar during the Sectors & terrain step; everywhere else it
                 is reachable here, so slope/contours can be shown or hidden and the land re-measured

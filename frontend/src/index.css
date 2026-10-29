@@ -1375,16 +1375,15 @@ h1 {
 .layers-control .editor-layer {
   padding: 0.1rem 0;
 }
-.layers-control__draw {
-  display: block;
-  margin-top: 0.5rem;
-  font-size: 0.85rem;
+/* Basemap switcher: one choice per line, like Google Maps' layer list. */
+.basemap-switcher {
+  width: max-content;
+  max-width: min(18rem, 76vw);
 }
-.layers-control__draw select {
+.basemap-switcher__option {
   display: block;
-  width: 100%;
-  box-sizing: border-box;
-  margin-top: 0.2rem;
+  margin: 0.2rem 0;
+  font-size: 0.9rem;
 }
 /* The four ways to add a sector are equal-weight choices in an even grid, so none leads. */
 .sector-add__grid {

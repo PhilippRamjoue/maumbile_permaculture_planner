@@ -9,7 +9,7 @@ from app.modules.regions.profiles import (
     RegionProfileStore,
 )
 
-_EAST_AFRICA_IMAGERY = ["esri_world_imagery", "sentinel2_cloudless"]
+_EAST_AFRICA_IMAGERY = ["esri_world_imagery", "osm_standard", "sentinel2_cloudless"]
 _EAST_AFRICA_ELEVATION = ["copernicus_dem_glo30"]
 
 SEED_PROFILES: tuple[RegionProfile, ...] = (

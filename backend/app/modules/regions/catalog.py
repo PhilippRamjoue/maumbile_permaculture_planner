@@ -21,6 +21,15 @@ ESRI_WORLD_IMAGERY = StaticProvider(
     cacheable=False,
 )
 
+OSM_STANDARD = StaticProvider(
+    key="osm_standard",
+    category="imagery",
+    attribution="© OpenStreetMap contributors",
+    license="Map data ODbL 1.0; map tiles © OpenStreetMap Foundation (tile usage policy)",
+    terms_url="https://www.openstreetmap.org/copyright",
+    cacheable=True,
+)
+
 SENTINEL2_CLOUDLESS = StaticProvider(
     key="sentinel2_cloudless",
     category="imagery",
@@ -42,7 +51,7 @@ COPERNICUS_DEM_GLO30 = StaticProvider(
     cacheable=True,
 )
 
-BUILTIN_PROVIDERS = (ESRI_WORLD_IMAGERY, SENTINEL2_CLOUDLESS, COPERNICUS_DEM_GLO30)
+BUILTIN_PROVIDERS = (ESRI_WORLD_IMAGERY, OSM_STANDARD, SENTINEL2_CLOUDLESS, COPERNICUS_DEM_GLO30)
 
 
 def builtin_registry() -> ProviderRegistry:
