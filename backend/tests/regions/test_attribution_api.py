@@ -40,7 +40,12 @@ async def test_all_sources_have_license_and_terms_url(client: AsyncClient) -> No
 async def test_country_without_bbox_lists_whole_chain(client: AsyncClient) -> None:
     resp = await client.get(f"{BASE}/attribution", params={"country": "ke"})
     keys = [s["key"] for s in resp.json()["sources"]]
-    assert keys == ["esri_world_imagery", "sentinel2_cloudless", "copernicus_dem_glo30"]
+    assert keys == [
+        "esri_world_imagery",
+        "osm_standard",
+        "sentinel2_cloudless",
+        "copernicus_dem_glo30",
+    ]
 
 
 async def test_country_with_bbox_lists_resolved_sources(client: AsyncClient) -> None:
@@ -87,7 +92,11 @@ async def test_invalid_input_is_422(client: AsyncClient, params: dict[str, str])
 async def test_region_profile_endpoint(client: AsyncClient) -> None:
     ke = (await client.get(f"{BASE}/ke/profile")).json()
     assert ke["country_code"] == "KE"
-    assert ke["providers"]["imagery"] == ["esri_world_imagery", "sentinel2_cloudless"]
+    assert ke["providers"]["imagery"] == [
+        "esri_world_imagery",
+        "osm_standard",
+        "sentinel2_cloudless",
+    ]
     assert ke["map"]["zoom"] == 6
     fallback = (await client.get(f"{BASE}/ZZ/profile")).json()
     assert fallback["country_code"] == "*"

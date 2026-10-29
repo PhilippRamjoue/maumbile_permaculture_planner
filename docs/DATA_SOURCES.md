@@ -41,11 +41,15 @@ so what users see cannot drift from this table. **When you add a provider adapte
 - Coverage caveats: a few countries' tiles are not yet publicly released; ocean areas have no tiles
   (assume elevation 0). Self-hosted OpenTopoData (keyless, Docker) is the documented alternative.
 
-## Base map / labels (if/when added)
+## Base map / labels
 
 | Provider (`key`) | License | Attribution shown | Key? | Cacheable | Terms |
 |---|---|---|---|---|---|
-| OpenStreetMap (`osm`) | ODbL 1.0 | "© OpenStreetMap contributors" | No | per OSMF tile usage policy | https://www.openstreetmap.org/copyright |
+| OpenStreetMap (`osm_standard`) | Map data ODbL 1.0; map tiles © OpenStreetMap Foundation (tile usage policy) | "© OpenStreetMap contributors" | No | Yes (cached to respect the OSMF tile usage policy) | https://www.openstreetmap.org/copyright |
+
+- A selectable basemap in the editor (streets & roads, sharp to zoom 19) alongside the aerial
+  sources — handy for tracing roads and boundaries. Proxied with a descriptive User-Agent and
+  cached to keep within the [OSMF tile usage policy](https://operations.osmfoundation.org/policies/tiles/).
 
 ## Attribution rules (implementation)
 
