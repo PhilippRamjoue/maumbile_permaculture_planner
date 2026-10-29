@@ -33,7 +33,7 @@ import {
 import { lineWidthExpression, widthMOf } from "./lineWidth";
 import { rowOf } from "./rowIcons";
 import { liveMeasureGeometry, measureGeometry, measureMode, type Measurement } from "./measure";
-import { isParametricSector } from "./sectors";
+import { isParametricSector, SECTOR_COLORS, type SectorKind } from "./sectors";
 import type { EditorDocument, EditorStore } from "./store";
 import { typicalFunctions } from "./focus/functions";
 import { CONTEXT_OPACITY, OPEN_VIEW, renderableFeatures, type FocusView } from "./focus/view";
@@ -95,13 +95,15 @@ export function useEditorMap(
   boundary?: Polygon,
   // The focus mode: what can be picked and edited, what is drawn faintly, what is hidden.
   view: FocusView = OPEN_VIEW,
+  // The kind a drawn sector takes, so "Draw by hand" / "Rectangle" match the panel's chosen kind.
+  sectorKind: SectorKind = "wind",
 ) {
   const [live, setLive] = useState<Measurement | null>(null);
   const [error, setError] = useState("");
   const drawRef = useRef<TerraDraw | null>(null);
   const syncing = useRef(false);
-  const options = useRef({ tool, element, activeLayer, saving, setTool, view });
-  options.current = { tool, element, activeLayer, saving, setTool, view };
+  const options = useRef({ tool, element, activeLayer, saving, setTool, view, sectorKind });
+  options.current = { tool, element, activeLayer, saving, setTool, view, sectorKind };
   const boundaryRef = useRef(boundary);
   boundaryRef.current = boundary;
   const document = useStore(store, (s) => s.document);
@@ -193,7 +195,11 @@ export function useEditorMap(
       Object.assign(properties, typicalFunctions(palette));
       if (featureType === "zone") properties.zone_number = current.view.defaults.zoneNumber;
       if (featureType === "sector")
-        Object.assign(properties, { sector_kind: "wind", bearing_from: 0, bearing_to: 90 });
+        Object.assign(properties, {
+          sector_kind: current.sectorKind,
+          bearing_from: 0,
+          bearing_to: 90,
+        });
       // A round or rectangular palette entry is one click: its to-scale footprint around the click.
       let geometry = feature.geometry;
       const footprint = defaultFootprint(palette);
@@ -210,7 +216,13 @@ export function useEditorMap(
       if (row) Object.assign(properties, { row_icon: row.icon, row_spacing_m: row.spacing_m });
       const color = palette?.default_style.fill ?? palette?.default_style.stroke;
       properties.color =
-        typeof color === "string" ? color : featureType === "zone" ? "#f59e0b" : "#2f855a";
+        featureType === "sector"
+          ? SECTOR_COLORS[current.sectorKind]
+          : typeof color === "string"
+            ? color
+            : featureType === "zone"
+              ? "#f59e0b"
+              : "#2f855a";
       store.getState().upsert({
         type: "Feature",
         id: String(id),

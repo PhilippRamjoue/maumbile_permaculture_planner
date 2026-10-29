@@ -23,6 +23,7 @@ export function SectorHelper({
   defaultRadiusM,
   layerId,
   disabled,
+  initialKind = "wind",
   onAdd,
 }: {
   /** [lng, lat] the wedge radiates from (the site centre). */
@@ -31,9 +32,11 @@ export function SectorHelper({
   /** The visible "Sectors" layer to add into; the helper is disabled without one. */
   layerId: string | undefined;
   disabled: boolean;
+  /** The kind to start on, so it matches the kind chosen in the panel. */
+  initialKind?: SectorKind;
   onAdd(feature: DesignFeature): void;
 }) {
-  const [kind, setKind] = useState<SectorKind>("wind");
+  const [kind, setKind] = useState<SectorKind>(initialKind);
   const [from, setFrom] = useState("315");
   const [to, setTo] = useState("45");
   const [radius, setRadius] = useState(String(defaultRadiusM));

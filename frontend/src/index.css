@@ -1396,6 +1396,44 @@ h1 {
   width: 100%;
   text-align: center;
 }
+/* Kind-first adding: a uniform row of kind chips (sun among them, none privileged). */
+.sector-kinds {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin: 0.45rem 0;
+}
+.sector-kind {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.55rem;
+  border: 1px solid var(--border, #cbd5e1);
+  border-radius: 999px;
+  background: var(--surface, #fff);
+  color: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+.sector-kind:hover {
+  border-color: var(--accent, #2f855a);
+}
+.sector-kind--on {
+  border-color: var(--accent, #2f855a);
+  background: color-mix(in srgb, var(--accent, #2f855a) 14%, transparent);
+  font-weight: 600;
+}
+.sector-kind__dot {
+  width: 0.7rem;
+  height: 0.7rem;
+  flex: none;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.15);
+}
+.sector-add__go {
+  width: 100%;
+  margin-top: 0.1rem;
+}
 .sector-add p.muted {
   margin: 0.35rem 0;
 }

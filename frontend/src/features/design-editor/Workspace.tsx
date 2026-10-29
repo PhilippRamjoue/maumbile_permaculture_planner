@@ -165,6 +165,8 @@ export function Workspace({
     plan.layers.find((l) => l.name === "Elements")?.id ?? plan.layers[0]?.id ?? "",
   );
   const [zoneNumber, setZoneNumber] = useState(1);
+  // The sector kind the add tools create: shared by the panel's chooser and the draw tools.
+  const [sectorKind, setSectorKind] = useState<SectorKind>("sun");
   // Other feature families are always shown as faint context now; their visibility (and that of the
   // boundary) is controlled from the Layers map control instead of per-step toggles.
   const hidden: ReadonlySet<ContextGroup> = EMPTY_GROUPS;
@@ -320,6 +322,7 @@ export function Workspace({
     overlays,
     site.boundary,
     view,
+    sectorKind,
   );
   // Drag handles for the selected parametric sector (move / open / resize), only in the Sectors step.
   useSectorHandles(map, store, focus === "sectors" && !save.isPending);
@@ -791,9 +794,13 @@ export function Workspace({
                   return next;
                 })
               }
+              kind={sectorKind}
+              onKindChange={setSectorKind}
               onAdd={(feature) => {
                 setTool("select");
                 state.upsert(feature);
+                // Select it straight away so its bearings, radius and rotation are ready to adjust.
+                state.select(feature.id);
               }}
             />
           )}

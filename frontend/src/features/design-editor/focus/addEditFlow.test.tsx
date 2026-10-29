@@ -6,6 +6,7 @@ import { useStore } from "zustand";
 
 import type { DesignFeature, ElementType } from "../../../entities/planning";
 import type { Site } from "../../../entities/site";
+import { SECTOR_KINDS, type SectorKind } from "../sectors";
 import { createEditorStore, type EditorStore } from "../store";
 import type { Tool } from "../useEditorMap";
 import { PlacingBanner, type PanelProps } from "./common";
@@ -95,17 +96,30 @@ const elementsPanel = (props: PanelProps) => (
 const zonesPanel = (props: PanelProps) => (
   <ZonesPanel props={props} zones={[]} zoneNumber={1} setZoneNumber={() => undefined} />
 );
-const sectorsPanel = (props: PanelProps) => (
-  <SectorsPanel
-    props={props}
-    site={site}
-    sectors={[]}
-    sectorsLayerId="l1"
-    hiddenKinds={new Set()}
-    onToggleKind={() => undefined}
-    onAdd={() => undefined}
-  />
-);
+/** Hosts the sector panel with the `kind` state the workspace lifts out of it. */
+function SectorsHarness({
+  props,
+  onAdd = () => undefined,
+}: {
+  props: PanelProps;
+  onAdd?: (feature: DesignFeature) => void;
+}) {
+  const [kind, setKind] = useState<SectorKind>("sun");
+  return (
+    <SectorsPanel
+      props={props}
+      site={site}
+      sectors={[]}
+      sectorsLayerId="l1"
+      hiddenKinds={new Set()}
+      onToggleKind={() => undefined}
+      onAdd={onAdd}
+      kind={kind}
+      onKindChange={setKind}
+    />
+  );
+}
+const sectorsPanel = (props: PanelProps) => <SectorsHarness props={props} />;
 
 describe("placing banner", () => {
   it("is absent on the select tool and for measuring", () => {
@@ -214,18 +228,23 @@ describe("editing one item", () => {
 });
 
 describe("sector panel", () => {
-  it("offers its four ways to add as equal choices, none leading", () => {
-    renderPanel(sectorsPanel);
-    const group = screen.getByRole("group", { name: "How to add a sector" });
-    const buttons = within(group).getAllByRole("button");
-    expect(buttons.map((b) => b.textContent)).toEqual([
-      "☀ Sun path (today)",
-      "Draw by hand",
-      "Rectangle",
-      "From bearings",
-    ]);
-    // Same class on every choice: nothing is marked primary, nothing is bigger.
-    expect(buttons.some((b) => b.classList.contains("btn--primary"))).toBe(false);
+  it("adds any kind from one uniform chooser, sun included and not privileged", async () => {
+    const added: DesignFeature[] = [];
+    const { user } = renderPanel((props) => (
+      <SectorsHarness props={props} onAdd={(f) => added.push(f)} />
+    ));
+    // Every kind is a chip in one radiogroup — sun is just one of them, not a button of its own.
+    const kinds = screen.getByRole("radiogroup", { name: "Sector kind" });
+    const chips = within(kinds).getAllByRole("radio");
+    expect(chips).toHaveLength(SECTOR_KINDS.length);
+    expect(chips.map((c) => c.textContent)).toContain("☀ Sun");
+    // The default is sun, and its one-click add uses today's path.
+    expect(screen.getByRole("button", { name: /Add sun sector/ })).toBeInTheDocument();
+    // Pick another kind and add it: the created sector carries that kind, not wind or sun.
+    await user.click(screen.getByRole("radio", { name: "Water" }));
+    await user.click(screen.getByRole("button", { name: /Add water sector/ }));
+    expect(added).toHaveLength(1);
+    expect(added[0]!.properties.sector_kind).toBe("water");
   });
 
   it("opens the bearings form from its button and closes it again", async () => {
