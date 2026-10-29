@@ -17,8 +17,8 @@ import type { EditorDocument } from "./store";
  * coarse for corner work: on a small plot at low zoom the whole polygon is inside it, so grabbing
  * one vertex grabs its neighbour, and a second corner placed near the first closes the polygon.
  */
-export const SELECT_REACH_PX = 24;
-export const DRAW_REACH_PX = 20;
+const SELECT_REACH_PX = 24;
+const DRAW_REACH_PX = 20;
 /** A corner being placed or dragged jumps onto another feature's corner this close to it. */
 export const SNAP_REACH_PX = 12;
 
@@ -138,7 +138,7 @@ export function isOnCorner(
 }
 
 /** Slack around a click when looking for a feature: lines are 2–3 px wide, fingers are not. */
-export const PICK_SLOP_PX = 6;
+const PICK_SLOP_PX = 6;
 
 /** The pixel box searched for features around a click. */
 export function pickBox(point: { x: number; y: number }): [[number, number], [number, number]] {

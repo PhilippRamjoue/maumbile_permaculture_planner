@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import NoReturn
+
 import pytest
 
 from app.core.geo import BBox
@@ -21,8 +23,10 @@ def test_large_or_degenerate_extent_is_rejected(bbox: BBox) -> None:
         validate_dem_extent(bbox)
 
 
-async def test_provider_rejects_large_extent_before_opening_tiles(monkeypatch: pytest.MonkeyPatch):
-    def unexpected_open(*args, **kwargs):
+async def test_provider_rejects_large_extent_before_opening_tiles(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def unexpected_open(*args: object, **kwargs: object) -> NoReturn:
         pytest.fail("Extent must be rejected before rasterio.open")
 
     monkeypatch.setattr("app.modules.terrain.providers.rasterio.open", unexpected_open)

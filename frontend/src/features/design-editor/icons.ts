@@ -16,7 +16,7 @@ export const glyphFor = (key: string | null | undefined): Glyph | undefined =>
   key ? GLYPHS[key] : undefined;
 
 /** Prefix of the map image names made for icons: `glyph|<key>|<#rrggbb>`. */
-export const BADGE_PREFIX = "glyph|";
+const BADGE_PREFIX = "glyph|";
 export const badgeName = (key: string, color: string) => `${BADGE_PREFIX}${key}|${color}`;
 export const parseBadgeName = (name: string) => {
   if (!name.startsWith(BADGE_PREFIX)) return null;
@@ -25,11 +25,11 @@ export const parseBadgeName = (name: string) => {
 };
 
 /** CSS pixel size of a badge on the map; the bitmap is drawn at twice this for sharpness. */
-export const BADGE_SIZE = 34;
+const BADGE_SIZE = 34;
 export const BADGE_PIXEL_RATIO = 2;
 
 /** Strokes a glyph centred in a `size`-pixel square at (cx, cy) on a 2D canvas. */
-export function drawGlyph(
+function drawGlyph(
   ctx: CanvasRenderingContext2D,
   glyph: Glyph,
   cx: number,

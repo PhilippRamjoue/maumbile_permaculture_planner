@@ -1,38 +1,23 @@
+import { safeLocalStorage } from "../../shared/safeLocalStorage";
 import { useState } from "react";
 
 import type { EditorState } from "./store";
 
 const STORAGE_KEY = "permaculture.layersControl.open";
 
-const readOpen = () => {
-  try {
-    return localStorage.getItem(STORAGE_KEY) === "1";
-  } catch {
-    return false;
-  }
-};
+const readOpen = () => safeLocalStorage.get(STORAGE_KEY) === "1";
 
 /**
  * Layer visibility and draw order — a floating control over the map, beside Legend, Basemap and
  * Terrain, since these are whole-map settings rather than anything to do with the step you are in.
- * New shapes are filed into their own kind's layer automatically (see `layerNameFor`), and the
+ * New shapes are filed into their own role's layer automatically (see `useActiveLayer`), and the
  * basemap is switched from its own control, so neither is a knob here any more.
  */
-export function LayersControl({
-  state,
-  disabled,
-}: {
-  state: EditorState;
-  disabled: boolean;
-}) {
+export function LayersControl({ state, disabled }: { state: EditorState; disabled: boolean }) {
   const [open, setOpen] = useState(readOpen);
   const toggle = () =>
     setOpen((previous) => {
-      try {
-        localStorage.setItem(STORAGE_KEY, previous ? "0" : "1");
-      } catch {
-        /* the choice just is not remembered */
-      }
+      safeLocalStorage.set(STORAGE_KEY, previous ? "0" : "1");
       return !previous;
     });
 

@@ -1,5 +1,5 @@
 /** Prefix of the map image names made for grid numbers: `gridlabel|<text>`. */
-export const GRID_LABEL_PREFIX = "gridlabel|";
+const GRID_LABEL_PREFIX = "gridlabel|";
 export const gridLabelName = (text: string) => `${GRID_LABEL_PREFIX}${text}`;
 export const parseGridLabelName = (name: string) =>
   name.startsWith(GRID_LABEL_PREFIX) ? name.slice(GRID_LABEL_PREFIX.length) : null;

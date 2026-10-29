@@ -1,2 +1,2 @@
-export { TerrainPanel, SlopeLegend, TerrainSummary } from "./TerrainPanel";
+export { TerrainPanel } from "./TerrainPanel";
 export { TerrainControl } from "./TerrainControl";

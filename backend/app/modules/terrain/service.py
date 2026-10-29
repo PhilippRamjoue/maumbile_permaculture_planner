@@ -8,11 +8,11 @@ import json
 import math
 import uuid
 from collections.abc import Callable
+from contextlib import AbstractAsyncContextManager
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 
 import structlog
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.capacity import Capacity, CapacityExceeded
 from app.core.geo import BBox
@@ -45,7 +45,7 @@ STALE_AFTER = timedelta(minutes=10)
 # contours; the results are clipped back to the site bbox.
 PAD_CELLS = 3
 
-SessionFactory = Callable[[], AsyncSession]
+RepositoryFactory = Callable[[], AbstractAsyncContextManager[TerrainRepository]]
 
 
 def terrain_input_key(bbox: BBox, country_code: str | None) -> str:
@@ -90,14 +90,14 @@ def pad_bbox(bbox: BBox, resolution_m: float, cells: int = PAD_CELLS) -> BBox:
 class TerrainService:
     def __init__(
         self,
-        session: AsyncSession,
-        session_factory: SessionFactory,
+        repo: TerrainRepository,
+        repository_factory: RepositoryFactory,
         resolver: RegionResolver,
         *,
         default_interval_m: float,
     ) -> None:
-        self._repo = TerrainRepository(session)
-        self._session_factory = session_factory
+        self._repo = repo
+        self._repository_factory = repository_factory
         self._resolver = resolver
         self._default_interval_m = default_interval_m
 
@@ -179,8 +179,7 @@ class TerrainService:
 
         Uses its own session: the request's session is closed once the response is sent.
         """
-        async with self._session_factory() as session:
-            repo = TerrainRepository(session)
+        async with self._repository_factory() as repo:
             try:
                 if not await repo.mark_running(terrain_id, job_id, now=datetime.now(UTC)):
                     return
@@ -199,25 +198,24 @@ class TerrainService:
                     now=datetime.now(UTC),
                 )
             except CapacityExceeded as exc:
-                await self._fail(repo, session, terrain_id, job_id, str(exc))
+                await self._fail(repo, terrain_id, job_id, str(exc))
             except DemUnavailableError as exc:
-                await self._fail(repo, session, terrain_id, job_id, f"No elevation data: {exc}")
+                await self._fail(repo, terrain_id, job_id, f"No elevation data: {exc}")
             except DemFetchError as exc:
                 log.warning("terrain_dem_fetch_failed", provider=provider.key, error=str(exc))
                 await self._fail(
-                    repo, session, terrain_id, job_id, "Elevation source unreachable; retry later"
+                    repo, terrain_id, job_id, "Elevation source unreachable; retry later"
                 )
             except Exception:
                 log.exception("terrain_derivation_failed", terrain_id=str(terrain_id))
-                await self._fail(repo, session, terrain_id, job_id, "Terrain derivation failed")
+                await self._fail(repo, terrain_id, job_id, "Terrain derivation failed")
 
     @staticmethod
     async def _fail(
         repo: TerrainRepository,
-        session: AsyncSession,
         terrain_id: uuid.UUID,
         job_id: uuid.UUID,
         message: str,
     ) -> None:
-        await session.rollback()
+        await repo.rollback()
         await repo.mark_failed(terrain_id, job_id, message, now=datetime.now(UTC))

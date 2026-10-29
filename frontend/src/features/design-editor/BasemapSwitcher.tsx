@@ -1,16 +1,11 @@
+import { safeLocalStorage } from "../../shared/safeLocalStorage";
 import { useState } from "react";
 
 import type { ImageryProviders } from "../../entities/imagery";
 
 const STORAGE_KEY = "permaculture.basemapSwitcher.open";
 
-const readOpen = () => {
-  try {
-    return localStorage.getItem(STORAGE_KEY) === "1";
-  } catch {
-    return false;
-  }
-};
+const readOpen = () => safeLocalStorage.get(STORAGE_KEY) === "1";
 
 /**
  * A Google-Maps-style basemap switcher over the map: flip between the aerial and map layers that
@@ -34,11 +29,7 @@ export function BasemapSwitcher({
   const active = selected ?? providers?.default_key ?? options[0]?.key;
   const toggle = () =>
     setOpen((previous) => {
-      try {
-        localStorage.setItem(STORAGE_KEY, previous ? "0" : "1");
-      } catch {
-        /* the choice just is not remembered */
-      }
+      safeLocalStorage.set(STORAGE_KEY, previous ? "0" : "1");
       return !previous;
     });
   if (options.length < 2) return null; // nothing to switch between

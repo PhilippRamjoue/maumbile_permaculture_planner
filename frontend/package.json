@@ -1,7 +1,7 @@
 {
   "name": "permaculture-planner-frontend",
   "private": true,
-  "version": "0.4.1",
+  "version": "0.5.0",
   "type": "module",
   "engines": {
     "node": ">=22.12.0"
@@ -11,6 +11,7 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "lint": "eslint .",
+    "unused": "knip",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "format": "prettier --write .",
@@ -32,16 +33,21 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.13.0",
+    "@maplibre/maplibre-gl-style-spec": "26.5.0",
     "@playwright/test": "^1.64.1",
     "@testing-library/jest-dom": "^6.6.2",
     "@testing-library/react": "^16.0.1",
     "@testing-library/user-event": "^14.6.8",
+    "@turf/distance": "7.4.0",
+    "@types/geojson": "7946.0.16",
     "@types/node": "^22.20.5",
     "@types/react": "^18.3.11",
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^5.2.0",
     "eslint": "^9.13.0",
+    "eslint-plugin-react-hooks": "7.1.1",
     "jsdom": "^25.0.1",
+    "knip": "6.43.0",
     "prettier": "^3.3.3",
     "typescript": "^5.6.3",
     "typescript-eslint": "^8.10.0",

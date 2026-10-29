@@ -36,6 +36,7 @@ def plan_to_geojson(doc: PlanDocument) -> dict[str, Any]:
                 "name": layer.name,
                 "sort_order": layer.sort_order,
                 "visible": layer.visible,
+                "role": layer.role,
             }
             for layer in doc.layers
         ],

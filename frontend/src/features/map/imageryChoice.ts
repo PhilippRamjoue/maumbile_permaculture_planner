@@ -1,25 +1,12 @@
+import { safeLocalStorage } from "../../shared/safeLocalStorage";
 import { useCallback, useState } from "react";
 
 import type { ImageryProviders } from "../../entities/imagery";
 
 const storageKey = (siteId: string) => `permaculture.imagery.provider.${siteId}`;
 
-const read = (siteId: string): string | null => {
-  try {
-    return localStorage.getItem(storageKey(siteId));
-  } catch {
-    return null;
-  }
-};
-
-const write = (siteId: string, key: string | null) => {
-  try {
-    if (key) localStorage.setItem(storageKey(siteId), key);
-    else localStorage.removeItem(storageKey(siteId));
-  } catch {
-    /* the choice just is not remembered */
-  }
-};
+const read = (siteId: string) => safeLocalStorage.get(storageKey(siteId));
+const write = (siteId: string, key: string | null) => safeLocalStorage.set(storageKey(siteId), key);
 
 /**
  * The satellite source a person picked for one site, remembered in this browser (the choice is

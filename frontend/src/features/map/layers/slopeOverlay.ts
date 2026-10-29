@@ -47,7 +47,7 @@ export function slopeBlocks(grid: SlopeGrid): Block[] {
   return done;
 }
 
-export interface SlopeFeatureProperties {
+interface SlopeFeatureProperties {
   class_index: number;
   label: string;
   color: string;

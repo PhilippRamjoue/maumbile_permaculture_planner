@@ -8,7 +8,7 @@ import sys
 import uuid
 from collections.abc import AsyncIterator, Callable, Iterator
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import pytest
 import pytest_asyncio
@@ -26,7 +26,7 @@ from app.modules.auth.dependencies import current_user
 from app.modules.auth.schemas import UserRead
 
 # Reuse the session-scoped PostGIS container defined in tests/conftest.py.
-from tests.conftest import postgis_url  # noqa: F401
+from tests.conftest import postgis_url as postgis_url
 
 BACKEND_DIR = Path(__file__).resolve().parents[4]
 
@@ -95,11 +95,11 @@ async def site(api: AsyncClient) -> dict[str, Any]:
         json={"name": "Test shamba", "country_code": "KE", "coordinates": SITE_CORNERS},
     )
     assert resp.status_code == 201, resp.text
-    return resp.json()
+    return cast(dict[str, Any], resp.json())
 
 
 @pytest_asyncio.fixture
 async def plan(api: AsyncClient, site: dict[str, Any]) -> dict[str, Any]:
     resp = await api.post(f"/api/v1/sites/{site['id']}/plans", json={"name": "Master plan"})
     assert resp.status_code == 201, resp.text
-    return resp.json()
+    return cast(dict[str, Any], resp.json())

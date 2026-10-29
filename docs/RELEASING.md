@@ -17,12 +17,13 @@ image runs on any domain; all configuration comes from environment variables at 
 
 ## Cutting a release
 
-1. Make sure `main` is green (lint, types, tests, e2e).
+1. Run `python scripts/preflight.py` from the repository root and make sure CI is green.
 2. Move the entries under `## [Unreleased]` in [`CHANGELOG.md`](../CHANGELOG.md) into a new
    `## [X.Y.Z] - YYYY-MM-DD` section and update the compare links at the bottom. The release
    workflow fails fast if the section for the tag is missing; its text becomes the release notes.
-3. Optionally bump the version fields (`backend/pyproject.toml`, `frontend/package.json`, the
-   FastAPI `version=` in `backend/app/main.py`) in the same commit.
+3. Bump `backend/pyproject.toml` and `frontend/package.json` to the same source version and update
+   both lockfiles. FastAPI derives its default from pyproject; release builds stamp the tag into
+   both images. There is no separate version literal in `app/main.py` to maintain.
 4. Commit, then tag and push:
 
    ```bash

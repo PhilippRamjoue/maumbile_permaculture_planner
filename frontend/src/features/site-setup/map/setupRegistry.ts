@@ -3,7 +3,7 @@ import type { MapLayerDefinition } from "../../map/layers/types";
 import { IMAGERY_MAX_ZOOM } from "../../map/layers/zoomLimits";
 import { draftBoundaryLayer } from "./draftBoundaryLayer";
 
-export const SETUP_BASEMAP_LAYER_ID = "setup-basemap";
+const SETUP_BASEMAP_LAYER_ID = "setup-basemap";
 
 /**
  * Before a site exists there is no per-site imagery proxy to draw from, so the setup map uses a
@@ -13,7 +13,7 @@ export const SETUP_BASEMAP_LAYER_ID = "setup-basemap";
  * `VITE_SETUP_BASEMAP_ATTRIBUTION` and `VITE_SETUP_BASEMAP_ATTRIBUTION_URL` (e.g. to use OpenStreetMap
  * instead). The credit is always shown by `<SetupAttribution>`; see "Imagery" in docs/DATA_SOURCES.md.
  */
-export const SETUP_BASEMAP_URL: string =
+const SETUP_BASEMAP_URL: string =
   import.meta.env.VITE_SETUP_BASEMAP_URL ??
   "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
 
@@ -24,7 +24,7 @@ export const SETUP_BASEMAP_ATTRIBUTION_URL: string =
   import.meta.env.VITE_SETUP_BASEMAP_ATTRIBUTION_URL ??
   "https://www.arcgis.com/home/item.html?id=10df2279f9684e4a9f6a7f08febac2a9";
 
-export const setupBasemapLayer: MapLayerDefinition = {
+const setupBasemapLayer: MapLayerDefinition = {
   id: SETUP_BASEMAP_LAYER_ID,
   label: "Base map",
   toggleable: false,

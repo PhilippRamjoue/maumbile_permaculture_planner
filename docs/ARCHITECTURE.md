@@ -1,5 +1,28 @@
 # Architecture
 
+## October 29 maintainability contracts
+
+Background refresh errors retain mounted editor drafts while usable cached data exists; initial
+load failures and actual authorization loss are handled separately. Standard planning layers have
+an immutable nullable `role` (`zone`, `sector`, `element`, `path`, `annotation`), independent of
+their display names. Drawing resolves its destination by role and reveals a hidden destination;
+a missing role is an explicit error, never a fallback to the previous active layer. Existing
+standard layers are backfilled by an additive migration; custom layers remain unassigned.
+
+Export reads plan-owned data through the same locked design snapshot used by the editor. Site
+boundaries remain separately versioned shared records; they are read during snapshot assembly.
+PNG/PDF preserve metric path widths and planting rows, with bounded icon generation matching the
+editor. Database transactions end before rendering. Process-wide HTTP clients and the database
+engine are closed by the application lifespan.
+Terrain services receive repositories and a repository-context factory; request and background
+session construction/rollback stay in repository/composition code.
+
+Backend private models/repositories may be imported only within their owning module or declared
+composition roots. Public service/adapter interfaces and the pure icon catalogue are permitted
+cross-module dependencies. Automated checks enforce these boundaries. Frontend Hooks lint and
+unused-code checks join the existing CI gates; release preflight runs the same checks and browser
+acceptance suite against a disposable stack.
+
 ## October 26 reliability contract update
 
 The editor loads one consistent snapshot from `GET /api/v1/plans/{id}/design`. It saves changed

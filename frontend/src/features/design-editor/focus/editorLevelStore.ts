@@ -1,3 +1,4 @@
+import { safeLocalStorage } from "../../../shared/safeLocalStorage";
 import type { EditorLevel } from "./modes";
 
 /**
@@ -8,18 +9,10 @@ import type { EditorLevel } from "./modes";
 const KEY = "maumbile.editorLevel";
 
 export function loadEditorLevel(): EditorLevel | null {
-  try {
-    const value = localStorage.getItem(KEY);
-    return value === "simple" || value === "guided" ? value : null;
-  } catch {
-    return null;
-  }
+  const value = safeLocalStorage.get(KEY);
+  return value === "simple" || value === "guided" ? value : null;
 }
 
 export function saveEditorLevel(level: EditorLevel): void {
-  try {
-    localStorage.setItem(KEY, level);
-  } catch {
-    /* ignore: the preference is a convenience, not required state */
-  }
+  safeLocalStorage.set(KEY, level);
 }

@@ -9,6 +9,21 @@ from httpx import AsyncClient
 pytestmark = pytest.mark.integration
 
 
+async def test_standard_layer_roles_survive_rename_and_duplicate(
+    api: AsyncClient, plan: dict[str, Any]
+) -> None:
+    roles = {layer["role"] for layer in plan["layers"]}
+    assert roles == {"zone", "sector", "element", "path", "annotation"}
+    zone = next(layer for layer in plan["layers"] if layer["role"] == "zone")
+    renamed = await api.patch(f"/api/v1/layers/{zone['id']}", json={"name": "Kitchen garden"})
+    assert renamed.status_code == 200
+    assert renamed.json()["role"] == "zone"
+    copied = await api.post(f"/api/v1/plans/{plan['id']}/duplicate")
+    assert copied.status_code == 201
+    copy = next(layer for layer in copied.json()["layers"] if layer["role"] == "zone")
+    assert copy["name"] == "Kitchen garden" and copy["id"] != zone["id"]
+
+
 def feature(plan: dict[str, Any]) -> dict[str, Any]:
     return {
         "id": str(uuid.uuid4()),

@@ -17,11 +17,17 @@ COPY pyproject.toml uv.lock ./
 RUN uv sync --frozen --no-dev --no-install-project
 
 # rasterio bundles GDAL, but its Linux wheel still links the system Expat runtime.
-RUN apt-get update && apt-get install -y --no-install-recommends libexpat1 \
+RUN sed -i 's|http://deb.debian.org|https://deb.debian.org|g' /etc/apt/sources.list.d/debian.sources \
+    && apt-get -o Acquire::Retries=2 -o Acquire::https::Timeout=30 update \
+    && apt-get -o Acquire::Retries=2 -o Acquire::https::Timeout=30 install -y --no-install-recommends libexpat1 \
     && rm -rf /var/lib/apt/lists/* \
     && .venv/bin/python -c "import rasterio"
 
 COPY . .
+
+# Version changes must not invalidate the dependency/system-package layers.
+ARG APP_VERSION=""
+ENV APP_VERSION=${APP_VERSION}
 
 EXPOSE 8000
 CMD ["uv", "run", "--frozen", "--no-dev", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

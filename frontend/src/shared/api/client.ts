@@ -68,7 +68,7 @@ async function send(path: string, options: RequestOptions): Promise<Response> {
 // Concurrent 401s share one refresh round-trip.
 let refreshInFlight: Promise<boolean> | null = null;
 
-export function refreshSession(): Promise<boolean> {
+function refreshSession(): Promise<boolean> {
   const renew = () => send("/auth/refresh", { method: "POST" }).then((res) => res.ok);
   const coordinated = async () => {
     if (!navigator.locks) return renew();

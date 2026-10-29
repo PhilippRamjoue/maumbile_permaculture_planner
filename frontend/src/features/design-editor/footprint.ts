@@ -25,8 +25,8 @@ export type Footprint =
     };
 
 /** Sane bounds, in metres: a bean up to a small field. */
-export const MIN_SIZE_M = 0.1;
-export const MAX_SIZE_M = 1000;
+const MIN_SIZE_M = 0.1;
+const MAX_SIZE_M = 1000;
 
 /** Points on a circle: smooth at any zoom a plot is viewed at, yet cheap to draw. */
 const CIRCLE_POINTS = 32;

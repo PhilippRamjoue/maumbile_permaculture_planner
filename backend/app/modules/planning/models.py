@@ -15,6 +15,7 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
+    UniqueConstraint,
     Uuid,
     func,
     text,
@@ -80,12 +81,21 @@ class Plan(Base):
 
 class Layer(Base):
     __tablename__ = "layers"
+    __table_args__ = (
+        CheckConstraint(
+            "role IS NULL OR role IN ('zone', 'sector', 'element', 'path', 'annotation')",
+            name="ck_layers_role",
+        ),
+        UniqueConstraint("plan_id", "role", name="uq_layers_plan_role"),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
     plan_id: Mapped[uuid.UUID] = mapped_column(
         Uuid, ForeignKey("plans.id", ondelete="CASCADE"), nullable=False, index=True
     )
     name: Mapped[str] = mapped_column(String(100), nullable=False)
+    # Stable routing identity; display-name edits never change a standard layer's purpose.
+    role: Mapped[str | None] = mapped_column(String(20), nullable=True)
     sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     visible: Mapped[bool] = mapped_column(nullable=False, default=True, server_default=text("true"))
     created_at: Mapped[datetime] = mapped_column(

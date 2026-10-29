@@ -9,7 +9,9 @@ import zlib
 from datetime import UTC, datetime
 from io import BytesIO
 from typing import Any
+from unittest.mock import Mock
 
+import pytest
 from PIL import Image, ImageDraw
 
 from app.modules.export import render
@@ -20,7 +22,62 @@ from app.modules.export.document import (
     PlanDocument,
 )
 from app.modules.export.geojson import plan_to_geojson
+from app.modules.export.rows import MAX_ROW_ICONS, row_points
 from app.modules.export.service import filename_for
+
+
+@pytest.mark.parametrize("px_per_m", [0.5, 3.0])
+def test_path_width_is_in_ground_metres_at_each_print_scale(px_per_m: float) -> None:
+    widths = []
+    for metres in (1, 10):
+        path = feature(
+            LAYER_ELEMENTS,
+            "path",
+            {"type": "LineString", "coordinates": [[36.8, -1.2], [36.801, -1.2]]},
+            properties={"width_m": metres},
+        )
+        draw = Mock()
+        render._draw_feature(
+            draw,
+            Image.new("RGB", (1, 1)),
+            path,
+            render.style_for(path, None),
+            lambda x, y: (x, y),
+            [],
+            [],
+            px_per_m=px_per_m,
+        )
+        widths.append(draw.line.call_args.kwargs["width"])
+    assert widths == [max(1, round(m * px_per_m * render.SUPERSAMPLE)) for m in (1, 10)]
+    assert widths[1] > widths[0]
+
+
+def test_planting_row_follows_bends_and_is_bounded() -> None:
+    geometry = {
+        "type": "LineString",
+        "coordinates": [[36.8, -1.2], [36.801, -1.2], [36.801, -1.201]],
+    }
+    points = row_points(geometry, 20)
+    assert points[0] == (36.8, -1.2)
+    assert len(points) == 12
+    assert any(point[0] == 36.801 and point[1] < -1.2 for point in points)
+    assert len(row_points(geometry, 0.001)) <= MAX_ROW_ICONS + 1
+    path = feature(
+        LAYER_ELEMENTS, "element", geometry, properties={"row_icon": "tree", "row_spacing_m": 20}
+    )
+    icons: list[render._Icon] = []
+    render._draw_feature(
+        Mock(),
+        Image.new("RGB", (1, 1)),
+        path,
+        render.style_for(path, None),
+        lambda x, y: (x, y),
+        [],
+        icons,
+    )
+    assert [icon.xy for icon in icons] == points
+    assert all(icon.key == "tree" for icon in icons)
+
 
 LNG0, LAT0 = 36.80, -1.30
 # 1 degree of latitude is 111.2 km (spherical Earth); longitude shrinks by cos(lat).
@@ -179,10 +236,10 @@ def test_hidden_layers_are_not_drawn_but_stay_in_geojson() -> None:
 
 def test_draw_order_puts_top_layer_and_points_last() -> None:
     drawn = render.drawn_features(sample())
-    # Layer sort_order 0 ("Zones") draws above "Elements"; within a layer polygons come first,
+    # Higher sort_order draws on top, matching the editor; within a layer polygons come first,
     # then lines, then points.
-    assert [f.geometry["type"] for f in drawn] == ["Polygon", "LineString", "Point", "Polygon"]
-    assert drawn[-1].feature_type == "zone"
+    assert [f.geometry["type"] for f in drawn] == ["Polygon", "Polygon", "LineString", "Point"]
+    assert drawn[0].feature_type == "zone"
 
 
 def test_goals_are_printed_in_the_header_and_exported_as_data() -> None:

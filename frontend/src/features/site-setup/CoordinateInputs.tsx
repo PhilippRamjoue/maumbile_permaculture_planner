@@ -18,7 +18,7 @@ interface PasteBoxProps {
 }
 
 /** Paste a list of coordinates (one corner per line), in any common style. */
-export function PasteBox({ order, onOrderChange, onAdd, countryCode }: PasteBoxProps) {
+function PasteBox({ order, onOrderChange, onAdd, countryCode }: PasteBoxProps) {
   const id = useId();
   const [text, setText] = useState("");
   const [errors, setErrors] = useState<string[]>([]);
@@ -119,7 +119,7 @@ interface PointsTableProps {
 }
 
 /** Editable list of corners. */
-export function PointsTable({
+function PointsTable({
   rows,
   rowErrors,
   selectedId,

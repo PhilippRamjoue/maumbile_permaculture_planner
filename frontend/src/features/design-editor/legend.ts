@@ -2,7 +2,7 @@ import type { DesignFeature, ElementType, PlanLayer } from "../../entities/plann
 import { glyphFor } from "./icons";
 import { kindLabel, sectorKindOf, SECTOR_COLORS } from "./sectors";
 
-export type LegendShape = "point" | "line" | "polygon";
+type LegendShape = "point" | "line" | "polygon";
 
 export interface LegendEntry {
   /** Stable identity of the kind of thing (zone number, sector kind, element type). */

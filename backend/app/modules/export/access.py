@@ -35,8 +35,7 @@ class PlanReader:
 
     async def load(self, plan_id: uuid.UUID, owner_id: uuid.UUID) -> PlanDocument:
         try:
-            plan, layers = await self._planning.get_plan(plan_id, owner_id)
-            measured = await self._planning.list_features(plan_id, owner_id)
+            plan, layers, measured = await self._planning.get_design(plan_id, owner_id)
             types = await self._planning.list_element_types()
             site = await self._sites.get(plan.site_id, owner_id)
         except (NotFoundError, SiteNotFoundError):
@@ -51,7 +50,9 @@ class PlanReader:
             updated_at=plan.updated_at,
             site_name=site.name,
             boundary=shape_to_geojson(to_shape(site.boundary)),
-            layers=[ExportLayer(la.id, la.name, la.sort_order, la.visible) for la in layers],
+            layers=[
+                ExportLayer(la.id, la.name, la.sort_order, la.visible, la.role) for la in layers
+            ],
             features=[
                 ExportFeature(
                     id=m.feature.id,

@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import uuid
+from collections.abc import AsyncIterator, Callable
+from contextlib import asynccontextmanager
 from datetime import datetime
 
 from geoalchemy2.shape import from_shape
@@ -21,10 +23,22 @@ from app.modules.terrain.models import (
     TerrainResult,
 )
 
+SessionFactory = Callable[[], AsyncSession]
+
+
+@asynccontextmanager
+async def repository_session(factory: SessionFactory) -> AsyncIterator[TerrainRepository]:
+    """A background job owns a fresh repository and transaction, separate from the request."""
+    async with factory() as session:
+        yield TerrainRepository(session)
+
 
 class TerrainRepository:
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
+
+    async def rollback(self) -> None:
+        await self._session.rollback()
 
     async def get_for_site(self, site_id: uuid.UUID) -> TerrainResult | None:
         stmt = select(TerrainResult).where(TerrainResult.site_id == site_id)

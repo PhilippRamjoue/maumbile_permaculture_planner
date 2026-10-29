@@ -22,7 +22,7 @@ export interface EditorBoundaryUi extends DraftBoundaryUi {
  * border so you can see how far you moved it. It is the setup flow's own layer fed from the
  * editor's draft; with no draft in the context (every other focus) it draws nothing.
  */
-export const editorBoundaryLayer: MapLayerDefinition = {
+const editorBoundaryLayer: MapLayerDefinition = {
   id: EDITOR_BOUNDARY_LAYER_ID,
   label: "Boundary corners",
   toggleable: false,

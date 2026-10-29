@@ -4,7 +4,13 @@ Snapshot for a reviewer (human or AI) doing a **consistency, bug, and requiremen
 Pair this with [`ARCHITECTURE.md`](ARCHITECTURE.md) (intended design), [`WORK_PACKAGES.md`](WORK_PACKAGES.md)
 (the plan + acceptance criteria), and [`DATA_SOURCES.md`](DATA_SOURCES.md) (rights).
 
-_Last updated: 2026-10-26._
+_Last updated: 2026-10-29._
+
+**Maintainability follow-up:** [`AUDIT_FIXES_2026-10-29.md`](AUDIT_FIXES_2026-10-29.md) records
+draft-preserving refresh/session handling, stable layer-role migration `0015`, consistent export
+reads and metric rendering, editor refactoring, automated architecture/Hooks/unused-code checks
+and the local release preflight. The independent review is
+[`AUDIT_SECOND_REVIEW_2026-10-29.md`](AUDIT_SECOND_REVIEW_2026-10-29.md).
 
 **Latest reliability work:** [`AUDIT_FIXES_2026-10-26.md`](AUDIT_FIXES_2026-10-26.md) records the
 local audit fixes, migrations `0011_plan_revision` and `0012_password_recovery`, regression checks

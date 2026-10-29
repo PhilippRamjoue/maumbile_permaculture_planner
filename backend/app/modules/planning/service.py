@@ -94,7 +94,11 @@ class PlanningService:
         self, site_id: uuid.UUID, owner_id: uuid.UUID, *, name: str, description: str | None
     ) -> Plan:
         await self._sites.ensure_owner(site_id, owner_id)
-        layers = [Layer(name=n, sort_order=i, visible=True) for i, n in enumerate(DEFAULT_LAYERS)]
+        roles = ("zone", "sector", "element", "path", "annotation")
+        layers = [
+            Layer(name=n, role=roles[i], sort_order=i, visible=True)
+            for i, n in enumerate(DEFAULT_LAYERS)
+        ]
         return await self._repo.add_plan(
             Plan(site_id=site_id, name=name, description=description), layers
         )

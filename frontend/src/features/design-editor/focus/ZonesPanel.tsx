@@ -2,7 +2,7 @@ import type { DesignFeature } from "../../../entities/planning";
 import { FeatureProperties } from "../FeatureProperties";
 import { EditHeader, FeatureList, PlacingBanner, ToolButton, type PanelProps } from "./common";
 
-export const ZONE_HELP: readonly string[] = [
+const ZONE_HELP: readonly string[] = [
   "The house and its immediate surroundings — where you are almost always.",
   "Visited every day: kitchen garden, herbs, salad.",
   "Visited often: orchard, small livestock, main beds.",

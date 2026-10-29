@@ -14,7 +14,7 @@ const ISO_CODES = (
 ).split(" ");
 
 /** Where the project starts: shown first in the picker. */
-export const FEATURED_CODES = ["KE", "TZ", "UG", "RW", "BI", "ET"];
+const FEATURED_CODES = ["KE", "TZ", "UG", "RW", "BI", "ET"];
 
 export interface Country {
   code: string;
@@ -41,7 +41,7 @@ export function countryName(code: string): string {
 
 const byName = (a: Country, b: Country) => a.name.localeCompare(b.name, "en");
 
-export const COUNTRIES: Country[] = ISO_CODES.map((code) => ({ code, name: countryName(code) }));
+const COUNTRIES: Country[] = ISO_CODES.map((code) => ({ code, name: countryName(code) }));
 
 export const FEATURED_COUNTRIES: Country[] = COUNTRIES.filter((c) =>
   FEATURED_CODES.includes(c.code),

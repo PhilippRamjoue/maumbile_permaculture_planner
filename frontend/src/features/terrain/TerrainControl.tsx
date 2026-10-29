@@ -1,3 +1,4 @@
+import { safeLocalStorage } from "../../shared/safeLocalStorage";
 import { useState } from "react";
 
 import { useRequestTerrain, useTerrain } from "../../entities/terrainQueries";
@@ -8,13 +9,7 @@ import { SlopeLegend, TerrainSummary } from "./TerrainPanel";
 
 const STORAGE_KEY = "permaculture.terrainControl.open";
 
-const readOpen = () => {
-  try {
-    return localStorage.getItem(STORAGE_KEY) === "1";
-  } catch {
-    return false;
-  }
-};
+const readOpen = () => safeLocalStorage.get(STORAGE_KEY) === "1";
 
 /**
  * A compact terrain control that floats over the map in the design editor, so slope and contour
@@ -41,11 +36,7 @@ export function TerrainControl({
 
   const toggle = () =>
     setOpen((previous) => {
-      try {
-        localStorage.setItem(STORAGE_KEY, previous ? "0" : "1");
-      } catch {
-        /* the choice just is not remembered */
-      }
+      safeLocalStorage.set(STORAGE_KEY, previous ? "0" : "1");
       return !previous;
     });
 

@@ -35,7 +35,7 @@ POLYGON = {
 
 
 def layer_id(plan: dict[str, Any], name: str = "Elements") -> str:
-    return next(layer["id"] for layer in plan["layers"] if layer["name"] == name)
+    return str(next(layer["id"] for layer in plan["layers"] if layer["name"] == name))
 
 
 def feat(lid: str, feature_type: str, geometry: dict[str, Any], **kw: Any) -> dict[str, Any]:
@@ -603,7 +603,9 @@ async def test_batch_conflict_after_precheck_rolls_back_every_write(
         await api.post(f"{API}/plans/{other['id']}/features:batch", json={"features": [existing]})
     ).status_code == 200
 
-    async def stale_precheck(self, plan_id, ids):
+    async def stale_precheck(
+        self: PlanningRepository, plan_id: uuid.UUID, ids: set[uuid.UUID]
+    ) -> set[uuid.UUID]:
         # Deterministically simulate a collision becoming visible only during the SQL write.
         return set()
 
@@ -651,7 +653,9 @@ async def test_batch_deletes_are_atomic_and_scoped_to_the_plan(
     assert (await api.get(f"{API}/plans/{plan['id']}/features")).json()["features"] == []
 
 
-async def test_batch_cannot_delete_and_upsert_the_same_id(api: AsyncClient, plan: dict[str, Any]):
+async def test_batch_cannot_delete_and_upsert_the_same_id(
+    api: AsyncClient, plan: dict[str, Any]
+) -> None:
     item = feat(layer_id(plan), "element", POINT)
     response = await api.post(
         f"{API}/plans/{plan['id']}/features:batch",

@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 
 /** How long the design must sit unchanged before it is saved on its own. */
-export const AUTOSAVE_DELAY_MS = 2000;
+const AUTOSAVE_DELAY_MS = 2000;
 
 const isTyping = () => {
   const active = document.activeElement;

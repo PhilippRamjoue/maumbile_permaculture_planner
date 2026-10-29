@@ -11,9 +11,10 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from app.api.v1.router import api_router
 from app.core.config import get_settings
-from app.core.db import check_database
+from app.core.db import check_database, engine
 from app.core.errors import register_exception_handlers
 from app.core.logging import RequestIDMiddleware, configure_logging
+from app.modules.imagery.providers import close_http_client
 
 settings = get_settings()
 configure_logging(debug=settings.debug)
@@ -21,11 +22,16 @@ configure_logging(debug=settings.debug)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-    # Startup/shutdown hooks go here (e.g. warm caches). Nothing yet.
-    yield
+    try:
+        yield
+    finally:
+        try:
+            await close_http_client()
+        finally:
+            await engine.dispose()
 
 
-app = FastAPI(title=settings.app_name, version="0.1.0", lifespan=lifespan)
+app = FastAPI(title=settings.app_name, version=settings.version, lifespan=lifespan)
 
 app.add_middleware(RequestIDMiddleware)
 app.add_middleware(

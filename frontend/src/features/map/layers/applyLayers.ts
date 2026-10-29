@@ -71,7 +71,17 @@ export class LayerSynchronizer {
 
   sync(context: MapLayerContext, isVisible: (definition: MapLayerDefinition) => boolean): void {
     const definitions = this.registry.list();
-    const live = new Set(definitions.map((d) => d.id));
+    this.syncSpecs(new Map(definitions.map((d) => [d.id, d.build(context)])), (id) =>
+      isVisible(this.registry.get(id)!),
+    );
+  }
+
+  /** Apply prebuilt specs too, so editor data updates share the same diffing policy. */
+  syncSpecs(
+    specs: ReadonlyMap<string, MapLayerSpec | null>,
+    isVisible: (id: string) => boolean,
+  ): void {
+    const live = new Set(specs.keys());
     let changed = false;
 
     for (const id of [...this.applied.keys()]) {
@@ -81,19 +91,18 @@ export class LayerSynchronizer {
       }
     }
 
-    for (const definition of definitions) {
-      const spec = definition.build(context);
+    for (const [definitionId, spec] of specs) {
       const serialized = spec ? serialize(spec) : null;
-      const existing = this.applied.get(definition.id);
+      const existing = this.applied.get(definitionId);
 
       if (existing && serialized && existing.structure === serialized.structure) {
         if (this.updateData(existing, serialized.data)) {
-          this.setVisibility(existing, isVisible(definition));
+          this.setVisibility(existing, isVisible(definitionId));
           continue;
         }
       }
       if (!existing && !spec) continue;
-      if (existing) this.remove(definition.id);
+      if (existing) this.remove(definitionId);
       changed = true;
       if (!spec || !serialized) continue;
 
@@ -106,10 +115,10 @@ export class LayerSynchronizer {
         sourceIds: Object.keys(spec.sources),
         layerIds: spec.layers.map((l) => l.id),
       };
-      this.applied.set(definition.id, applied);
-      this.setVisibility(applied, isVisible(definition));
+      this.applied.set(definitionId, applied);
+      this.setVisibility(applied, isVisible(definitionId));
     }
-    if (changed) this.restack(definitions);
+    if (changed) this.restack([...specs.keys()]);
   }
 
   /**
@@ -150,9 +159,9 @@ export class LayerSynchronizer {
    * A layer re-added after its siblings would sit on top of them; registry order is draw order,
    * so move each layer to the top in turn, which leaves the stack in registry order.
    */
-  private restack(definitions: MapLayerDefinition[]): void {
+  restack(definitions: string[]): void {
     for (const definition of definitions) {
-      for (const id of this.applied.get(definition.id)?.layerIds ?? []) this.map.moveLayer(id);
+      for (const id of this.applied.get(definition)?.layerIds ?? []) this.map.moveLayer(id);
     }
   }
 }

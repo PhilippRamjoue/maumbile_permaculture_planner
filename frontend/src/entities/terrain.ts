@@ -2,11 +2,8 @@ import type { TerrainRead } from "./generated/terrain";
 
 /** Backend-generated response contract for `GET`/`POST /sites/{id}/terrain`. */
 export type {
-  ContourCollection,
-  ContourFeature,
   SlopeClass,
   SlopeGrid,
-  SlopeSummary,
   TerrainRead,
 } from "./generated/terrain";
 

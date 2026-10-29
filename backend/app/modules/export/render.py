@@ -22,6 +22,7 @@ from PIL.PngImagePlugin import PngInfo
 from shapely.geometry import shape
 
 from app.modules.export.document import ExportElementType, ExportFeature, PlanDocument
+from app.modules.export.rows import row_points
 from app.modules.planning.icons import GLYPHS
 
 DPI = 200
@@ -334,10 +335,21 @@ def _draw_feature(
     labels: list[_Label],
     icons: list[_Icon],
     icon: str | None = None,
+    px_per_m: float | None = None,
 ) -> None:
     ss = SUPERSAMPLE
     kind = f.geometry.get("type")
     width = max(round(style.stroke_width * STROKE_SCALE * ss), 1)
+    metric_width = f.properties.get("width_m")
+    if (
+        kind == "LineString"
+        and px_per_m is not None
+        and isinstance(metric_width, int | float)
+        and not isinstance(metric_width, bool)
+        and math.isfinite(metric_width)
+        and 0.1 <= metric_width <= 100
+    ):
+        width = max(round(metric_width * px_per_m * ss), 1)
     anchor: tuple[XY, str]
     if kind == "Point":
         x, y = project(*f.geometry["coordinates"][:2])
@@ -375,6 +387,20 @@ def _draw_feature(
             segments = _dashes(pts, 8 * width, 5 * width) if style.dashed else iter([pts])
             for seg in segments:
                 draw.line(seg, fill=style.color, width=width, joint="curve")
+            row_icon = f.properties.get("row_icon")
+            spacing = f.properties.get("row_spacing_m")
+            if (
+                isinstance(row_icon, str)
+                and row_icon in GLYPHS
+                and isinstance(spacing, int | float)
+                and not isinstance(spacing, bool)
+                and math.isfinite(spacing)
+                and 0.5 <= spacing <= 100
+            ):
+                icons.extend(
+                    _Icon(project(*point), ICON_RADIUS * ss * 0.7, row_icon, style.color)
+                    for point in row_points(f.geometry, spacing)
+                )
             mid = shape(f.geometry).interpolate(0.5, normalized=True)
             mx, my = project(mid.x, mid.y)
             anchor = (mx / ss, my / ss - 14), "mb"
@@ -530,7 +556,7 @@ def drawn_features(doc: PlanDocument) -> list[ExportFeature]:
     layers = {layer.id: layer for layer in doc.layers if layer.visible}
     rank = {"polygon": 0, "line": 1, "point": 2}
     items = [(layers[f.layer_id].sort_order, f) for f in doc.features if f.layer_id in layers]
-    items.sort(key=lambda t: (-t[0], rank[_geometry_kind(t[1].geometry)]))
+    items.sort(key=lambda t: (t[0], rank[_geometry_kind(t[1].geometry)]))
     return [f for _, f in items]
 
 
@@ -609,7 +635,9 @@ def render_plan_image(doc: PlanDocument) -> Image.Image:
         draw.line(seg, fill=(51, 51, 51), width=3 * ss, joint="curve")
     for f in drawn:
         et = doc.element_types.get(f.element_type_id) if f.element_type_id is not None else None
-        _draw_feature(draw, map_img, f, style_for(f, et), project, labels, icons, icon_for(et))
+        _draw_feature(
+            draw, map_img, f, style_for(f, et), project, labels, icons, icon_for(et), px_per_m
+        )
     for badge in icons:  # over every fill and line, so footprints never bury their own icon
         _draw_badge(draw, badge.key, *badge.xy, badge.radius, badge.color)
 

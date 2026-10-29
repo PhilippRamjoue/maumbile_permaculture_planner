@@ -1,0 +1,7 @@
+# Used only with a unique disposable project name by scripts/preflight.py.
+services:
+  frontend:
+    ports: !override ["127.0.0.1:28080:80"]
+  backend:
+    environment:
+      APP_COOKIE_SECURE: "false"

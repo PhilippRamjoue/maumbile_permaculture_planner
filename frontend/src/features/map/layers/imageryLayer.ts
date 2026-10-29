@@ -7,7 +7,7 @@ export function imageryTileUrl(siteId: string): string {
   return absoluteApiUrl(`/sites/${encodeURIComponent(siteId)}/imagery/{z}/{x}/{y}.png`);
 }
 
-export const IMAGERY_LAYER_ID = "imagery";
+const IMAGERY_LAYER_ID = "imagery";
 
 /** The site's aerial imagery, served by the backend proxy (provider chosen server-side). */
 export const imageryLayer: MapLayerDefinition = {

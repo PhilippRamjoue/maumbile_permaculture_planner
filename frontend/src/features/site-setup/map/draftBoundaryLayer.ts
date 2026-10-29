@@ -17,14 +17,14 @@ export interface DraftBoundaryUi {
   snapIndex: number | null;
 }
 
-export const NO_DRAFT_UI: DraftBoundaryUi = {
+const NO_DRAFT_UI: DraftBoundaryUi = {
   hoverIndex: null,
   selectedIndex: null,
   snapIndex: null,
 };
 
 /** The draft boundary's interaction state as handed over in `MapLayerContext.ui`. */
-export function draftUiOf(context: MapLayerContext): DraftBoundaryUi {
+function draftUiOf(context: MapLayerContext): DraftBoundaryUi {
   return { ...NO_DRAFT_UI, ...(context.ui?.[DRAFT_BOUNDARY_LAYER_ID] as Partial<DraftBoundaryUi>) };
 }
 

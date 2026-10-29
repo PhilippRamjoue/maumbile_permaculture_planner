@@ -2,14 +2,22 @@
 
 Read these before changing behavior:
 
-0. [2026-10-27 handoff](docs/CLAUDE_HANDOFF_2026-10-27.md): committed audit fixes and your
-   remaining uncommitted panel task; start here when continuing this work.
+- **Start here:** [2026-10-29 handoff](docs/CLAUDE_HANDOFF_2026-10-29.md): completed audit fixes,
+  uncommitted working-tree state, verification evidence and remaining review/rollout steps.
+
+- [2026-10-29 maintainability fixes](docs/AUDIT_FIXES_2026-10-29.md): draft lifetime,
+  immutable layer roles (migration `0015`), export snapshots/metric rendering, editor extraction,
+  architecture/Hooks/unused-code gates and the complete release preflight.
+
+0. [2026-10-27 handoff](docs/CLAUDE_HANDOFF_2026-10-27.md): historical context; the October 29
+   handoff supersedes its unfinished-task instructions.
 1. [Architecture](docs/ARCHITECTURE.md): intended boundaries, geometry and API conventions.
 2. [Project status](docs/PROJECT_STATUS.md): completed packages and deliberate deferrals.
 3. [2026-10-21 review follow-up](docs/REVIEW_FOLLOWUP_2026-10-21.md): bugs fixed, rationale,
    migration behavior, verification, and remaining debt.
 4. [Design editor](docs/DESIGN_EDITOR.md): WP9 implementation, controls, save semantics and tests.
-5. [Work packages](docs/WORK_PACKAGES.md): terrain overlays (WP10) and export (WP11) remain next.
+5. [Work packages](docs/WORK_PACKAGES.md): implemented package scope and acceptance criteria;
+   WP10 terrain overlays and WP11 export are implemented.
 
 Key implementation constraints:
 

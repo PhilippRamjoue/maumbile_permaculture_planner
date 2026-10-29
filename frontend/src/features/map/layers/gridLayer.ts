@@ -9,7 +9,7 @@ export const GRID_LAYER_ID = "distance-grid";
 export type ViewBounds = [number, number, number, number];
 
 /** What the editor hands the grid layer through `MapLayerContext.ui`: the current viewport. */
-export interface GridUi {
+interface GridUi {
   bounds: ViewBounds;
 }
 

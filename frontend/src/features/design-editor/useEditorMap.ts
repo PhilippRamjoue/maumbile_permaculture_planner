@@ -1,6 +1,9 @@
+import { designLayerSpecs } from "./designLayers";
+import { LayerSynchronizer } from "../map/layers/applyLayers";
+import { createLayerRegistry } from "../map/layers/registry";
 import { useEffect, useRef, useState } from "react";
 import type { Polygon } from "geojson";
-import type { ExpressionSpecification, Map as MapLibreMap, MapMouseEvent } from "maplibre-gl";
+import type { Map as MapLibreMap, MapMouseEvent } from "maplibre-gl";
 import { TerraDraw } from "terra-draw";
 import { TerraDrawMapLibreGLAdapter } from "terra-draw-maplibre-gl-adapter";
 import type { DesignFeature, ElementType } from "../../entities/planning";
@@ -30,13 +33,13 @@ import {
   placementMode,
   syncRotation,
 } from "./footprint";
-import { lineWidthExpression, widthMOf } from "./lineWidth";
+import { widthMOf } from "./lineWidth";
 import { rowOf } from "./rowIcons";
 import { liveMeasureGeometry, measureGeometry, measureMode, type Measurement } from "./measure";
 import { isParametricSector, SECTOR_COLORS, type SectorKind } from "./sectors";
 import type { EditorDocument, EditorStore } from "./store";
 import { typicalFunctions } from "./focus/functions";
-import { CONTEXT_OPACITY, OPEN_VIEW, renderableFeatures, type FocusView } from "./focus/view";
+import { OPEN_VIEW, type FocusView } from "./focus/view";
 import { useStore } from "zustand";
 
 export type Tool =
@@ -48,15 +51,6 @@ export type Tool =
   | "path"
   | "measure-line"
   | "measure-area";
-
-const flag = (name: string): ExpressionSpecification => ["==", ["get", name], true];
-/** `normal`, or `faint` for features drawn as context rather than as the focus. */
-const byContext = (normal: number, faint: number): ExpressionSpecification => [
-  "case",
-  flag("_context"),
-  faint,
-  normal,
-];
 
 /**
  * The feature Terra Draw edits right now: the selected one, when the focus lets its shape be
@@ -89,7 +83,7 @@ export function useEditorMap(
   setTool: (tool: Tool) => void,
   imagery: ImageryMeta | undefined,
   // Registry layers rebuilt after the editor drew its own (terrain arriving late) are restacked on
-  // top of them; changing this re-adds the document layers above them again.
+  // top of them; changing this restacks the existing document layers above them again.
   overlays?: unknown,
   // The site boundary: zones and paths snap onto its corners.
   boundary?: Polygon,
@@ -308,7 +302,9 @@ export function useEditorMap(
           !tool.startsWith("measure") &&
           !document.layers.some((layer) => layer.id === activeLayer && layer.visible)
         ) {
-          throw new Error("Choose a visible layer before drawing.");
+          throw new Error(
+            "This tool's destination layer is missing. Reload the plan or restore its standard layer before drawing.",
+          );
         }
         const mode =
           tool === "path" || tool === "measure-line"
@@ -353,138 +349,40 @@ export function useEditorMap(
     };
   }, [map]);
 
+  const renderer = useRef<LayerSynchronizer | null>(null);
   useEffect(() => {
     if (!map) return;
-    const sourceIds: string[] = [];
-    const layerIds: string[] = [];
-    const drawing = editedFeature(document, selectedId, tool, saving, view);
-    for (const layer of [...document.layers].sort((a, b) => a.sort_order - b.sort_order)) {
-      const id = `design-${layer.id}`;
-      sourceIds.push(id);
-      const features = renderableFeatures(
-        document.features.filter((f) => f.layer_id === layer.id),
-        view,
-        selectedId,
-        drawing?.id ?? null,
-      );
-      map.addSource(id, {
-        type: "geojson",
-        promoteId: "_editor_id",
-        data: { type: "FeatureCollection", features },
-      });
-      for (const kind of ["fill", "line", "circle", "ring", "symbol"] as const) {
-        const layerId = `${id}-${kind}`;
-        layerIds.push(layerId);
-        const visibility = layer.visible ? "visible" : "none";
-        if (kind === "fill")
-          map.addLayer({
-            id: layerId,
-            source: id,
-            type: "fill",
-            filter: ["all", ["==", "$type", "Polygon"], ["!", flag("_drawing")]],
-            layout: { visibility },
-            paint: {
-              "fill-color": ["get", "color"],
-              "fill-opacity": ["*", ["get", "_opacity"], byContext(1, CONTEXT_OPACITY)],
-            },
-          });
-        else if (kind === "line")
-          map.addLayer({
-            id: layerId,
-            source: id,
-            type: "line",
-            filter: ["all", ["!=", "$type", "Point"], ["!", flag("_drawing")]],
-            layout: { visibility },
-            paint: {
-              "line-color": ["get", "color"],
-              "line-width": lineWidthExpression(siteLatitude),
-              "line-opacity": byContext(1, CONTEXT_OPACITY),
-            },
-          });
-        else if (kind === "symbol")
-          // Footprints and points marked with an icon: one badge at the middle of the shape.
-          map.addLayer({
-            id: layerId,
-            source: id,
-            type: "symbol",
-            filter: ["!=", ["get", "_icon"], ""],
-            layout: {
-              visibility,
-              "icon-image": ["get", "_icon"],
-              "icon-size": ["case", flag("_row"), 0.7, ["==", ["geometry-type"], "Point"], 1, 0.85],
-              "icon-allow-overlap": true,
-              "icon-ignore-placement": true,
-            },
-            paint: { "icon-opacity": byContext(1, CONTEXT_OPACITY) },
-          });
-        else if (kind === "ring")
-          // The selection ring around an icon, drawn under the badge.
-          map.addLayer({
-            id: layerId,
-            source: id,
-            type: "circle",
-            filter: [
-              "all",
-              ["==", ["geometry-type"], "Point"],
-              ["!=", ["get", "_icon"], ""],
-              flag("_selected"),
-            ],
-            layout: { visibility },
-            paint: {
-              "circle-radius": 19,
-              "circle-color": "#ffd23f",
-              "circle-opacity": 0.35,
-              "circle-stroke-color": "#ffd23f",
-              "circle-stroke-width": 3,
-            },
-          });
-        else
-          map.addLayer({
-            id: layerId,
-            source: id,
-            type: "circle",
-            filter: ["all", ["==", ["geometry-type"], "Point"], ["==", ["get", "_icon"], ""]],
-            layout: { visibility },
-            paint: {
-              "circle-color": ["get", "color"],
-              "circle-radius": ["get", "_radius"],
-              "circle-opacity": byContext(1, CONTEXT_OPACITY),
-              "circle-stroke-color": ["case", flag("_selected"), "#ffd23f", "#ffffff"],
-              "circle-stroke-width": ["case", flag("_selected"), 4, 2],
-              "circle-stroke-opacity": byContext(1, CONTEXT_OPACITY),
-            },
-          });
-      }
-    }
-    if (view.connections.length > 0) {
-      const id = "design-connections";
-      sourceIds.push(id);
-      layerIds.push(`${id}-line`);
-      map.addSource(id, {
-        type: "geojson",
-        data: { type: "FeatureCollection", features: [...view.connections] },
-      });
-      map.addLayer({
-        id: `${id}-line`,
-        source: id,
-        type: "line",
-        paint: { "line-color": "#ffd23f", "line-width": 3, "line-dasharray": [2, 1.5] },
-      });
-    }
-    // Keep editing handles (and the border's corner handles, in the boundary focus) above the
-    // document layers.
-    map
-      .getStyle()
-      .layers?.filter((l) => l.id.startsWith("editor-draw") || l.id.startsWith("draft-boundary"))
-      .forEach((l) => map.moveLayer(l.id));
+    const sync = new LayerSynchronizer(map, createLayerRegistry());
+    renderer.current = sync;
     return () => {
+      renderer.current = null;
       try {
-        for (const id of layerIds) if (map.getLayer(id)) map.removeLayer(id);
-        for (const id of sourceIds) if (map.getSource(id)) map.removeSource(id);
+        sync.dispose();
       } catch {
-        /* map already removed during route teardown */
+        /* map already removed */
       }
     };
+  }, [map]);
+
+  useEffect(() => {
+    if (!map || !renderer.current) return;
+    const drawing = editedFeature(document, selectedId, tool, saving, view);
+    const specs = designLayerSpecs(document, selectedId, drawing?.id ?? null, view, siteLatitude);
+    renderer.current.syncSpecs(
+      specs,
+      (id) => document.layers.find((layer) => layer.id === id)?.visible ?? true,
+    );
+    // Registry layers can arrive later; restack without destroying design sources.
+    renderer.current.restack([...specs.keys()]);
+    map
+      .getStyle()
+      .layers?.filter(
+        (layer) =>
+          layer.id.startsWith("editor-draw") ||
+          layer.id.startsWith("draft-boundary") ||
+          layer.id.startsWith("sector-handles"),
+      )
+      .forEach((layer) => map.moveLayer(layer.id));
   }, [map, document, selectedId, tool, saving, imagery, overlays, view, siteLatitude]);
 
   const rotate = (angle: number) => {

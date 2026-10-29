@@ -13,9 +13,16 @@ export function DesignEditorPage() {
   const { siteId = "", planId } = useParams();
   const site = useSite(siteId);
   if (site.isPending) return <p role="status">Loading site…</p>;
-  if (site.isError) return <p role="alert">{message(site.error)}</p>;
+  if (!site.data) return <p role="alert">{message(site.error)}</p>;
   return planId ? (
-    <PlanLoader key={planId} site={site.data} planId={planId} />
+    <>
+      {site.isError && (
+        <p role="alert">
+          Could not refresh the site. Your draft is still here. {message(site.error)}
+        </p>
+      )}
+      <PlanLoader key={planId} site={site.data} planId={planId} />
+    </>
   ) : (
     <PlanPicker site={site.data} />
   );
@@ -174,7 +181,7 @@ function PlanLoader({ site, planId }: { site: Site; planId: string }) {
   });
   const types = useQuery({ queryKey: planningKeys.types, queryFn: planningApi.types });
   const error = design.error ?? types.error;
-  if (error)
+  if (error && (!design.data || !types.data))
     return (
       <div role="alert">
         <p>{message(error)}</p>
@@ -185,11 +192,16 @@ function PlanLoader({ site, planId }: { site: Site; planId: string }) {
   if (design.data.plan.site_id !== site.id)
     return <p role="alert">This plan belongs to a different site.</p>;
   return (
-    <Workspace
-      site={site}
-      plan={design.data.plan}
-      initial={design.data.features}
-      types={types.data}
-    />
+    <>
+      {error && (
+        <p role="alert">Could not refresh the design. Your draft is still here. {message(error)}</p>
+      )}
+      <Workspace
+        site={site}
+        plan={design.data.plan}
+        initial={design.data.features}
+        types={types.data}
+      />
+    </>
   );
 }

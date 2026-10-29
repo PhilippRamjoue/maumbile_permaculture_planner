@@ -4,7 +4,7 @@ export interface GeoPolygon {
   coordinates: [number, number][][];
 }
 
-export interface GeoPoint {
+interface GeoPoint {
   type: "Point";
   coordinates: [number, number];
 }

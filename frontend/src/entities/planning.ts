@@ -9,6 +9,8 @@ export interface PlanLayer {
   id: string;
   plan_id: string;
   name: string;
+  /** Immutable standard-layer destination; omitted by older servers. */
+  role?: FeatureType | null;
   sort_order: number;
   visible: boolean;
   created_at: string;

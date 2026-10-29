@@ -126,7 +126,7 @@ function Links({
 }
 
 /** The permaculture check over all elements, in plain sentences. */
-export function CheckReport({
+function CheckReport({
   features,
   onPick,
 }: {

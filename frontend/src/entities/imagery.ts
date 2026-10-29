@@ -17,4 +17,4 @@ export interface AttributionResponse {
  * Backend-generated response contracts for `GET /sites/{id}/imagery/meta` and
  * `GET /sites/{id}/imagery/providers` (the satellite sources that cover the site).
  */
-export type { ImageryMeta, ImageryProviderOption, ImageryProviders } from "./generated/imagery";
+export type { ImageryMeta, ImageryProviders } from "./generated/imagery";

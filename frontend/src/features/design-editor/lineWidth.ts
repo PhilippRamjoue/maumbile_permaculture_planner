@@ -1,8 +1,8 @@
 import type { ExpressionSpecification } from "maplibre-gl";
 
 /** Sane bounds for a path or road, in metres: a trodden track up to a wide carriageway. */
-export const MIN_WIDTH_M = 0.1;
-export const MAX_WIDTH_M = 100;
+const MIN_WIDTH_M = 0.1;
+const MAX_WIDTH_M = 100;
 
 /** The width recorded on a feature, in metres, if it has a usable one. */
 export function widthMOf(properties: Record<string, unknown>): number | null {

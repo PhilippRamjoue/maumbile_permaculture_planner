@@ -52,7 +52,7 @@ export function EditHeader({
 
 /** The tools that take a click on the map to create something; Select and Measure do not. */
 const PLACING_TOOLS: readonly Tool[] = ["element", "path", "zone", "sector", "sector-rect"];
-export const isPlacing = (tool: Tool) => PLACING_TOOLS.includes(tool);
+const isPlacing = (tool: Tool) => PLACING_TOOLS.includes(tool);
 
 /**
  * While a placing tool is armed: says what is being placed and how, and ends placing with an

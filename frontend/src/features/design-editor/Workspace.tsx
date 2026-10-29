@@ -1,6 +1,11 @@
+import { useSectorAdding } from "./useSectorAdding";
+import { MapControlBar } from "./MapControlBar";
+import { useImageryBasemap } from "./useImageryBasemap";
+import { useEditorShortcuts } from "./useEditorShortcuts";
+import { EditorSaveFeedback } from "./EditorSaveFeedback";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Link, useBlocker, useSearchParams } from "react-router-dom";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { Link, useSearchParams } from "react-router-dom";
+import { useMutation } from "@tanstack/react-query";
 import { useStore } from "zustand";
 import type { Map as MapLibreMap } from "maplibre-gl";
 import type {
@@ -12,52 +17,35 @@ import type {
 } from "../../entities/planning";
 import type { Site } from "../../entities/site";
 import { SITE_BOUNDARY_LAYER_ID } from "../map/layers/siteBoundaryLayer";
-import { imageryMetaKey, imageryProvidersKey } from "../map/imageryMeta";
 import { useMapLayerStore } from "../map/store";
-import { siteKeys, sitesApi } from "../../entities/siteQueries";
-import { terrainKeys, useTerrain } from "../../entities/terrainQueries";
+import { useTerrain } from "../../entities/terrainQueries";
 import { ExportMenu } from "../export";
-import { TerrainControl } from "../terrain";
 import { glyphFor } from "./icons";
 import { buildLegend } from "./legend";
-import { MapLegend } from "./MapLegend";
 import { MAX_FIT_ZOOM } from "../map/layers/zoomLimits";
 import { MapView } from "../map/MapView";
 import { GRID_LAYER_ID, gridStepFor } from "../map/layers/gridLayer";
 import { useViewportBounds } from "../map/useViewportBounds";
-import { ZoomToBoundaryButton } from "../map/ZoomToBoundaryButton";
 import { ImageryAttribution } from "../map/ImageryAttribution";
-import { effectiveProvider, useImageryChoice } from "../map/imageryChoice";
-import { useImageryMeta, useImageryProviders } from "../map/imageryMeta";
-import { createDesignWriter, persistDesign, planningApi, planningKeys } from "./api";
-import { saveBlob } from "../export/api";
-import { ModalDialog } from "../../shared/ui/ModalDialog";
-import { isParametricSector, type SectorKind } from "./sectors";
-import { createEditorStore, signature } from "./store";
+import { planningApi } from "./api";
+import { useEditorPersistence } from "./useEditorPersistence";
+import { isParametricSector } from "./sectors";
+import { createEditorStore } from "./store";
 import { formatArea, formatLength } from "../../shared/format";
 import { measureGeometry, type Measurement } from "./measure";
 import { useEditorMap, type Tool } from "./useEditorMap";
 import { useSectorHandles } from "./useSectorHandles";
 import { CompassControl } from "./CompassControl";
-import { MapToolsControl } from "./MapToolsControl";
 import { PlanSwitcher } from "./PlanSwitcher";
 import { HistoryButtons } from "./focus/AdvancedTools";
-import { BasemapSwitcher } from "./BasemapSwitcher";
-import { LayersControl } from "./LayersControl";
 import { BoundaryPanel } from "./focus/BoundaryPanel";
 import { MeasurementPanel } from "./focus/MeasurementPanel";
 import { editorLayerRegistry } from "./focus/boundaryLayer";
-import {
-  createBoundaryDraft,
-  draftCoordinates,
-  isBoundaryDirty,
-  validateDraft,
-} from "./focus/boundaryDraft";
+import { createBoundaryDraft } from "./focus/boundaryDraft";
 import type { PanelProps } from "./focus/common";
 import { ElementsPanel } from "./focus/ElementsPanel";
 import { labelOf } from "./focus/goals";
 import { GoalsPanel, GoalsReminder } from "./focus/GoalsPanel";
-import { useGoals } from "./focus/useGoals";
 import { FocusRail } from "./focus/FocusRail";
 import { FunctionsPanel } from "./focus/FunctionsPanel";
 import { connectionLines } from "./focus/functions";
@@ -76,11 +64,11 @@ import {
 import { loadEditorLevel, saveEditorLevel } from "./focus/editorLevelStore";
 import { SaveStatus, saveStateOf } from "./focus/SaveStatus";
 import { SectorsPanel } from "./focus/SectorsPanel";
-import { useAutosave } from "./focus/useAutosave";
 import { useBoundaryEditing } from "./focus/useBoundaryEditing";
 import { createFocusView } from "./focus/view";
 import { ZonesPanel } from "./focus/ZonesPanel";
 import { errorMessage as message } from "./messages";
+import { destinationLayer, useActiveLayer } from "./useActiveLayer";
 
 const editable = (f: SavedFeature): DesignFeature => ({
   type: "Feature",
@@ -91,15 +79,6 @@ const editable = (f: SavedFeature): DesignFeature => ({
   geometry: f.geometry,
   properties: f.properties,
 });
-
-const layerNameFor = (tool: Tool) =>
-  tool === "zone"
-    ? "Zones"
-    : tool === "sector" || tool === "sector-rect"
-      ? "Sectors"
-      : tool === "path"
-        ? "Paths"
-        : "Elements";
 
 const EMPTY_GROUPS: ReadonlySet<ContextGroup> = new Set();
 
@@ -136,12 +115,6 @@ export function Workspace({
   const [defaultFocus] = useState(() =>
     initialFocus({ layers: plan.layers, features: initial.features }, plan.goals),
   );
-  const [writer] = useState(() => createDesignWriter(plan.id, plan.revision));
-  const savedLayers = useRef(plan.layers);
-  const savedFeatures = useRef(initial.features.map(editable));
-  const goals = useGoals(plan, writer);
-  const liveGoalsSignature = useRef(goals.signature);
-  liveGoalsSignature.current = goals.signature;
   const [params, setParams] = useSearchParams();
   // Simple vs guided: new/elements-only plans open simple (straight to placing things); a plan with
   // goals/sectors/zones opens guided. A remembered choice wins. In simple mode the only step is
@@ -162,31 +135,21 @@ export function Workspace({
   const [elementId, setElementId] = useState(
     types.find((t) => t.key === "tree")?.id ?? types[0]?.id,
   );
-  const [activeLayer, setActiveLayer] = useState(
-    plan.layers.find((l) => l.name === "Elements")?.id ?? plan.layers[0]?.id ?? "",
+  const activeLayer = useActiveLayer(
+    store,
+    tool,
+    types.find((t) => t.id === elementId),
   );
   const [zoneNumber, setZoneNumber] = useState(1);
-  // The sector kind the add tools create: shared by the panel's chooser and the draw tools.
-  const [sectorKind, setSectorKind] = useState<SectorKind>("sun");
-  // Other feature families are always shown as faint context now; their visibility (and that of the
-  // boundary) is controlled from the Layers map control instead of per-step toggles.
+  const sectors = useSectorAdding(store, setTool);
   const hidden: ReadonlySet<ContextGroup> = EMPTY_GROUPS;
-  const [hiddenSectorKinds, setHiddenSectorKinds] = useState<ReadonlySet<SectorKind>>(
-    () => new Set(),
-  );
-  const [failedSignature, setFailedSignature] = useState<string | null>(null);
   const [authoritative, setAuthoritative] = useState<{ key: string; value: Measurement } | null>(
     null,
   );
-  const imageryProviders = useImageryProviders(site.id);
-  const [imageryChoice, setImageryChoice] = useImageryChoice(site.id);
-  const imageryProvider = effectiveProvider(imageryChoice, imageryProviders.data);
-  const imagery = useImageryMeta(site.id, imageryProvider);
+  const basemap = useImageryBasemap(site.id);
+  const { providers: imageryProviders, selected: imageryProvider, imagery } = basemap;
   const terrain = useTerrain(site.id);
-  const sectorsLayer = state.document.layers.find((l) => l.name === "Sectors" && l.visible);
-  const queryClient = useQueryClient();
-  const currentSignature = signature(state.document);
-  const dirty = currentSignature !== state.savedSignature;
+  const sectorsLayer = destinationLayer(state.document.layers, "sector");
 
   const features = state.document.features;
   const own = useMemo(() => features.filter((f) => isEditable(focus, f)), [features, focus]);
@@ -207,11 +170,11 @@ export function Workspace({
     [types],
   );
   const view = useMemo(
-    () => createFocusView(focus, hidden, connections, zoneNumber, hiddenSectorKinds, iconOf),
-    [focus, hidden, connections, zoneNumber, hiddenSectorKinds, iconOf],
+    () => createFocusView(focus, hidden, connections, zoneNumber, sectors.hiddenKinds, iconOf),
+    [focus, hidden, connections, zoneNumber, sectors.hiddenKinds, iconOf],
   );
   // Re-adding the border layer restacks the registry layers over the design layers; the editor
-  // map effect re-adds the design layers when this changes.
+  // map effect restacks the existing design layers when this changes.
   const legend = useMemo(
     () => buildLegend(features, types, state.document.layers, view.isShown),
     [features, types, state.document.layers, view],
@@ -227,71 +190,23 @@ export function Workspace({
     [terrain.data, focus, viewport],
   );
 
-  const save = useMutation({
-    mutationFn: async () => {
-      const snapshot = structuredClone(store.getState().document);
-      try {
-        return await persistDesign(
-          writer,
-          snapshot,
-          store.getState().persistedIds,
-          savedLayers.current,
-          savedFeatures.current,
-        );
-      } catch (error) {
-        setFailedSignature(signature(snapshot));
-        throw error;
-      }
-    },
-    onSuccess: ({ snapshot, result, layers, plan: updatedPlan }) => {
-      savedLayers.current = layers;
-      savedFeatures.current = snapshot.features;
-      store.getState().markSaved(snapshot);
-      queryClient.setQueryData(planningKeys.features(plan.id), result);
-      queryClient.setQueryData(planningKeys.design(plan.id), {
-        plan: updatedPlan,
-        features: result,
-      });
-      queryClient.setQueryData<PlanDetail>(planningKeys.plan(plan.id), (old) => ({
-        ...(old ?? plan),
-        layers,
-      }));
-      const current = store.getState().selectedId;
-      const feature = result.features.find((f) => f.id === current);
-      if (feature) setAuthoritative({ key: JSON.stringify(feature.geometry), value: feature });
-      setFailedSignature(null);
-    },
-  });
-
-  const boundaryDirty = useStore(draft, isBoundaryDirty);
-  const boundaryVertices = useStore(draft, (s) => s.vertices);
-  const boundaryValid = validateDraft(boundaryVertices).status === "valid";
-  const boundarySignature = JSON.stringify(boundaryVertices.map((vertex) => vertex.point));
-  const [failedBoundarySignature, setFailedBoundarySignature] = useState<string | null>(null);
-  const saveBoundary = useMutation({
-    mutationFn: async () => {
-      const vertices = draft.getState().vertices;
-      try {
-        return await sitesApi.update(site.id, {
-          coordinates: draftCoordinates(vertices),
-          expected_updated_at: site.updated_at,
-        });
-      } catch (error) {
-        setFailedBoundarySignature(JSON.stringify(vertices.map((vertex) => vertex.point)));
-        throw error;
-      }
-    },
-    onSuccess: (updated) => {
-      // The border is the Site: everything derived from it (terrain, imagery coverage) is stale.
-      queryClient.setQueryData(siteKeys.detail(site.id), updated);
-      void queryClient.invalidateQueries({ queryKey: terrainKeys.site(site.id) });
-      void queryClient.invalidateQueries({ queryKey: imageryMetaKey(site.id) });
-      void queryClient.invalidateQueries({ queryKey: imageryProvidersKey(site.id) });
-      void queryClient.invalidateQueries({ queryKey: siteKeys.list() });
-      draft.getState().reset(updated.boundary);
-      setFailedBoundarySignature(null);
-    },
-  });
+  const persistence = useEditorPersistence(site, plan, store, draft, tool, (feature) =>
+    setAuthoritative({ key: JSON.stringify(feature.geometry), value: feature }),
+  );
+  const {
+    save,
+    goals,
+    dirty,
+    currentSignature,
+    failedSignature,
+    boundaryDirty,
+    boundaryValid,
+    boundarySignature,
+    failedBoundarySignature,
+    saveBoundary,
+    saveRef,
+    flush,
+  } = persistence;
   const boundaryUi = useBoundaryEditing(map, focus === "boundary", draft, saveBoundary.isPending);
   const layerUi = useMemo(
     () => (viewport ? { ...boundaryUi, [GRID_LAYER_ID]: { bounds: viewport } } : boundaryUi),
@@ -323,135 +238,22 @@ export function Workspace({
     overlays,
     site.boundary,
     view,
-    sectorKind,
+    sectors.kind,
   );
   // Drag handles for the selected parametric sector (move / open / resize), only in the Sectors step.
   useSectorHandles(map, store, focus === "sectors" && !save.isPending);
-  const blocker = useBlocker(
-    ({ currentLocation, nextLocation }) =>
-      (dirty ||
-        save.isPending ||
-        boundaryDirty ||
-        saveBoundary.isPending ||
-        goals.dirty ||
-        goals.saving) &&
-      currentLocation.pathname !== nextLocation.pathname,
-  );
-  const saveRef = useRef(() => {});
-  saveRef.current = () => {
-    if (!save.isPending && dirty) save.mutate();
-    if (!saveBoundary.isPending && boundaryDirty && boundaryValid) saveBoundary.mutate();
-    if (!goals.saving && goals.dirty) goals.save();
-  };
 
-  // Saved on the fly: shortly after the design stops changing, and on every change of focus.
-  useAutosave({
-    enabled: tool === "select" && !save.isPending && blocker.state !== "blocked",
-    dirty,
-    signature: currentSignature,
-    failedSignature,
-    save: () => save.mutate(),
-  });
-
-  useAutosave({
-    enabled: !goals.saving && blocker.state !== "blocked",
-    dirty: goals.dirty,
-    signature: goals.signature,
-    failedSignature: goals.failedSignature,
-    save: goals.save,
-    // Saving goals leaves the form enabled, so it may happen while the vision is being typed.
-    waitWhileTyping: false,
-  });
-
-  useAutosave({
-    enabled: boundaryValid && !saveBoundary.isPending && blocker.state !== "blocked",
-    dirty: boundaryDirty,
-    signature: boundarySignature,
-    failedSignature: failedBoundarySignature,
-    save: () => saveBoundary.mutate(),
-  });
-
-  const flush = async () => {
-    const beforeFeatures = signature(store.getState().document);
-    const beforeGoals = liveGoalsSignature.current;
-    if (boundaryDirty && !boundaryValid)
-      throw new Error("Fix the invalid border before saving or exporting.");
-    if (save.isPending || saveBoundary.isPending || goals.saving)
-      throw new Error("A save is still running. Please try again when it finishes.");
-    await Promise.all([
-      dirty ? save.mutateAsync() : Promise.resolve(),
-      boundaryDirty ? saveBoundary.mutateAsync() : Promise.resolve(),
-      goals.dirty ? goals.saveAsync() : Promise.resolve(),
-    ]);
-    if (
-      beforeFeatures !== signature(store.getState().document) ||
-      beforeGoals !== liveGoalsSignature.current
-    )
-      throw new Error("Your design changed while saving. Save again to include your latest edits.");
-  };
-  const [leaveError, setLeaveError] = useState<string | null>(null);
-
-  useEffect(() => {
-    const beforeUnload = (event: BeforeUnloadEvent) => {
-      if (dirty || boundaryDirty || goals.dirty) {
-        event.preventDefault();
-        event.returnValue = "";
-      }
-    };
-    const key = (event: KeyboardEvent) => {
-      const typing =
-        event.target instanceof HTMLElement &&
-        (event.target.isContentEditable || !!event.target.closest("input, textarea, select"));
-      // Delete / Backspace removes the selected feature (not while typing; the border has its own
-      // corner controls, so nothing is editable to delete in the boundary step).
-      if (!typing && (event.key === "Delete" || event.key === "Backspace")) {
-        const id = store.getState().selectedId;
-        const feature = store.getState().document.features.find((f) => f.id === id);
-        if (id && feature && isEditable(focus, feature) && !save.isPending) {
-          event.preventDefault();
-          store.getState().remove(id);
-        }
-        return;
-      }
-      if (!(event.ctrlKey || event.metaKey)) return;
-      if (event.key.toLowerCase() === "s") {
-        event.preventDefault();
-        saveRef.current();
-        return;
-      }
-      if (
-        save.isPending ||
-        saveBoundary.isPending ||
-        (event.target instanceof HTMLElement && event.target.closest("input, textarea, select"))
-      )
-        return;
-      const history = focus === "boundary" ? draft.getState() : store.getState();
-      if (event.key.toLowerCase() === "z") {
-        event.preventDefault();
-        if (event.shiftKey) history.redo();
-        else history.undo();
-      }
-      if (event.key.toLowerCase() === "y") {
-        event.preventDefault();
-        history.redo();
-      }
-    };
-    window.addEventListener("beforeunload", beforeUnload);
-    window.addEventListener("keydown", key);
-    return () => {
-      window.removeEventListener("beforeunload", beforeUnload);
-      window.removeEventListener("keydown", key);
-    };
-  }, [
+  useEditorShortcuts(
+    store,
+    draft,
+    focus,
     dirty,
     boundaryDirty,
     goals.dirty,
     save.isPending,
     saveBoundary.isPending,
-    store,
-    draft,
-    focus,
-  ]);
+    saveRef,
+  );
 
   // The site border is a registry layer; "show the boundary as context" is its visibility.
   const boundaryShown = focus === "boundary" || !hidden.has("boundary");
@@ -466,8 +268,6 @@ export function Workspace({
       return;
     setTool(next);
     store.getState().select(null);
-    const layer = state.document.layers.find((l) => l.name === layerNameFor(next) && l.visible);
-    if (layer) setActiveLayer(layer.id);
   };
   const pick = (id: string) => {
     setTool("select");
@@ -645,113 +445,14 @@ export function Workspace({
           Place the things you want on your map — house, water, trees, beds, paths.
         </p>
       )}
-      {save.isError &&
-        (/self-intersection|invalid polygon/i.test(message(save.error)) ? (
-          <p role="alert">
-            A shape crosses itself, so it can’t be saved. Drag the stray corner back onto the
-            others, or press Ctrl+Z (⌘Z) to undo the last change. Your draft is still here.
-          </p>
-        ) : (
-          <p role="alert">
-            Could not save: {message(save.error)} Your draft is still here. Retry saving.
-          </p>
-        ))}
-      {goals.failed && (
-        <p role="alert">
-          Could not save your goals: {message(goals.error)} They are still here. Retry saving.
-        </p>
-      )}
-      {boundaryDirty && !boundaryValid && (
-        <p role="alert">
-          Your border has unsaved, invalid changes. Return to Boundary to fix or discard them.
-        </p>
-      )}
-      {saveBoundary.isError && boundaryDirty && (
-        <p role="alert">
-          Could not save the border: {message(saveBoundary.error)}. Your draft is still here.
-        </p>
-      )}
-      {(save.isError || goals.failed || saveBoundary.isError) && (
-        <div className="editor-tools">
-          <button
-            type="button"
-            className="btn"
-            onClick={() =>
-              saveBlob(
-                new Blob(
-                  [
-                    JSON.stringify(
-                      {
-                        version: 1,
-                        plan: { ...plan, goals: goals.goals },
-                        site: {
-                          ...site,
-                          boundary: {
-                            type: "Polygon",
-                            coordinates: [draftCoordinates(draft.getState().vertices)],
-                          },
-                        },
-                        ...store.getState().document,
-                      },
-                      null,
-                      2,
-                    ),
-                  ],
-                  { type: "application/json" },
-                ),
-                "maumbile-unsaved-draft.json",
-              )
-            }
-          >
-            Download unsaved draft
-          </button>
-          <button type="button" className="btn" onClick={() => window.location.reload()}>
-            Reload saved design
-          </button>
-        </div>
-      )}
+      <EditorSaveFeedback
+        site={site}
+        plan={plan}
+        store={store}
+        draft={draft}
+        persistence={persistence}
+      />
       {drawing.error && <p role="alert">{drawing.error}</p>}
-      {blocker.state === "blocked" && (
-        <ModalDialog
-          label="Unsaved design"
-          onCancel={() => {
-            if (!save.isPending && !saveBoundary.isPending && !goals.saving) blocker.reset();
-          }}
-        >
-          <p>You have unsaved changes. Leave this design?</p>
-          <button
-            className="btn"
-            disabled={save.isPending || saveBoundary.isPending || goals.saving}
-            onClick={() => blocker.reset()}
-          >
-            Keep editing
-          </button>
-          <button
-            className="btn"
-            disabled={
-              save.isPending ||
-              saveBoundary.isPending ||
-              goals.saving ||
-              (boundaryDirty && !boundaryValid)
-            }
-            onClick={() => {
-              void flush()
-                .then(() => blocker.proceed())
-                .catch((error: unknown) => setLeaveError(message(error)));
-            }}
-          >
-            Save and leave
-          </button>
-          {leaveError && <p role="alert">{leaveError}</p>}
-          <button
-            className="btn"
-            disabled={save.isPending || saveBoundary.isPending || goals.saving}
-            onClick={() => blocker.proceed()}
-          >
-            Discard changes and leave
-          </button>
-        </ModalDialog>
-      )}
       <div className="editor-layout">
         <aside className="editor-sidebar" aria-label="Design controls" data-focus={focus}>
           <section className="focus-intro">
@@ -785,24 +486,11 @@ export function Workspace({
               site={site}
               sectors={own}
               sectorsLayerId={sectorsLayer?.id}
-              hiddenKinds={hiddenSectorKinds}
-              onToggleKind={(kind, shown) =>
-                setHiddenSectorKinds((previous) => {
-                  if (previous.has(kind) === !shown) return previous;
-                  const next = new Set(previous);
-                  if (shown) next.delete(kind);
-                  else next.add(kind);
-                  return next;
-                })
-              }
-              kind={sectorKind}
-              onKindChange={setSectorKind}
-              onAdd={(feature) => {
-                setTool("select");
-                state.upsert(feature);
-                // Select it straight away so its bearings, radius and rotation are ready to adjust.
-                state.select(feature.id);
-              }}
+              hiddenKinds={sectors.hiddenKinds}
+              onToggleKind={sectors.toggleKind}
+              kind={sectors.kind}
+              onKindChange={sectors.setKind}
+              onAdd={sectors.add}
             />
           )}
           {focus === "zones" && (
@@ -846,38 +534,34 @@ export function Workspace({
             layerUi={layerUi}
             onMapReady={setMap}
           />
-          <div className="map-tools map-tools--bottom">
-            <ZoomToBoundaryButton map={map} bounds={site.bbox} />
-            <MapLegend entries={legend} />
-            <LayersControl state={state} disabled={disabled} />
-            <BasemapSwitcher
-              providers={imageryProviders.data}
-              selected={imageryProvider}
-              // Picking the region's own default is "no choice", so the remembered key goes away.
-              onSelect={(key) =>
-                setImageryChoice(key === imageryProviders.data?.default_key ? null : key)
-              }
-            />
-            {/* Terrain lives in the sidebar during the Sectors & terrain step; everywhere else it
-                is reachable here, so slope/contours can be shown or hidden and the land re-measured
-                while placing things. */}
-            {focus !== "sectors" && (
-              <TerrainControl
-                siteId={site.id}
-                onEditBoundary={focus === "boundary" ? undefined : editBoundary}
-              />
-            )}
-            <MapToolsControl
-              tool={tool}
-              choose={choose}
-              disabled={disabled}
-              grid={gridOn}
-              gridStep={gridStep}
-              onGridChange={setGridOn}
-              compass={compassOn}
-              onCompassChange={setCompassOn}
-            />
-          </div>
+          <MapControlBar
+            zoom={{ map, bounds: site.bbox }}
+            legend={{ entries: legend }}
+            layers={{ state, disabled }}
+            basemap={{
+              providers: imageryProviders.data,
+              selected: imageryProvider,
+              onSelect: basemap.select,
+            }}
+            terrain={
+              focus === "sectors"
+                ? undefined
+                : {
+                    siteId: site.id,
+                    onEditBoundary: focus === "boundary" ? undefined : editBoundary,
+                  }
+            }
+            tools={{
+              tool,
+              choose,
+              disabled,
+              grid: gridOn,
+              gridStep,
+              onGridChange: setGridOn,
+              compass: compassOn,
+              onCompassChange: setCompassOn,
+            }}
+          />
           {compassOn && <CompassControl map={map} />}
           <div className="editor-map-hint" role="status">
             {hint}

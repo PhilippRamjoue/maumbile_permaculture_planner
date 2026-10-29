@@ -2,7 +2,7 @@ import { vi, type Mock } from "vitest";
 
 import { API_BASE } from "../config";
 
-export interface MockRequest {
+interface MockRequest {
   method: string;
   path: string;
   query: URLSearchParams;

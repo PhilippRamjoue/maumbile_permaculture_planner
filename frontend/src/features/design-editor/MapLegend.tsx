@@ -1,3 +1,4 @@
+import { safeLocalStorage } from "../../shared/safeLocalStorage";
 import { useState } from "react";
 
 import { GlyphIcon } from "./GlyphIcon";
@@ -5,13 +6,7 @@ import type { LegendEntry } from "./legend";
 
 const STORAGE_KEY = "permaculture.legend.open";
 
-const readOpen = () => {
-  try {
-    return localStorage.getItem(STORAGE_KEY) === "1";
-  } catch {
-    return false;
-  }
-};
+const readOpen = () => safeLocalStorage.get(STORAGE_KEY) === "1";
 
 /** A small colour key for the shapes on the map. */
 function Swatch({ entry }: { entry: LegendEntry }) {
@@ -34,11 +29,7 @@ export function MapLegend({ entries }: { entries: readonly LegendEntry[] }) {
   const [open, setOpen] = useState(readOpen);
   const toggle = () =>
     setOpen((previous) => {
-      try {
-        localStorage.setItem(STORAGE_KEY, previous ? "0" : "1");
-      } catch {
-        /* the choice just is not remembered */
-      }
+      safeLocalStorage.set(STORAGE_KEY, previous ? "0" : "1");
       return !previous;
     });
   const groups = [...new Set(entries.map((e) => e.group))];

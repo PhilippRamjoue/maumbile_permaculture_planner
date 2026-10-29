@@ -30,7 +30,7 @@ export const FUNCTION_PRESETS: readonly string[] = [
   "income",
 ];
 
-export const MAX_FUNCTIONS = 20;
+const MAX_FUNCTIONS = 20;
 const MAX_FUNCTION_LENGTH = 40;
 
 /** A function name as stored: trimmed, lower case, single-spaced, bounded. Empty when unusable. */

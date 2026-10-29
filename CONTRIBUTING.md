@@ -35,6 +35,7 @@ uv run uvicorn app.main:app --reload   # http://localhost:8000  (/healthz, /docs
 uv run ruff check .           # lint
 uv run ruff format .          # format
 uv run mypy app               # type-check
+uv run python scripts/check_architecture.py  # private-module boundaries
 uv run pytest                 # all tests (integration tests need Docker running)
 uv run pytest -m "not integration"     # unit tests only (no Docker)
 uv run alembic upgrade head   # apply migrations
@@ -50,6 +51,7 @@ npm install
 npm run dev                   # http://localhost:5173
 npm run lint
 npm run typecheck
+npm run unused               # unused files, exports and dependency declarations
 npm test
 npm run build
 npx playwright install chromium
@@ -73,3 +75,17 @@ suite against a disposable Compose stack. Frontend tooling requires Node 22.12 o
 Generated imagery files must be updated through the backend generator, not edited manually.
 Shared ownership dependencies live in `sites/dependencies.py`; use `OwnedSite` in consuming
 HTTP modules rather than importing the sites router or ORM model.
+
+## Release preflight
+
+From the repository root, run `python scripts/preflight.py` with Python 3.11+, uv, Node 22.12+
+and Docker available. Install Chromium once with `cd frontend && npx playwright install chromium`.
+The preflight runs the CI checks and browser acceptance suite against a unique disposable Compose
+project on port 28080, then removes only that project's containers and volume. It never uses or
+resets `permaculture-verify`. Both source versions must match; release image builds stamp the tag
+into the frontend footer and backend OpenAPI version.
+
+Hooks rules and Knip run in CI. Generated contracts retain their schema exports and are checked by
+the generator rather than pruned manually. Backend boundary exceptions are listed explicitly in
+`backend/scripts/check_architecture.py`; private cross-module imports belong only in composition
+wiring. Services must remain independent of FastAPI and routers.

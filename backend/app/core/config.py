@@ -2,12 +2,19 @@
 
 from __future__ import annotations
 
+import tomllib
 from functools import lru_cache
+from pathlib import Path
 
 from pydantic import SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 _INSECURE_DEV_SECRET = "dev-only-insecure-secret-change-me-0123456789"
+PROJECT_VERSION = str(
+    tomllib.loads(
+        (Path(__file__).resolve().parents[2] / "pyproject.toml").read_text(encoding="utf-8")
+    )["project"]["version"]
+)
 
 
 class Settings(BaseSettings):
@@ -18,6 +25,8 @@ class Settings(BaseSettings):
     )
 
     app_name: str = "Maumbile"
+    # Release image build arg/runtime APP_VERSION overrides the source-tree version.
+    version: str = PROJECT_VERSION
     environment: str = "development"
     debug: bool = False
 
@@ -55,6 +64,7 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def _require_real_secret_in_production(self) -> Settings:
+        self.version = self.version or PROJECT_VERSION
         if (
             self.environment == "production"
             and self.secret_key.get_secret_value() == _INSECURE_DEV_SECRET

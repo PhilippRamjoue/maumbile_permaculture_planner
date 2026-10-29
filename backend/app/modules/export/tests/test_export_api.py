@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import uuid
 from collections.abc import Callable
 from io import BytesIO
@@ -15,12 +16,85 @@ from sqlalchemy.ext.asyncio import AsyncEngine
 
 from app.main import app
 from app.modules.auth.dependencies import current_user
+from app.modules.planning.repository import PlanningRepository
 from app.modules.planning.tests.test_planning_api import POINT, POLYGON, feat, layer_id
 
 pytestmark = pytest.mark.integration
 
 API = "/api/v1"
 LINE = {"type": "LineString", "coordinates": [[36.801, -1.299], [36.803, -1.296]]}
+
+
+async def test_export_holds_one_design_revision_during_a_concurrent_save(
+    api: AsyncClient,
+    plan: dict[str, Any],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    path = f"{API}/plans/{plan['id']}"
+    original = feat(layer_id(plan), "element", POINT, properties={"name": "Before"})
+    response = await api.put(
+        f"{path}/design",
+        json={
+            "expected_revision": plan["revision"],
+            "features": [original],
+            "goals": {"vision": "Before"},
+        },
+    )
+    revision = response.json()["plan"]["revision"]
+    reading, release, writing = asyncio.Event(), asyncio.Event(), asyncio.Event()
+    list_features = PlanningRepository.list_features
+    advance = PlanningRepository.advance_plan
+    pause_next = True
+
+    async def paused_read(self: PlanningRepository, *args: Any, **kwargs: Any) -> Any:
+        nonlocal pause_next
+        if pause_next:
+            pause_next = False
+            reading.set()
+            await release.wait()
+        return await list_features(self, *args, **kwargs)
+
+    async def observed_write(self: PlanningRepository, *args: Any, **kwargs: Any) -> None:
+        writing.set()
+        await advance(self, *args, **kwargs)
+
+    monkeypatch.setattr(PlanningRepository, "list_features", paused_read)
+    monkeypatch.setattr(PlanningRepository, "advance_plan", observed_write)
+    export = asyncio.create_task(api.get(f"{path}/export"))
+    save: asyncio.Task[Any] | None = None
+    try:
+        await asyncio.wait_for(reading.wait(), 5)
+        changed = {**original, "properties": {"name": "After"}}
+        save = asyncio.create_task(
+            api.put(
+                f"{path}/design",
+                json={
+                    "expected_revision": revision,
+                    "features": [changed],
+                    "goals": {"vision": "After"},
+                },
+            )
+        )
+        await asyncio.wait_for(writing.wait(), 5)
+        # The export has already read plan metadata. The writer cannot pass its row lock
+        # until the rest of the snapshot has been read and its transaction released.
+        assert not save.done()
+        release.set()
+        exported = await asyncio.wait_for(export, 10)
+        saved = await asyncio.wait_for(save, 10)
+        assert saved.status_code == 200, saved.text
+        assert exported.json()["plan"]["goals"]["vision"] == "Before"
+        assert exported.json()["features"][0]["properties"]["name"] == "Before"
+        latest = (await api.get(f"{path}/export")).json()
+        assert latest["plan"]["goals"]["vision"] == "After"
+        assert latest["features"][0]["properties"]["name"] == "After"
+    finally:
+        release.set()
+        tasks = [export] + ([save] if save is not None else [])
+        for task in tasks:
+            if not task.done():
+                task.cancel()
+        await asyncio.gather(*tasks, return_exceptions=True)
 
 
 async def seed(api: AsyncClient, plan: dict[str, Any]) -> list[dict[str, Any]]:

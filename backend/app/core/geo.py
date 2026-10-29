@@ -53,7 +53,7 @@ def geojson_to_shape(geometry: dict[str, Any]) -> BaseGeometry:
 
 def shape_to_geojson(geom: BaseGeometry) -> dict[str, Any]:
     """Convert a Shapely geometry to a GeoJSON geometry mapping."""
-    return mapping(geom)
+    return dict(mapping(geom))
 
 
 def bbox_of(geom: BaseGeometry) -> BBox:

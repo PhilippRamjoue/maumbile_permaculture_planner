@@ -15,8 +15,8 @@ export interface Row {
 }
 
 /** Sane spacing, in metres: a tight hedge up to widely set trees. */
-export const MIN_ROW_SPACING_M = 0.5;
-export const MAX_ROW_SPACING_M = 100;
+const MIN_ROW_SPACING_M = 0.5;
+const MAX_ROW_SPACING_M = 100;
 /** More icons than this on one line are spaced further apart rather than drawn. */
 export const MAX_ROW_ICONS = 1500;
 

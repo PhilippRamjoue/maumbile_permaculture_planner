@@ -14,6 +14,7 @@ class ExportLayer:
     name: str
     sort_order: int
     visible: bool
+    role: str | None = None
 
 
 @dataclass(frozen=True)

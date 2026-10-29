@@ -26,7 +26,7 @@ export const SIMPLE_FOCUS: FocusId = "elements";
 /** What the user can toggle as faint context: the site border and the three feature families. */
 export type ContextGroup = "boundary" | "sectors" | "zones" | "elements";
 
-export type FocusTool = "select" | "zone" | "sector" | "sector-rect" | "element" | "path";
+type FocusTool = "select" | "zone" | "sector" | "sector-rect" | "element" | "path";
 
 export interface FocusMode {
   id: FocusId;
@@ -130,7 +130,7 @@ export const FOCUS_MODES: readonly FocusMode[] = [
 
 export const FOCUS_IDS = FOCUS_MODES.map((m) => m.id);
 
-export const CONTEXT_GROUPS: readonly { id: ContextGroup; label: string }[] = [
+const CONTEXT_GROUPS: readonly { id: ContextGroup; label: string }[] = [
   { id: "boundary", label: "Boundary" },
   { id: "sectors", label: "Sectors" },
   { id: "zones", label: "Zones" },
@@ -178,7 +178,7 @@ export function isShown(
 export type Progress = Record<FocusId, boolean>;
 
 /** Whether the owner has said anything about what they want (a priority or a few words). */
-export const hasGoals = (goals: PlanGoals | null | undefined): boolean =>
+const hasGoals = (goals: PlanGoals | null | undefined): boolean =>
   !!goals && (goals.priorities.length > 0 || goals.vision.trim().length > 0);
 
 /**

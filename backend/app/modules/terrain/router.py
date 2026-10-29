@@ -18,6 +18,7 @@ from app.modules.regions.resolver import RegionResolver
 from app.modules.sites.dependencies import OwnedSite
 from app.modules.terrain.limits import TerrainExtentError, validate_dem_extent
 from app.modules.terrain.models import READY, TerrainResult
+from app.modules.terrain.repository import SessionFactory, TerrainRepository, repository_session
 from app.modules.terrain.schemas import (
     ContourCollection,
     ContourFeature,
@@ -30,7 +31,6 @@ from app.modules.terrain.schemas import (
 from app.modules.terrain.service import (
     STALE_AFTER,
     NoElevationProviderError,
-    SessionFactory,
     TerrainService,
     TerrainView,
     pad_bbox,
@@ -54,8 +54,8 @@ def get_terrain_service(
     resolver: Annotated[RegionResolver, Depends(get_resolver)],
 ) -> TerrainService:
     return TerrainService(
-        session,
-        factory,
+        TerrainRepository(session),
+        lambda: repository_session(factory),
         resolver,
         default_interval_m=get_settings().terrain_contour_interval_m,
     )

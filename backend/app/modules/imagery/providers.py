@@ -49,6 +49,14 @@ def get_http_client() -> httpx.AsyncClient:
     return _shared_client
 
 
+async def close_http_client() -> None:
+    """Release pooled connections; the next lifespan can safely create a fresh client."""
+    global _shared_client
+    client, _shared_client = _shared_client, None
+    if client is not None:
+        await client.aclose()
+
+
 class HttpTileProvider:
     """Shared plumbing for providers that serve tiles over plain HTTP GET."""
 

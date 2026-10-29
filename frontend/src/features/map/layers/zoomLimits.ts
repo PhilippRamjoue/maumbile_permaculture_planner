@@ -11,7 +11,7 @@
 export const IMAGERY_MAX_ZOOM = 18;
 
 /** The deepest zoom that automatic framing (fit to boundary, to the site) may choose. */
-export const MAX_FIT_ZOOM = IMAGERY_MAX_ZOOM;
+export const MAX_FIT_ZOOM = Math.min(18, IMAGERY_MAX_ZOOM);
 
 /** Zoom used to show a single known coordinate, e.g. before a boundary has any corners. */
 export const POINT_FOCUS_ZOOM = 16;

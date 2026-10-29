@@ -76,7 +76,8 @@ export function MapView({
 
   // One map per site; the registry layers are synced onto it by the effect below.
   const siteId = site.id;
-  const bbox = site.bbox;
+  const initialBounds = useRef(site.bbox);
+  initialBounds.current = site.bbox;
   const onMapReadyRef = useRef(onMapReady);
   onMapReadyRef.current = onMapReady;
 
@@ -87,7 +88,7 @@ export function MapView({
     const instance = new MapLibreMap({
       container,
       style: { version: 8, sources: {}, layers: [] },
-      bounds: bbox,
+      bounds: initialBounds.current,
       fitBoundsOptions: { padding: FIT_PADDING, maxZoom: MAX_FIT_ZOOM },
       attributionControl: false, // credits are always shown by <ImageryAttribution>
       transformRequest,

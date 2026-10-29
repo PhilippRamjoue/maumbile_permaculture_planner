@@ -24,6 +24,10 @@ jobs:
         run: uv run ruff format --check .
       - name: Type check
         run: uv run mypy app
+      - name: Module boundaries
+        run: uv run python scripts/check_architecture.py
+      - name: Source versions
+        run: uv run python ../scripts/check_versions.py
       - name: Frontend API contract drift
         run: uv run python scripts/generate_frontend_contracts.py --check
       - name: Tests (unit + PostGIS integration via Testcontainers)
@@ -48,6 +52,8 @@ jobs:
         run: npm run lint
       - name: Type check
         run: npm run typecheck
+      - name: Unused code
+        run: npm run unused
       - name: Tests
         run: npm test
       - name: Build

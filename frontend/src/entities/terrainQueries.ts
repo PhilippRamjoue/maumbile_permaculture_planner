@@ -11,7 +11,7 @@ export const terrainKeys = {
 /** While a job is queued/running the status is re-read this often. */
 export const TERRAIN_POLL_MS = 2000;
 
-export const terrainApi = {
+const terrainApi = {
   get: (siteId: string) => apiFetch<TerrainRead>(`/sites/${encodeURIComponent(siteId)}/terrain`),
   /** 202 = queued/in progress, 200 = already derived (only the status is returned). */
   request: (siteId: string, contourIntervalM?: number) =>

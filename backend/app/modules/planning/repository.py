@@ -162,6 +162,7 @@ class PlanningRepository:
                     id=layer_ids[layer.id],
                     plan_id=duplicate.id,
                     name=layer.name,
+                    role=layer.role,
                     sort_order=layer.sort_order,
                     visible=layer.visible,
                     created_at=layer.created_at,

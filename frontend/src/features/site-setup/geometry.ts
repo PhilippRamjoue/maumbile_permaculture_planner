@@ -51,7 +51,7 @@ export function roundCoord(value: number): string {
 }
 
 /** Web-Mercator's latitude limit; the map cannot show (or click) anything beyond it. */
-export const MAX_MERCATOR_LAT = 85.0511287798;
+const MAX_MERCATOR_LAT = 85.0511287798;
 
 /**
  * A map position as a valid [lng, lat]. MapLibre does not wrap longitude: after panning across
@@ -224,7 +224,7 @@ function onSegment(a: LngLat, b: LngLat, p: LngLat): boolean {
 }
 
 /** Whether segments p1p2 and p3p4 cross or touch. */
-export function segmentsIntersect(p1: LngLat, p2: LngLat, p3: LngLat, p4: LngLat): boolean {
+function segmentsIntersect(p1: LngLat, p2: LngLat, p3: LngLat, p4: LngLat): boolean {
   const o1 = orientation(p1, p2, p3);
   const o2 = orientation(p1, p2, p4);
   const o3 = orientation(p3, p4, p1);
@@ -269,9 +269,9 @@ export function ringAreaM2(ring: LngLat[]): number {
   return Math.abs(twice) / 2;
 }
 
-export const MIN_RING_POINTS = 3;
+const MIN_RING_POINTS = 3;
 
-export type RingStatus = "empty" | "incomplete" | "invalid" | "valid";
+type RingStatus = "empty" | "incomplete" | "invalid" | "valid";
 
 export interface RingValidation {
   status: RingStatus;

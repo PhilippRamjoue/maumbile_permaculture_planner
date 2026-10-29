@@ -3,8 +3,8 @@ import { slopeOverlayGeoJSON } from "./slopeOverlay";
 
 /** Layers of this group are toggled from the terrain panel (see `features/terrain`). */
 export const TERRAIN_GROUP = "terrain";
-export const TERRAIN_SLOPE_LAYER_ID = "terrain-slope";
-export const TERRAIN_CONTOURS_LAYER_ID = "terrain-contours";
+const TERRAIN_SLOPE_LAYER_ID = "terrain-slope";
+const TERRAIN_CONTOURS_LAYER_ID = "terrain-contours";
 
 /** Slope classes as translucent colour fill, drawn straight from the backend's slope grid. */
 export const terrainSlopeLayer: MapLayerDefinition = {

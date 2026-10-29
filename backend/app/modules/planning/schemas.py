@@ -121,6 +121,7 @@ class LayerRead(BaseModel):
     id: uuid.UUID
     plan_id: uuid.UUID
     name: str
+    role: FeatureType | None
     sort_order: int
     visible: bool
     created_at: datetime

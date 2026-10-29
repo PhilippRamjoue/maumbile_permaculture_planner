@@ -70,7 +70,7 @@ jobs:
         with:
           context: ${{ matrix.context }}
           push: true
-          # The frontend Dockerfile stamps this into the SPA (footer); the backend ignores it.
+          # Stamp both the SPA footer and backend OpenAPI with the release version.
           build-args: |
             APP_VERSION=${{ needs.check.outputs.version }}
           tags: ${{ steps.meta.outputs.tags }}

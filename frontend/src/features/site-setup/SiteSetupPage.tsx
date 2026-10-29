@@ -11,6 +11,7 @@ import { ModalDialog } from "../../shared/ui/ModalDialog";
 /** `/sites/new`: pick the country, outline the land, create the site and open its map. */
 export function SiteSetupPage() {
   const { data: user } = useCurrentUser();
+  const [initialUser] = useState(user);
   const step = useSetupStore((s) => s.step);
   const countryCode = useSetupStore((s) => s.countryCode);
   const [recovered, setRecovered] = useState(false);
@@ -23,10 +24,12 @@ export function SiteSetupPage() {
 
   // A fresh draft each visit; start from the user's own country when they have one.
   useEffect(() => {
-    useSetupStore.getState().reset({ countryCode: user?.country_code?.toUpperCase() ?? null });
-    if (user) setRecovered(restoreSetupDraft(user.id));
+    useSetupStore
+      .getState()
+      .reset({ countryCode: initialUser?.country_code?.toUpperCase() ?? null });
+    if (initialUser) setRecovered(restoreSetupDraft(initialUser.id));
     const unsubscribe = useSetupStore.subscribe(() => {
-      if (user) persistSetupDraft(user.id);
+      if (initialUser) persistSetupDraft(initialUser.id);
     });
     const beforeUnload = (event: BeforeUnloadEvent) => {
       const draft = useSetupStore.getState();
@@ -42,7 +45,7 @@ export function SiteSetupPage() {
       useSetupStore.getState().reset();
     };
     // Only on mount/unmount: later user refetches must not wipe the draft.
-  }, []);
+  }, [initialUser]);
 
   return (
     <section className="setup">
