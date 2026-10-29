@@ -6,6 +6,41 @@ All notable changes to Maumbile are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-29
+
+A round of design-editor improvements from hands-on feedback: more direct shaping and placing,
+planting shown as rows, path widths drawn to scale, and an optional satellite source per site.
+
+### Added
+
+- **A toggleable compass** on the map (N/E/S/W), a view aid alongside the distance grid.
+- **Per-site satellite source.** Esri stays the default; where another basemap covers the site
+  (e.g. Sentinel-2 cloudless) you can switch to it — useful for tracing borders under tree cover.
+  The choice is remembered per site and does not affect measurements, which are computed from the
+  geometry, not the imagery.
+- **Round or rectangular footprints.** Any footprint element (water tank, house, shed, …) can be
+  switched between a circle and a rectangle, and its editor now spells out the shape, the exact size
+  and the resulting area — so a Ø5 m tank reading ~19.6 m² (not 25) is no longer surprising.
+- **Free-form element shapes.** A footprint element can be reshaped freely into a custom polygon —
+  drag corners, add or remove points — with a way back to a plain rectangle.
+- **Path and road width in metres.** Paths and roads carry a real-world width (e.g. a 1 m path, a
+  4 m road) and are drawn to scale on the map, holding that width across zoom.
+- **Rows of icons along a line.** A line can repeat a chosen icon (tree, shrub, …) at an adjustable
+  spacing — so a windbreak or hedge shows as a row of trees, and drawing a line then setting an icon
+  and spacing places evenly spaced trees as a single editable object.
+- **In-editor plan switcher and "Duplicate plan".** Switch between a site's plans without leaving
+  the editor, and save the current design as a new plan to explore variants.
+- Additive migrations `0013_path_widths` and `0014_row_icons` add the path/road width and
+  line-row defaults to the element catalogue. Existing plans and features are retained.
+
+### Changed
+
+- **A clearer add → edit → done flow** in every step: a prominent banner while placing something
+  (with an explicit "Stop placing") and a plain "Done" when editing an item, so it is always obvious
+  what the next click will do.
+- **The sector panel is rebalanced** — its add options (Sun path, Draw by hand, Rectangle, From
+  bearings) read as equal choices instead of the sun dominating.
+
 ## [0.2.4] - 2026-10-28
 
 Clearer editor panels and map controls, from more hands-on testing.
@@ -179,7 +214,8 @@ First public release.
 - Released under AGPL-3.0. All instance configuration and secrets live in the environment, never
   in the repository.
 
-[Unreleased]: https://github.com/PhilippRamjoue/maumbile_permaculture_planner/compare/v0.2.4...HEAD
+[Unreleased]: https://github.com/PhilippRamjoue/maumbile_permaculture_planner/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/PhilippRamjoue/maumbile_permaculture_planner/compare/v0.2.4...v0.3.0
 [0.2.4]: https://github.com/PhilippRamjoue/maumbile_permaculture_planner/compare/v0.2.3...v0.2.4
 [0.2.3]: https://github.com/PhilippRamjoue/maumbile_permaculture_planner/compare/v0.2.2...v0.2.3
 [0.2.2]: https://github.com/PhilippRamjoue/maumbile_permaculture_planner/compare/v0.1.4...v0.2.2
