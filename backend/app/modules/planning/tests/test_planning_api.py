@@ -12,6 +12,7 @@ from httpx import AsyncClient
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine
 
+from app.modules.planning.icons import GLYPHS
 from app.modules.planning.seed import ELEMENT_TYPE_CATALOG
 
 pytestmark = pytest.mark.integration
@@ -130,6 +131,14 @@ async def test_path_and_road_default_to_a_real_world_width(api: AsyncClient) -> 
     assert by_key["path"]["default_style"]["width_m"] == 1.0
     assert by_key["road"]["default_style"]["width_m"] == 4.0
     assert "width_m" not in by_key["fence"]["default_style"]
+
+
+async def test_hedge_and_windbreak_are_planted_as_icon_rows(api: AsyncClient) -> None:
+    by_key = {e["key"]: e for e in (await api.get(f"{API}/element-types")).json()}
+    for key in ("hedge", "windbreak"):
+        style = by_key[key]["default_style"]
+        assert style["row_icon"] in GLYPHS and style["row_spacing_m"] > 0, key
+    assert "row_icon" not in by_key["fence"]["default_style"]
 
 
 # ── plans & layers ─────────────────────────────────────────────────────────────────────────

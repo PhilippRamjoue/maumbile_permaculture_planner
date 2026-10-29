@@ -248,4 +248,54 @@ describe("FeatureProperties", () => {
     propertiesFor(feature({ shape: "round", diameter_m: 2 }));
     expect(screen.queryByLabelText("Width (m)")).toBeNull();
   });
+
+  const line = (properties: Record<string, unknown>): DesignFeature => ({
+    ...feature(null),
+    geometry: {
+      type: "LineString",
+      coordinates: [
+        [35, -3],
+        [35.001, -3],
+      ],
+    },
+    properties: { name: "Windbreak", ...properties },
+  });
+
+  it("lets a line become a row of icons, with the spacing between them", async () => {
+    const { onChange, user } = propertiesFor(line({}));
+    expect(screen.queryByLabelText("Spacing (m)")).toBeNull(); // nothing to space yet
+    await user.selectOptions(screen.getByLabelText("Row of icons"), "tree");
+    expect(lastChange(onChange).properties).toMatchObject({ row_icon: "tree", row_spacing_m: 3 });
+  });
+
+  it("edits the spacing of a row, and refuses one that is too tight", async () => {
+    const { onChange, user } = propertiesFor(line({ row_icon: "shrub", row_spacing_m: 1.5 }));
+    expect(screen.getByLabelText("Row of icons")).toHaveValue("shrub");
+    const field = screen.getByLabelText("Spacing (m)");
+    expect(field).toHaveValue("1.5");
+    await user.clear(field);
+    await user.type(field, "6");
+    expect(lastChange(onChange).properties).toMatchObject({ row_icon: "shrub", row_spacing_m: 6 });
+    onChange.mockClear();
+    await user.clear(field);
+    await user.paste("0.1");
+    expect(screen.getByRole("alert")).toHaveTextContent(/between/);
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it("takes the row away again with None, leaving the rest of the line alone", async () => {
+    const { onChange, user } = propertiesFor(
+      line({ row_icon: "tree", row_spacing_m: 4, color: "#123456" }),
+    );
+    await user.selectOptions(screen.getByLabelText("Row of icons"), "");
+    const saved = lastChange(onChange);
+    expect("row_icon" in saved.properties).toBe(false);
+    expect("row_spacing_m" in saved.properties).toBe(false);
+    expect(saved.properties).toMatchObject({ name: "Windbreak", color: "#123456" });
+  });
+
+  it("offers no row for a polygon", () => {
+    propertiesFor(feature({ shape: "round", diameter_m: 2 }));
+    expect(screen.queryByLabelText("Row of icons")).toBeNull();
+  });
 });

@@ -3,6 +3,7 @@ import type { Feature, LineString } from "geojson";
 import type { DesignFeature } from "../../../entities/planning";
 import { badgeName } from "../icons";
 import { widthMOf } from "../lineWidth";
+import { rowOf, rowPoints } from "../rowIcons";
 import { sectorKindOf, type SectorKind } from "../sectors";
 import { isEditable, isShown, focusMode, type ContextGroup, type FocusId } from "./modes";
 
@@ -95,12 +96,9 @@ export function renderableFeatures(
   selectedId: string | null,
   drawingId: string | null,
 ) {
-  return features
-    .filter(
-      (f) =>
-        view.isShown(f) &&
-        (f.id !== drawingId || (f.geometry.type === "Polygon" && view.iconOf(f) !== null)),
-    )
+  const shown = features.filter((f) => view.isShown(f));
+  const drawn = shown
+    .filter((f) => f.id !== drawingId || (f.geometry.type === "Polygon" && view.iconOf(f) !== null))
     .map((f) => ({
       ...f,
       properties: {
@@ -119,4 +117,34 @@ export function renderableFeatures(
         _icon: iconName(view.iconOf(f), f.properties.color),
       },
     }));
+  // A line with a row icon also gets its icons, even while Terra Draw is editing the line itself.
+  return [...drawn, ...shown.flatMap((f) => rowIcons(f, view))];
+}
+
+/**
+ * The icons of a line's row as render-only points, `<id>#row<n>`, along it at the row's spacing.
+ * They are not in the document, so they can neither be picked nor saved.
+ */
+function rowIcons(f: DesignFeature, view: FocusView) {
+  const row = f.geometry.type === "LineString" ? rowOf(f.properties) : null;
+  if (!row || f.geometry.type !== "LineString") return [];
+  const color = /^#[0-9a-f]{6}$/i.test(String(f.properties.color)) ? f.properties.color : "#2f855a";
+  return rowPoints(f.geometry, row.spacing_m).map((coordinates, n) => ({
+    type: "Feature" as const,
+    id: `${f.id}#row${n}`,
+    geometry: { type: "Point" as const, coordinates },
+    properties: {
+      _editor_id: `${f.id}#row${n}`,
+      _context: !view.isEditable(f),
+      _selected: false,
+      _drawing: false,
+      _row: true,
+      _width: 0,
+      _width_m: 0,
+      _radius: 0,
+      _opacity: 1,
+      color,
+      _icon: iconName(row.icon, color),
+    },
+  }));
 }

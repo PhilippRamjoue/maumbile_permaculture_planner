@@ -2,6 +2,7 @@ import type { DesignFeature, PlanLayer } from "../../entities/planning";
 import { FootprintFields, NumberField } from "./FootprintFields";
 import { boundingFootprint, footprintOf, withFootprint, withoutFootprint } from "./footprint";
 import { widthMOf, widthProblem } from "./lineWidth";
+import { ROW_ICONS, rowOf, rowSpacingProblem } from "./rowIcons";
 import {
   isParametricSector,
   normalizeBearing,
@@ -40,6 +41,16 @@ export function FeatureProperties({
       bearing_to: normalizeBearing(Number(selected.properties.bearing_to ?? 0) + delta),
     });
   const parametricSector = isParametricSector(selected);
+  // A line can be drawn as a row of icons (a windbreak of trees): an icon and the gap between them.
+  const rowIcon = rowOf(selected.properties)?.icon ?? "";
+  const rowSpacing = rowOf(selected.properties)?.spacing_m ?? 3;
+  const setRowIcon = (icon: string) => {
+    if (icon) return patchProperties({ row_icon: icon, row_spacing_m: rowSpacing });
+    const properties = { ...selected.properties };
+    delete properties.row_icon;
+    delete properties.row_spacing_m;
+    onChange({ ...selected, properties });
+  };
   // An element drawn as a to-scale footprint can be let go of: it becomes a plain polygon whose
   // corners are dragged on the map. A free polygon element can be squared up again.
   const hasFootprint = footprintOf(selected) !== null;
@@ -78,6 +89,29 @@ export function FeatureProperties({
         >
           Back to rectangle
         </button>
+      )}
+      {selected.geometry.type === "LineString" && (
+        <>
+          <label>
+            Row of icons
+            <select value={rowIcon} onChange={(event) => setRowIcon(event.target.value)}>
+              <option value="">None (plain line)</option>
+              {ROW_ICONS.map((icon) => (
+                <option key={icon} value={icon}>
+                  {icon}
+                </option>
+              ))}
+            </select>
+          </label>
+          {rowIcon && (
+            <NumberField
+              label="Spacing (m)"
+              value={rowSpacing}
+              problem={rowSpacingProblem}
+              onCommit={(row_spacing_m) => patchProperties({ row_spacing_m })}
+            />
+          )}
+        </>
       )}
       {selected.feature_type === "path" && (
         <NumberField

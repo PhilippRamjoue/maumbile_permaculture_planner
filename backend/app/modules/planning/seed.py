@@ -16,13 +16,19 @@ def _fill(color: str, opacity: float = 0.4) -> dict[str, Any]:
 
 
 def _line(
-    color: str, width: float = 3, dash: bool = False, width_m: float | None = None
+    color: str,
+    width: float = 3,
+    dash: bool = False,
+    width_m: float | None = None,
+    row: tuple[str, float] | None = None,
 ) -> dict[str, Any]:
     style: dict[str, Any] = {"stroke": color, "stroke_width": width}
     if dash:
         style["dash"] = True
     if width_m is not None:
         style["width_m"] = width_m  # real-world width: the editor draws the line to scale
+    if row is not None:  # drawn as a row of this glyph, this many metres apart
+        style["row_icon"], style["row_spacing_m"] = row
     return style
 
 
@@ -70,8 +76,24 @@ _ROWS: tuple[tuple[str, str, str, str, str, str, dict[str, Any]], ...] = (
     ("stream", "Stream", "water", "element", "line", "waves", _line("#4fc3f7", 3)),
     # boundaries
     ("fence", "Fence", "boundary", "element", "line", "fence", _line("#5d4037", 2, dash=True)),
-    ("hedge", "Hedge", "boundary", "element", "line", "hedge", _line("#33691e", 5)),
-    ("windbreak", "Windbreak", "boundary", "element", "line", "wind", _line("#1b5e20", 6)),
+    (
+        "hedge",
+        "Hedge",
+        "boundary",
+        "element",
+        "line",
+        "hedge",
+        _line("#33691e", 5, row=("shrub", 1.5)),
+    ),
+    (
+        "windbreak",
+        "Windbreak",
+        "boundary",
+        "element",
+        "line",
+        "wind",
+        _line("#1b5e20", 6, row=("tree", 4.0)),
+    ),
     # animals
     ("paddock", "Paddock", "animals", "element", "polygon", "paw-print", _fill("#dce775")),
     ("beehive", "Beehive", "animals", "element", "point", "hexagon", _pin("#fbc02d")),
@@ -172,7 +194,8 @@ ELEMENT_TYPES: tuple[dict[str, Any], ...] = tuple(
 # yields),
 # the map ``icon`` (a glyph key from ``planning.icons``, None for lines and overlays) and the
 # footprint (``shape`` plus its default size) per key. ``0007_element_type_defaults``,
-# ``0009_element_type_icons``, ``0010_element_type_footprints`` and ``0013_path_widths`` hold frozen
+# ``0009_element_type_icons``, ``0010_element_type_footprints``, ``0013_path_widths`` and
+# ``0014_row_icons`` hold frozen
 # copies; a test keeps them in step, so a change here ships together with a new migration.
 ELEMENT_TYPE_CATALOG: dict[str, dict[str, Any]] = {
     row["key"]: {

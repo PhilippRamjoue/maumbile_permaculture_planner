@@ -31,6 +31,7 @@ import {
   syncRotation,
 } from "./footprint";
 import { lineWidthExpression, widthMOf } from "./lineWidth";
+import { rowOf } from "./rowIcons";
 import { liveMeasureGeometry, measureGeometry, measureMode, type Measurement } from "./measure";
 import { isParametricSector } from "./sectors";
 import type { EditorDocument, EditorStore } from "./store";
@@ -204,6 +205,9 @@ export function useEditorMap(
       if (featureType === "path") {
         properties.width_m = widthMOf({ width_m: palette?.default_style.width_m }) ?? 1;
       }
+      // A windbreak or hedge is planted out of the box: its palette entry's icon row, if it has one.
+      const row = featureType === "element" ? rowOf(palette?.default_style ?? {}) : null;
+      if (row) Object.assign(properties, { row_icon: row.icon, row_spacing_m: row.spacing_m });
       const color = palette?.default_style.fill ?? palette?.default_style.stroke;
       properties.color =
         typeof color === "string" ? color : featureType === "zone" ? "#f59e0b" : "#2f855a";
@@ -395,7 +399,7 @@ export function useEditorMap(
             layout: {
               visibility,
               "icon-image": ["get", "_icon"],
-              "icon-size": ["case", ["==", ["geometry-type"], "Point"], 1, 0.85],
+              "icon-size": ["case", flag("_row"), 0.7, ["==", ["geometry-type"], "Point"], 1, 0.85],
               "icon-allow-overlap": true,
               "icon-ignore-placement": true,
             },

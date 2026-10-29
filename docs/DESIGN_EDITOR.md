@@ -288,6 +288,19 @@ and the line stays true to scale. A selected line is two pixels wider. Features 
 (everything drawn before) keep their pixel `style.stroke_width`; the PNG/PDF export still uses that
 pixel width.
 
+## Rows of icons along a line
+
+A line feature can be drawn as a row of an icon (a windbreak of trees, a hedge of shrubs, or any
+line "brushed" with planting): `properties.row_icon` (a glyph key) and `properties.row_spacing_m`
+(0.5-100 m), set in the properties panel (*Row of icons*, *Spacing (m)*). MapLibre's
+`symbol-spacing` cannot vary per feature, so `renderableFeatures` generates the icons itself:
+`rowPoints` (`rowIcons.ts`) walks the line and emits render-only Point features `<id>#row<n>` at
+ground distances, drawn by the ordinary icon `symbol` layer (smaller, `_row`). They live only in
+the render source, so they are never saved or picked, and they stay put at every zoom. The line is
+drawn too, and the row follows it while Terra Draw edits its corners. A row is capped at 1500 icons
+(a denser one is spaced out). Hedge and windbreak palette entries carry a default row (shrub every
+1.5 m, tree every 4 m; migration `0014_row_icons`) that a new line copies; older ones stay plain.
+
 ## Verification and limits
 
 - Store tests cover geometry/properties/deletion undo/redo, dirty state and deletion payloads.
