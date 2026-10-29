@@ -3,7 +3,7 @@ import { ELEMENT_HINTS } from "../elementHints";
 import { FeatureProperties } from "../FeatureProperties";
 import { defaultFootprint, footprintLabel } from "../footprint";
 import { GlyphIcon } from "../GlyphIcon";
-import { BackToList, FeatureList, ToolButton, type PanelProps } from "./common";
+import { EditHeader, FeatureList, PlacingBanner, ToolButton, type PanelProps } from "./common";
 
 const paletteColor = (type: ElementType | undefined) => {
   const color = type?.default_style.fill ?? type?.default_style.stroke;
@@ -37,9 +37,29 @@ export function ElementsPanel({
   return (
     <>
       {selected ? (
-        <BackToList onBack={() => state.select(null)} label="All elements" />
+        <EditHeader
+          name={String(selected.properties.name ?? selected.feature_type)}
+          label="All elements"
+          onDone={() => state.select(null)}
+        />
       ) : (
         <>
+          <PlacingBanner
+            tool={tool}
+            what={tool === "path" ? "a path" : (chosen?.name.toLowerCase() ?? "an element")}
+            how={
+              tool === "path"
+                ? "Click points along it, then press Enter."
+                : footprint
+                  ? `One click places a ${footprintLabel(footprint)} ${chosen?.name.toLowerCase()} to scale — set the exact size afterwards.`
+                  : chosen?.shape === "area"
+                    ? "Click opposite corners to draw it."
+                    : chosen?.shape === "line"
+                      ? "Click points along it, then press Enter."
+                      : "Click the map to place it."
+            }
+            choose={choose}
+          />
           <fieldset disabled={disabled}>
             <legend>Elements</legend>
             <label>
@@ -74,7 +94,7 @@ export function ElementsPanel({
               <ToolButton tool="select" current={tool} label="Select / edit" choose={choose} />
               <button
                 type="button"
-                className="btn btn--primary"
+                className="btn btn--primary btn--armed"
                 aria-pressed={tool === "element"}
                 disabled={!elementId}
                 onClick={() => choose("element")}
@@ -83,18 +103,12 @@ export function ElementsPanel({
               </button>
               <ToolButton tool="path" current={tool} label="Draw path" choose={choose} />
             </div>
-            <p className="muted">
-              {tool === "select"
-                ? "Choose an item, click its Place button, then click the map. "
-                : footprint
-                  ? `One click places a ${footprintLabel(footprint)} ${chosen?.name.toLowerCase()} to scale — set the exact size afterwards.`
-                  : chosen?.shape === "area"
-                    ? "Click opposite corners to draw it."
-                    : chosen?.shape === "line"
-                      ? "Click points along it, then Enter."
-                      : "Click the map to place it."}{" "}
-              Paths: click points, then Enter.
-            </p>
+            {tool === "select" && (
+              <p className="muted">
+                Choose an item, click its Place button, then click the map. Paths: click points,
+                then Enter.
+              </p>
+            )}
           </fieldset>
           <FeatureList
             title="Elements"

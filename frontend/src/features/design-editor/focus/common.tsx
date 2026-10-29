@@ -20,14 +20,67 @@ export interface PanelProps {
 
 /**
  * Master–detail: with nothing selected a step shows its "add" tools and the list of what is placed;
- * selecting one (from the list or the map) drills into just that item's editor, with this breadcrumb
- * back up to the list. `label` names the list, e.g. "All sectors", so "back" always says where to.
+ * selecting one (from the list or the map) drills into just that item's editor. Its header names
+ * the item being edited, ends the edit with a primary **Done** (back to the list) and keeps the
+ * breadcrumb, whose `label` names the list, e.g. "All sectors", so "back" always says where to.
+ * Nothing needs saving: every change is already saved on its own.
  */
-export function BackToList({ onBack, label }: { onBack(): void; label: string }) {
+export function EditHeader({
+  name,
+  label,
+  onDone,
+}: {
+  name: string;
+  label: string;
+  onDone(): void;
+}) {
   return (
-    <button type="button" className="btn editor-back" onClick={onBack}>
-      ← {label}
-    </button>
+    <div className="editor-edit-header">
+      <button type="button" className="btn editor-back" onClick={onDone}>
+        ← {label}
+      </button>
+      <div className="editor-edit-header__row">
+        <h2 className="editor-edit-header__name">{name}</h2>
+        <button type="button" className="btn btn--primary" onClick={onDone}>
+          Done
+        </button>
+      </div>
+      <p className="muted editor-edit-header__note">Changes save automatically.</p>
+    </div>
+  );
+}
+
+/** The tools that take a click on the map to create something; Select and Measure do not. */
+const PLACING_TOOLS: readonly Tool[] = ["element", "path", "zone", "sector", "sector-rect"];
+export const isPlacing = (tool: Tool) => PLACING_TOOLS.includes(tool);
+
+/**
+ * While a placing tool is armed: says what is being placed and how, and ends placing with an
+ * explicit button (back to the select tool) so the state is never a mystery. Nothing while the
+ * select tool is active.
+ */
+export function PlacingBanner({
+  tool,
+  what,
+  how,
+  choose,
+}: {
+  tool: Tool;
+  what: string;
+  how: string;
+  choose(tool: Tool): void;
+}) {
+  if (!isPlacing(tool)) return null;
+  return (
+    <div className="editor-placing" role="status">
+      <div className="editor-placing__text">
+        <strong>Placing {what}</strong>
+        <span>{how}</span>
+      </div>
+      <button type="button" className="btn btn--primary" onClick={() => choose("select")}>
+        Stop placing
+      </button>
+    </div>
   );
 }
 
@@ -45,7 +98,7 @@ export function ToolButton({
   return (
     <button
       type="button"
-      className="btn"
+      className={tool === "select" ? "btn" : "btn btn--armed"}
       aria-pressed={current === tool}
       onClick={() => choose(tool)}
     >

@@ -1,6 +1,6 @@
 import type { DesignFeature } from "../../../entities/planning";
 import { FeatureProperties } from "../FeatureProperties";
-import { BackToList, FeatureList, ToolButton, type PanelProps } from "./common";
+import { EditHeader, FeatureList, PlacingBanner, ToolButton, type PanelProps } from "./common";
 
 export const ZONE_HELP: readonly string[] = [
   "The house and its immediate surroundings — where you are almost always.",
@@ -27,9 +27,19 @@ export function ZonesPanel({
   return (
     <>
       {selected ? (
-        <BackToList onBack={() => state.select(null)} label="All zones" />
+        <EditHeader
+          name={String(selected.properties.name ?? "zone")}
+          label="All zones"
+          onDone={() => state.select(null)}
+        />
       ) : (
         <>
+          <PlacingBanner
+            tool={tool}
+            what={`zone ${zoneNumber}`}
+            how="Click the corners, then click the first corner again to finish."
+            choose={choose}
+          />
           <fieldset disabled={disabled}>
             <legend>Zones</legend>
             <label>
@@ -47,7 +57,11 @@ export function ZonesPanel({
               <ToolButton tool="select" current={tool} label="Select / edit" choose={choose} />
               <ToolButton tool="zone" current={tool} label="Draw zone" choose={choose} />
             </div>
-            <p className="muted">Click the corners, then click the first corner again to finish.</p>
+            {tool === "select" && (
+              <p className="muted">
+                Click the corners, then click the first corner again to finish.
+              </p>
+            )}
           </fieldset>
           <FeatureList
             title="Zones"

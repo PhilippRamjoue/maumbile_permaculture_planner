@@ -605,9 +605,53 @@ h1 {
   flex-wrap: wrap;
   gap: 0.3rem;
 }
-/* "Back to adding": returns the panel from editing one item to the palette + list. */
+/* The header of one item's editor: where "back" goes, whose item this is, and Done. */
 .editor-back {
   margin-bottom: 0.5rem;
+}
+.editor-edit-header__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.editor-edit-header__name {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.editor-edit-header__note {
+  margin: 0.25rem 0 0.5rem;
+  font-size: 0.85rem;
+}
+/* Shown while a placing tool is armed: what is being placed, and the way out of placing. */
+.editor-placing {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  margin: 0 0 0.6rem;
+  padding: 0.55rem 0.7rem;
+  background: color-mix(in srgb, var(--gold) 22%, var(--surface));
+  border: 2px solid var(--gold);
+  border-radius: 0.5rem;
+}
+.editor-placing__text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+  font-size: 0.9rem;
+}
+.editor-placing .btn {
+  flex: none;
+}
+/* An armed placing tool is unmistakable: solid gold, not the pale "pressed" tint. */
+.editor-sidebar .btn.btn--armed[aria-pressed="true"] {
+  background: var(--gold);
+  border-color: var(--gold);
+  color: var(--gold-contrast);
+  font-weight: 600;
 }
 /* Gentle "what to do next" banner (e.g. on the site map, pointing to Design plans). */
 .site-map__next {
@@ -1296,11 +1340,19 @@ h1 {
   box-sizing: border-box;
   margin-top: 0.2rem;
 }
-/* Fold the compass-bearings adder so the sector list sits near the top of the step. */
-.sector-add__bearings {
-  margin-top: 0.5rem;
+/* The four ways to add a sector are equal-weight choices in an even grid, so none leads. */
+.sector-add__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.3rem;
 }
-.sector-add__bearings > summary {
-  cursor: pointer;
-  color: var(--muted);
+.sector-add__grid .btn {
+  width: 100%;
+  text-align: center;
+}
+.sector-add p.muted {
+  margin: 0.35rem 0;
+}
+.sector-add .editor-tools {
+  margin-top: 0.4rem;
 }

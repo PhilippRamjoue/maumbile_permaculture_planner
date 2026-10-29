@@ -288,6 +288,17 @@ and the line stays true to scale. A selected line is two pixels wider. Features 
 (everything drawn before) keep their pixel `style.stroke_width`; the PNG/PDF export still uses that
 pixel width.
 
+## Add, edit, done
+
+The step panels (`focus/common.tsx`) make the flow read as add, edit, done, with autosave unchanged
+(there is deliberately no Save button). While a placing tool is armed (`element`, `path`, `zone`,
+`sector`, `sector-rect`) a `PlacingBanner` says what is being placed and how, with **Stop placing**
+(back to the select tool); the armed tool button is solid gold (`btn--armed`). Placing ends by
+itself after one feature, which then opens in its editor. Selecting a feature shows an `EditHeader`:
+the item's name as the heading, a primary **Done** (deselect, back to the list), the "← All ..."
+breadcrumb and a "Changes save automatically." note. The Sectors step offers its four ways to add
+(sun path, draw by hand, rectangle, from bearings) as an even 2 x 2 grid.
+
 ## Rows of icons along a line
 
 A line feature can be drawn as a row of an icon (a windbreak of trees, a hedge of shrubs, or any

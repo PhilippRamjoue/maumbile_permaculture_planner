@@ -1,10 +1,12 @@
+import { useState } from "react";
+
 import type { DesignFeature } from "../../../entities/planning";
 import type { Site } from "../../../entities/site";
 import { TerrainPanel } from "../../terrain";
 import { FeatureProperties } from "../FeatureProperties";
 import { SectorHelper } from "../SectorHelper";
 import { defaultSectorRadius, sectorKindOf, sunPathFeature, type SectorKind } from "../sectors";
-import { BackToList, ToolButton, type PanelProps } from "./common";
+import { EditHeader, PlacingBanner, ToolButton, type PanelProps } from "./common";
 import { SectorOverview } from "./SectorOverview";
 
 /**
@@ -30,6 +32,7 @@ export function SectorsPanel({
 }) {
   const { state, tool, choose, pick, disabled, selected, onRotate } = props;
   const radiusM = defaultSectorRadius(site.bbox);
+  const [bearingsOpen, setBearingsOpen] = useState(false);
   const addSun = () => {
     if (!sectorsLayerId) return;
     const feature = sunPathFeature(
@@ -44,19 +47,30 @@ export function SectorsPanel({
   return (
     <>
       {selected ? (
-        <BackToList onBack={() => state.select(null)} label="All sectors" />
+        <EditHeader
+          name={String(selected.properties.name ?? "sector")}
+          label="All sectors"
+          onDone={() => state.select(null)}
+        />
       ) : (
         <>
+          <PlacingBanner
+            tool={tool}
+            what={tool === "sector-rect" ? "a rectangular sector" : "a sector"}
+            how={
+              tool === "sector-rect"
+                ? "Click opposite corners."
+                : "Click the corners, then click the first corner again to finish."
+            }
+            choose={choose}
+          />
           <fieldset className="sector-add" disabled={disabled}>
             <legend>Add a sector</legend>
             <p className="muted">
               A sector is a direction something reaches your land from — sun, wind, water, fire,
               views or noise. Add any kind, and several of the same.
             </p>
-            <div className="editor-tools">
-              <ToolButton tool="select" current={tool} label="Select / edit" choose={choose} />
-              <ToolButton tool="sector" current={tool} label="Draw by hand" choose={choose} />
-              <ToolButton tool="sector-rect" current={tool} label="Rectangle" choose={choose} />
+            <div className="sector-add__grid" role="group" aria-label="How to add a sector">
               <button
                 type="button"
                 className="btn"
@@ -66,13 +80,22 @@ export function SectorsPanel({
               >
                 ☀ Sun path (today)
               </button>
+              <ToolButton tool="sector" current={tool} label="Draw by hand" choose={choose} />
+              <ToolButton tool="sector-rect" current={tool} label="Rectangle" choose={choose} />
+              <button
+                type="button"
+                className="btn"
+                aria-expanded={bearingsOpen}
+                onClick={() => setBearingsOpen((open) => !open)}
+              >
+                From bearings
+              </button>
             </div>
             <p className="muted">
               A wedge suits what radiates from a direction (sun, wind); a rectangle suits a straight
               edge like a road or fence.
             </p>
-            <details className="sector-add__bearings">
-              <summary>Add from compass bearings</summary>
+            {bearingsOpen && (
               <SectorHelper
                 origin={site.centroid.coordinates}
                 defaultRadiusM={radiusM}
@@ -80,7 +103,10 @@ export function SectorsPanel({
                 disabled={disabled}
                 onAdd={onAdd}
               />
-            </details>
+            )}
+            <div className="editor-tools">
+              <ToolButton tool="select" current={tool} label="Select / edit" choose={choose} />
+            </div>
           </fieldset>
           <SectorOverview
             sectors={sectors}

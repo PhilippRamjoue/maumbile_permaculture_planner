@@ -58,7 +58,7 @@ export function FeatureProperties({
     selected.feature_type === "element" && selected.geometry.type === "Polygon" && !hasFootprint;
   return (
     <div className="editor-properties">
-      <h2>Selected feature</h2>
+      <h3>Details</h3>
       <label>
         Feature name
         <input
