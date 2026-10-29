@@ -268,6 +268,26 @@ The size also shows in the Size readout and in the PNG/PDF export, where footpri
 polygons drawn at scale with their icon. Features placed before this change (a tree as a point)
 keep their geometry; a new one of the same type is a footprint.
 
+A **Round / Rectangle** switch in the same section converts the footprint, carrying the dominant
+dimension over (a circle's diameter becomes both sides of a square; a rectangle's longer side becomes
+the diameter), and a readout such as `Ø 5 m · circle · 19.5 m²` or `5 × 5 m · 25 m²` states the shape,
+exact size and area (a circle covers less than the square of its diameter). **Reshape freely** drops
+`properties.footprint`, so the element is a plain polygon that Terra Draw edits with vertex handles
+(add, move, remove); the Exact size section disappears while Rotate stays. **Back to rectangle**
+re-fits a rectangle footprint to its bounding box.
+
+## Path and road width
+
+A feature with `feature_type === "path"` carries `properties.width_m` (metres, 0.1-100), set from the
+palette entry's `default_style.width_m` when drawn (path 1 m, road 4 m; migration
+`0013_path_widths`; a hand-drawn path defaults to 1 m) and edited as *Width (m)* in the properties
+panel. `focus/view.ts` surfaces it as `_width_m` and `lineWidthExpression` (`lineWidth.ts`) drives the
+map's `line-width` from it: pixels per metre double with every zoom level, so an
+`["interpolate", ["exponential", 2], ["zoom"], ...]` expression anchored at the site latitude is exact
+and the line stays true to scale. A selected line is two pixels wider. Features without `width_m`
+(everything drawn before) keep their pixel `style.stroke_width`; the PNG/PDF export still uses that
+pixel width.
+
 ## Verification and limits
 
 - Store tests cover geometry/properties/deletion undo/redo, dirty state and deletion payloads.

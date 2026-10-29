@@ -5,7 +5,13 @@ import { describe, expect, it, vi } from "vitest";
 import type { DesignFeature } from "../../entities/planning";
 import { FeatureProperties } from "./FeatureProperties";
 import { FootprintFields } from "./FootprintFields";
-import { centerOf, footprintOf, footprintPolygon, type Footprint } from "./footprint";
+import {
+  centerOf,
+  footprintOf,
+  footprintPolygon,
+  withoutFootprint,
+  type Footprint,
+} from "./footprint";
 import { measureGeometry } from "./measure";
 
 const CENTER: [number, number] = [35.74, -3.37];
@@ -62,6 +68,38 @@ describe("FootprintFields", () => {
       <FootprintFields selected={feature(null)} onChange={() => undefined} />,
     );
     expect(container).toBeEmptyDOMElement();
+  });
+
+  it("reads out shape, exact size and area, so a 5 m tank is not a surprise", () => {
+    setup(feature({ shape: "round", diameter_m: 5 }));
+    expect(screen.getByText("Ø 5 m · circle · 19.5 m²")).toBeInTheDocument();
+  });
+
+  it("switches a circle to a rectangle of the same size around the same centre", async () => {
+    const { onChange, user } = setup(feature({ shape: "round", diameter_m: 5 }));
+    expect(screen.getByRole("button", { name: "Round" })).toHaveAttribute("aria-pressed", "true");
+    await user.click(screen.getByRole("button", { name: "Rectangle" }));
+
+    const saved = lastChange(onChange);
+    expect(footprintOf(saved)).toEqual({
+      shape: "rect",
+      width_m: 5,
+      length_m: 5,
+      rotation_deg: 0,
+    });
+    const polygon = saved.geometry as GeoJSON.Polygon;
+    expect(measureGeometry(polygon).area_m2).toBeCloseTo(25, 0);
+    expect(centerOf(polygon)[1]).toBeCloseTo(CENTER[1], 6);
+  });
+
+  it("switches a rectangle to a circle of its longer side, and ignores the shape already chosen", async () => {
+    const { onChange, user } = setup(
+      feature({ shape: "rect", width_m: 3, length_m: 8, rotation_deg: 0 }),
+    );
+    await user.click(screen.getByRole("button", { name: "Rectangle" }));
+    expect(onChange).not.toHaveBeenCalled();
+    await user.click(screen.getByRole("button", { name: "Round" }));
+    expect(footprintOf(lastChange(onChange))).toEqual({ shape: "round", diameter_m: 8 });
   });
 
   it("redraws a circle at the typed diameter around the same centre", async () => {
@@ -135,5 +173,79 @@ describe("FeatureProperties", () => {
       />,
     );
     expect(screen.getByLabelText("Diameter (m)")).toBeInTheDocument();
+  });
+
+  const propertiesFor = (selected: DesignFeature) => {
+    const onChange = vi.fn<(feature: DesignFeature) => void>();
+    render(
+      <FeatureProperties
+        selected={selected}
+        layers={[]}
+        onChange={onChange}
+        onDelete={() => undefined}
+        onRotate={() => undefined}
+      />,
+    );
+    return { onChange, user: userEvent.setup() };
+  };
+
+  it("lets a footprint element be reshaped freely, which drops its footprint", async () => {
+    const { onChange, user } = propertiesFor(
+      feature({ shape: "rect", width_m: 8, length_m: 6, rotation_deg: 0 }),
+    );
+    expect(screen.queryByRole("button", { name: "Back to rectangle" })).toBeNull();
+    await user.click(screen.getByRole("button", { name: "Reshape freely" }));
+    const saved = lastChange(onChange);
+    expect(footprintOf(saved)).toBeNull();
+    expect("footprint" in saved.properties).toBe(false);
+    expect(saved.geometry).toEqual(
+      feature({ shape: "rect", width_m: 8, length_m: 6, rotation_deg: 0 }).geometry,
+    );
+  });
+
+  it("hides the exact size of a custom shape, keeps rotate, and can square it up again", async () => {
+    const custom = withoutFootprint(
+      feature({ shape: "rect", width_m: 8, length_m: 6, rotation_deg: 0 }),
+    );
+    const { onChange, user } = propertiesFor(custom);
+    expect(screen.queryByText("Exact size")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Reshape freely" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Rotate left 15°" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Back to rectangle" }));
+    const fp = footprintOf(lastChange(onChange));
+    expect(fp).toMatchObject({ shape: "rect" });
+    expect((fp as { width_m: number }).width_m).toBeCloseTo(8, 1);
+  });
+
+  it("offers a width in metres for a path, and saves it", async () => {
+    const path: DesignFeature = {
+      ...feature(null),
+      feature_type: "path",
+      geometry: {
+        type: "LineString",
+        coordinates: [
+          [35, -3],
+          [35.001, -3],
+        ],
+      },
+      properties: { name: "Path", width_m: 1 },
+    };
+    const { onChange, user } = propertiesFor(path);
+    expect(screen.queryByText("Exact size")).toBeNull();
+    const field = screen.getByLabelText("Width (m)");
+    expect(field).toHaveValue("1");
+    await user.clear(field);
+    await user.type(field, "4");
+    expect(lastChange(onChange).properties.width_m).toBe(4);
+    await user.clear(field);
+    await user.paste("900");
+    expect(screen.getByRole("alert")).toHaveTextContent(/between/);
+    expect(lastChange(onChange).properties.width_m).toBe(4);
+  });
+
+  it("shows no width for an element that is not a path", () => {
+    propertiesFor(feature({ shape: "round", diameter_m: 2 }));
+    expect(screen.queryByLabelText("Width (m)")).toBeNull();
   });
 });

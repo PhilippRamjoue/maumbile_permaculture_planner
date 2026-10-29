@@ -1,6 +1,8 @@
 import type { Polygon, Position } from "geojson";
 
 import type { DesignFeature, ElementType } from "../../entities/planning";
+import { formatArea } from "../../shared/format";
+import { measureGeometry } from "./measure";
 import { offsetPoint } from "./sectors";
 
 /**
@@ -192,4 +194,65 @@ export function footprintLabel(footprint: Footprint): string {
   return footprint.shape === "round"
     ? `Ø ${m(footprint.diameter_m)} m`
     : `${m(footprint.width_m)} × ${m(footprint.length_m)} m`;
+}
+
+/**
+ * The footprint switched to `shape`, keeping the dominant dimension: a circle's diameter becomes
+ * both sides of a square, and a rectangle's longer side becomes the diameter.
+ */
+export function switchShape(footprint: Footprint, shape: Footprint["shape"]): Footprint {
+  if (footprint.shape === shape) return footprint;
+  if (footprint.shape === "round") {
+    return {
+      shape: "rect",
+      width_m: footprint.diameter_m,
+      length_m: footprint.diameter_m,
+      rotation_deg: 0,
+    };
+  }
+  return { shape: "round", diameter_m: Math.max(footprint.width_m, footprint.length_m) };
+}
+
+/**
+ * "Ø 5 m · circle · 19.5 m²" or "5 × 5 m · 25 m²": shape, exact size and the area it covers, read
+ * from the drawn polygon so it agrees with the measurement shown everywhere else. A circle is
+ * smaller than the square of its diameter, which is why the area is spelled out.
+ */
+export function footprintReadout(feature: DesignFeature): string | null {
+  const footprint = footprintOf(feature);
+  if (!footprint) return null;
+  const area = measureGeometry(feature.geometry).area_m2;
+  const text = area < 100 ? `${round(area, 1)} m²` : formatArea(area);
+  return [footprintLabel(footprint), footprint.shape === "round" ? "circle" : null, text]
+    .filter(Boolean)
+    .join(" · ");
+}
+
+/** The feature as a plain polygon with the same corners: no footprint, so every corner is editable. */
+export function withoutFootprint(feature: DesignFeature): DesignFeature {
+  const properties = { ...feature.properties };
+  delete properties.footprint;
+  return { ...feature, properties };
+}
+
+const metresBetween = (a: [number, number], b: [number, number]) =>
+  measureGeometry({ type: "LineString", coordinates: [a, b] }).length_m;
+
+/**
+ * A rectangle footprint fitted to a polygon's north-aligned bounding box, redrawn as a clean
+ * rectangle about the same centre (the way back from a custom shape).
+ */
+export function boundingFootprint(geometry: Polygon): Footprint {
+  const points = geometry.coordinates.flat();
+  const lngs = points.map((p) => p[0]!);
+  const lats = points.map((p) => p[1]!);
+  const [west, east] = [Math.min(...lngs), Math.max(...lngs)];
+  const [south, north] = [Math.min(...lats), Math.max(...lats)];
+  const [lng, lat] = [(west + east) / 2, (south + north) / 2];
+  return {
+    shape: "rect",
+    width_m: Math.max(MIN_SIZE_M, round(metresBetween([west, lat], [east, lat]), 2)),
+    length_m: Math.max(MIN_SIZE_M, round(metresBetween([lng, south], [lng, north]), 2)),
+    rotation_deg: 0,
+  };
 }

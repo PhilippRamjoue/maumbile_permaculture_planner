@@ -1,5 +1,7 @@
 import type { DesignFeature, PlanLayer } from "../../entities/planning";
-import { FootprintFields } from "./FootprintFields";
+import { FootprintFields, NumberField } from "./FootprintFields";
+import { boundingFootprint, footprintOf, withFootprint, withoutFootprint } from "./footprint";
+import { widthMOf, widthProblem } from "./lineWidth";
 import {
   isParametricSector,
   normalizeBearing,
@@ -38,6 +40,11 @@ export function FeatureProperties({
       bearing_to: normalizeBearing(Number(selected.properties.bearing_to ?? 0) + delta),
     });
   const parametricSector = isParametricSector(selected);
+  // An element drawn as a to-scale footprint can be let go of: it becomes a plain polygon whose
+  // corners are dragged on the map. A free polygon element can be squared up again.
+  const hasFootprint = footprintOf(selected) !== null;
+  const freeElement =
+    selected.feature_type === "element" && selected.geometry.type === "Polygon" && !hasFootprint;
   return (
     <div className="editor-properties">
       <h2>Selected feature</h2>
@@ -50,6 +57,36 @@ export function FeatureProperties({
         />
       </label>
       <FootprintFields selected={selected} onChange={onChange} />
+      {hasFootprint && (
+        <>
+          <button className="btn" onClick={() => onChange(withoutFootprint(selected))}>
+            Reshape freely
+          </button>
+          <p className="muted">
+            Turns it into a custom shape: drag a corner to move it, drag a midpoint to add one,
+            right-click a corner to remove it.
+          </p>
+        </>
+      )}
+      {freeElement && selected.geometry.type === "Polygon" && (
+        <button
+          className="btn"
+          onClick={() =>
+            selected.geometry.type === "Polygon" &&
+            onChange(withFootprint(selected, boundingFootprint(selected.geometry)))
+          }
+        >
+          Back to rectangle
+        </button>
+      )}
+      {selected.feature_type === "path" && (
+        <NumberField
+          label="Width (m)"
+          value={widthMOf(selected.properties) ?? 1}
+          problem={widthProblem}
+          onCommit={(width_m) => patchProperties({ width_m })}
+        />
+      )}
       <details className="editor-more">
         <summary>More options</summary>
         <label>

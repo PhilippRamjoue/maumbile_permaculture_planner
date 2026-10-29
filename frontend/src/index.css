@@ -659,6 +659,10 @@ h1 {
 .editor-footprint {
   margin: 0.6rem 0;
 }
+.editor-footprint__readout {
+  margin: 0.4rem 0;
+  font-weight: 600;
+}
 .editor-footprint__field {
   display: inline-flex;
   flex-direction: column;

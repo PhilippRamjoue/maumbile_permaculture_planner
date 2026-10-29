@@ -23,7 +23,14 @@ import {
   renderGridLabel,
 } from "../map/layers/gridLabels";
 import { BADGE_PIXEL_RATIO, parseBadgeName, renderBadge } from "./icons";
-import { defaultFootprint, placeFootprint, placementMode, syncRotation } from "./footprint";
+import {
+  centerOf,
+  defaultFootprint,
+  placeFootprint,
+  placementMode,
+  syncRotation,
+} from "./footprint";
+import { lineWidthExpression, widthMOf } from "./lineWidth";
 import { liveMeasureGeometry, measureGeometry, measureMode, type Measurement } from "./measure";
 import { isParametricSector } from "./sectors";
 import type { EditorDocument, EditorStore } from "./store";
@@ -98,6 +105,8 @@ export function useEditorMap(
   boundaryRef.current = boundary;
   const document = useStore(store, (s) => s.document);
   const selectedId = useStore(store, (s) => s.selectedId);
+  // Paths and roads are drawn to scale: metres to pixels depend on the latitude of the site.
+  const siteLatitude = boundary ? centerOf(boundary)[1] : 0;
 
   // A measurement belongs to the tool that made it: switching tools (including starting a fresh
   // measurement) drops the previous reading so a stale distance never lingers.
@@ -190,6 +199,10 @@ export function useEditorMap(
       if (footprint && geometry.type === "Point") {
         geometry = placeFootprint(geometry.coordinates, footprint);
         properties.footprint = footprint;
+      }
+      // A path or road is as wide in metres as its palette entry says (a hand-drawn path: 1 m).
+      if (featureType === "path") {
+        properties.width_m = widthMOf({ width_m: palette?.default_style.width_m }) ?? 1;
       }
       const color = palette?.default_style.fill ?? palette?.default_style.stroke;
       properties.color =
@@ -368,12 +381,7 @@ export function useEditorMap(
             layout: { visibility },
             paint: {
               "line-color": ["get", "color"],
-              "line-width": [
-                "case",
-                flag("_selected"),
-                ["+", ["get", "_width"], 2],
-                ["get", "_width"],
-              ],
+              "line-width": lineWidthExpression(siteLatitude),
               "line-opacity": byContext(1, CONTEXT_OPACITY),
             },
           });
@@ -461,7 +469,7 @@ export function useEditorMap(
         /* map already removed during route teardown */
       }
     };
-  }, [map, document, selectedId, tool, saving, imagery, overlays, view]);
+  }, [map, document, selectedId, tool, saving, imagery, overlays, view, siteLatitude]);
 
   const rotate = (angle: number) => {
     const draw = drawRef.current;

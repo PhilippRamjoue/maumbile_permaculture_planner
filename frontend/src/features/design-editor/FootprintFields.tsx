@@ -3,8 +3,10 @@ import { useState } from "react";
 import type { DesignFeature } from "../../entities/planning";
 import {
   footprintOf,
+  footprintReadout,
   normalizeDegrees,
   sizeProblem,
+  switchShape,
   withFootprint,
   type Footprint,
 } from "./footprint";
@@ -13,7 +15,7 @@ import {
 const parse = (text: string) => (text.trim() === "" ? Number.NaN : Number(text.replace(",", ".")));
 const show = (value: number) => String(Number(value.toFixed(2)));
 
-function NumberField({
+export function NumberField({
   label,
   value,
   problem,
@@ -57,7 +59,8 @@ const rotationProblem = (degrees: number) =>
 /**
  * The exact size of a to-scale element: its diameter, or its width and length and the turn of its
  * rectangle. Placing an element never asks for these; they are here when a plan needs the real
- * numbers. Editing one redraws the footprint around the same centre.
+ * numbers. Editing one redraws the footprint around the same centre, and so does switching
+ * between a round and a rectangular shape (the larger dimension carries over).
  */
 export function FootprintFields({
   selected,
@@ -72,6 +75,20 @@ export function FootprintFields({
   return (
     <fieldset className="editor-footprint">
       <legend>Exact size</legend>
+      <div className="editor-tools" role="group" aria-label="Shape">
+        {(["round", "rect"] as const).map((shape) => (
+          <button
+            key={shape}
+            type="button"
+            className="btn"
+            aria-pressed={footprint.shape === shape}
+            onClick={() => footprint.shape !== shape && change(switchShape(footprint, shape))}
+          >
+            {shape === "round" ? "Round" : "Rectangle"}
+          </button>
+        ))}
+      </div>
+      <p className="editor-footprint__readout">{footprintReadout(selected)}</p>
       {footprint.shape === "round" ? (
         <NumberField
           label="Diameter (m)"

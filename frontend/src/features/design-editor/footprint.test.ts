@@ -3,16 +3,20 @@ import { describe, expect, it } from "vitest";
 
 import type { DesignFeature } from "../../entities/planning";
 import {
+  boundingFootprint,
   centerOf,
   defaultFootprint,
   footprintLabel,
   footprintOf,
   footprintPolygon,
+  footprintReadout,
   placementMode,
   rotationOf,
   sizeProblem,
+  switchShape,
   syncRotation,
   withFootprint,
+  withoutFootprint,
   type Footprint,
 } from "./footprint";
 import { measureGeometry, orientedSize } from "./measure";
@@ -210,5 +214,88 @@ describe("catalog helpers", () => {
     expect(footprintLabel({ shape: "rect", width_m: 1.2, length_m: 4, rotation_deg: 10 })).toBe(
       "1.2 × 4 m",
     );
+  });
+});
+
+describe("switching shape", () => {
+  it("turns a circle into a square of its diameter, and a rectangle into a circle of its longer side", () => {
+    expect(switchShape({ shape: "round", diameter_m: 5 }, "rect")).toEqual({
+      shape: "rect",
+      width_m: 5,
+      length_m: 5,
+      rotation_deg: 0,
+    });
+    expect(
+      switchShape({ shape: "rect", width_m: 3, length_m: 8, rotation_deg: 40 }, "round"),
+    ).toEqual({ shape: "round", diameter_m: 8 });
+    expect(
+      switchShape({ shape: "rect", width_m: 9, length_m: 2, rotation_deg: 0 }, "round"),
+    ).toEqual({ shape: "round", diameter_m: 9 });
+  });
+
+  it("leaves a footprint of the same shape alone", () => {
+    const tank: Footprint = { shape: "round", diameter_m: 2 };
+    expect(switchShape(tank, "round")).toBe(tank);
+  });
+
+  it("redraws round to rectangle around the same centre, at the same width and length", () => {
+    const tank = feature({ shape: "round", diameter_m: 5 });
+    const square = withFootprint(tank, switchShape(footprintOf(tank)!, "rect"));
+    const polygon = square.geometry as GeoJSON.Polygon;
+    expect(footprintOf(square)).toMatchObject({ shape: "rect", width_m: 5, length_m: 5 });
+    expect(measureGeometry(polygon).area_m2).toBeCloseTo(25, 0);
+    expect(centerOf(polygon)[0]).toBeCloseTo(CLICK[0], 6);
+    expect(centerOf(polygon)[1]).toBeCloseTo(CLICK[1], 6);
+    // ...and back again, the diameter survives the round trip.
+    const back = withFootprint(square, switchShape(footprintOf(square)!, "round"));
+    expect(footprintOf(back)).toEqual({ shape: "round", diameter_m: 5 });
+  });
+});
+
+describe("footprintReadout", () => {
+  it("spells out why a 5 m tank covers less than 25 m²", () => {
+    expect(footprintReadout(feature({ shape: "round", diameter_m: 5 }))).toBe(
+      "Ø 5 m · circle · 19.5 m²",
+    );
+  });
+
+  it("gives a rectangle's size and area, in hectares when large", () => {
+    expect(
+      footprintReadout(feature({ shape: "rect", width_m: 5, length_m: 5, rotation_deg: 0 })),
+    ).toBe("5 × 5 m · 25 m²");
+    expect(
+      footprintReadout(feature({ shape: "rect", width_m: 8, length_m: 6, rotation_deg: 20 })),
+    ).toMatch(/^8 × 6 m · (47\.9|48) m²$/); // the polygon is a hair off true metres
+    expect(
+      footprintReadout(feature({ shape: "rect", width_m: 200, length_m: 100, rotation_deg: 0 })),
+    ).toBe("200 × 100 m · 2 ha");
+  });
+
+  it("is null for a feature without a footprint", () => {
+    expect(
+      footprintReadout(withoutFootprint(feature({ shape: "round", diameter_m: 5 }))),
+    ).toBeNull();
+  });
+});
+
+describe("custom shapes", () => {
+  it("drops the footprint but keeps the corners and everything else", () => {
+    const house = feature({ shape: "rect", width_m: 8, length_m: 6, rotation_deg: 0 });
+    const custom = withoutFootprint(house);
+    expect(footprintOf(custom)).toBeNull();
+    expect("footprint" in custom.properties).toBe(false);
+    expect(custom.properties.name).toBe("Thing");
+    expect(custom.geometry).toEqual(house.geometry);
+    expect(house.properties.footprint).toBeDefined(); // the original is untouched
+  });
+
+  it("re-derives a rectangle from the bounding box of a custom shape", () => {
+    const l = withoutFootprint(
+      feature({ shape: "rect", width_m: 8, length_m: 6, rotation_deg: 0 }),
+    );
+    const fp = boundingFootprint(l.geometry as GeoJSON.Polygon);
+    expect(fp).toMatchObject({ shape: "rect", rotation_deg: 0 });
+    expect((fp as { width_m: number }).width_m).toBeCloseTo(8, 1);
+    expect((fp as { length_m: number }).length_m).toBeCloseTo(6, 1);
   });
 });

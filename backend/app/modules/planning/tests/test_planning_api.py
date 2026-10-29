@@ -125,6 +125,13 @@ async def test_element_types_carry_a_real_world_footprint(api: AsyncClient) -> N
     assert by_key["path"]["shape"] == "line" and by_key["note"]["shape"] == "point"
 
 
+async def test_path_and_road_default_to_a_real_world_width(api: AsyncClient) -> None:
+    by_key = {e["key"]: e for e in (await api.get(f"{API}/element-types")).json()}
+    assert by_key["path"]["default_style"]["width_m"] == 1.0
+    assert by_key["road"]["default_style"]["width_m"] == 4.0
+    assert "width_m" not in by_key["fence"]["default_style"]
+
+
 # ── plans & layers ─────────────────────────────────────────────────────────────────────────
 async def test_plan_crud(api: AsyncClient, site: dict[str, Any]) -> None:
     created = await api.post(

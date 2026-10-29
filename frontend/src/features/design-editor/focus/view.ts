@@ -2,6 +2,7 @@ import type { Feature, LineString } from "geojson";
 
 import type { DesignFeature } from "../../../entities/planning";
 import { badgeName } from "../icons";
+import { widthMOf } from "../lineWidth";
 import { sectorKindOf, type SectorKind } from "../sectors";
 import { isEditable, isShown, focusMode, type ContextGroup, type FocusId } from "./modes";
 
@@ -109,6 +110,8 @@ export function renderableFeatures(
         _selected: f.id === selectedId,
         _drawing: f.id === drawingId,
         _width: numberStyle(f.properties.style, "stroke_width", 3, 1, 12),
+        // Real-world width of a path or road, in metres; 0 draws it at its pixel `_width` instead.
+        _width_m: widthMOf(f.properties) ?? 0,
         _radius: numberStyle(f.properties.style, "radius", 8, 3, 24),
         _opacity: numberStyle(f.properties.style, "fill_opacity", 0.3, 0, 1),
         color: /^#[0-9a-f]{6}$/i.test(String(f.properties.color)) ? f.properties.color : "#2f855a",

@@ -15,10 +15,14 @@ def _fill(color: str, opacity: float = 0.4) -> dict[str, Any]:
     return {"fill": color, "fill_opacity": opacity, "stroke": color}
 
 
-def _line(color: str, width: float = 3, dash: bool = False) -> dict[str, Any]:
+def _line(
+    color: str, width: float = 3, dash: bool = False, width_m: float | None = None
+) -> dict[str, Any]:
     style: dict[str, Any] = {"stroke": color, "stroke_width": width}
     if dash:
         style["dash"] = True
+    if width_m is not None:
+        style["width_m"] = width_m  # real-world width: the editor draws the line to scale
     return style
 
 
@@ -72,8 +76,8 @@ _ROWS: tuple[tuple[str, str, str, str, str, str, dict[str, Any]], ...] = (
     ("paddock", "Paddock", "animals", "element", "polygon", "paw-print", _fill("#dce775")),
     ("beehive", "Beehive", "animals", "element", "point", "hexagon", _pin("#fbc02d")),
     # access
-    ("path", "Path", "access", "path", "line", "route", _line("#8d6e63", 4)),
-    ("road", "Road", "access", "path", "line", "road", _line("#616161", 5)),
+    ("path", "Path", "access", "path", "line", "route", _line("#8d6e63", 4, width_m=1.0)),
+    ("road", "Road", "access", "path", "line", "road", _line("#616161", 5, width_m=4.0)),
     # planning overlays
     ("zone", "Zone", "planning", "zone", "polygon", "target", _fill("#ffa726", 0.25)),
     ("sector", "Sector", "planning", "sector", "polygon", "compass", _fill("#ef5350", 0.25)),
@@ -168,8 +172,8 @@ ELEMENT_TYPES: tuple[dict[str, Any], ...] = tuple(
 # yields),
 # the map ``icon`` (a glyph key from ``planning.icons``, None for lines and overlays) and the
 # footprint (``shape`` plus its default size) per key. ``0007_element_type_defaults``,
-# ``0009_element_type_icons`` and ``0010_element_type_footprints`` hold frozen copies; a test keeps
-# them in step, so a change here ships together with a new migration.
+# ``0009_element_type_icons``, ``0010_element_type_footprints`` and ``0013_path_widths`` hold frozen
+# copies; a test keeps them in step, so a change here ships together with a new migration.
 ELEMENT_TYPE_CATALOG: dict[str, dict[str, Any]] = {
     row["key"]: {
         "geometry_type": row["geometry_type"],
