@@ -16,7 +16,7 @@ from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from app.modules.export.schemas import ShareCreated, ShareStatus  # noqa: E402
+from app.modules.export.schemas import ShareCreated, ShareStatus, SiteImported  # noqa: E402
 from app.modules.imagery.providers import EsriWorldImageryProvider  # noqa: E402
 from app.modules.imagery.schemas import (  # noqa: E402
     ImageryMeta,
@@ -182,7 +182,9 @@ def outputs() -> dict[Path, str]:
         FRONTEND / "entities/generated/export.ts": HEADER
         + ts_interface("ShareCreated", ShareCreated.model_json_schema())
         + "\n"
-        + ts_interface("ShareStatus", ShareStatus.model_json_schema()),
+        + ts_interface("ShareStatus", ShareStatus.model_json_schema())
+        + "\n"
+        + ts_interface("SiteImported", SiteImported.model_json_schema()),
         FRONTEND / "shared/testing/imagery-contract.json": json.dumps(
             fixture.model_dump(), indent=2, ensure_ascii=False
         )

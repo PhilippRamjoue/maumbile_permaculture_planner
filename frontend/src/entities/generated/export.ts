@@ -8,3 +8,8 @@ export interface ShareStatus {
   shared: boolean;
   created_at: string | null;
 }
+
+export interface SiteImported {
+  id: string;
+  name: string;
+}

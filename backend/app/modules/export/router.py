@@ -15,13 +15,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.db import get_session
 from app.modules.auth.dependencies import CurrentUser
 from app.modules.export.access import PlanReader
+from app.modules.export.bundle import SiteBundle
 from app.modules.export.repository import ExportRepository
-from app.modules.export.schemas import ShareCreated, ShareStatus
+from app.modules.export.schemas import ShareCreated, ShareStatus, SiteImported
 from app.modules.export.service import (
     ExportedFile,
     ExportError,
     ExportFormat,
     ExportService,
+    InvalidBundleError,
     PlanForbiddenError,
     PlanNotFoundError,
     ShareNotFoundError,
@@ -60,6 +62,8 @@ def _http_error(exc: ExportError) -> HTTPException:
         return HTTPException(status.HTTP_403_FORBIDDEN, detail="You do not own this site")
     if isinstance(exc, ShareNotFoundError):
         return HTTPException(status.HTTP_404_NOT_FOUND, detail="Share link not found")
+    if isinstance(exc, InvalidBundleError):
+        return HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(exc))
     return HTTPException(status.HTTP_400_BAD_REQUEST, detail=str(exc))
 
 
@@ -89,6 +93,30 @@ async def export_plan(
         return _response(await service.export(plan_id, owner_id, format), download)
     except ExportError as exc:
         raise _http_error(exc) from exc
+
+
+@router.get("/sites/{site_id}/export/bundle", tags=["export"], response_class=Response)
+async def export_site_bundle(site_id: uuid.UUID, service: Service, owner_id: OwnerId) -> Response:
+    """Download a whole site and all its plans as a portable ``.maumbile.json`` bundle."""
+    try:
+        return _response(await service.export_site_bundle(site_id, owner_id), download=True)
+    except ExportError as exc:
+        raise _http_error(exc) from exc
+
+
+@router.post(
+    "/sites/import",
+    response_model=SiteImported,
+    status_code=status.HTTP_201_CREATED,
+    tags=["export"],
+)
+async def import_site(bundle: SiteBundle, service: Service, owner_id: OwnerId) -> SiteImported:
+    """Create a new, independently editable site in the caller's account from a bundle file."""
+    try:
+        imported = await service.import_site(owner_id, bundle)
+    except ExportError as exc:
+        raise _http_error(exc) from exc
+    return SiteImported(id=imported.id, name=imported.name)
 
 
 @router.post(

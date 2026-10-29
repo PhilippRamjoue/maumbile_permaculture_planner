@@ -6,6 +6,16 @@ All notable changes to Maumbile are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-10-29
+
+### Added
+
+- **Export and import a whole site between accounts.** Download a site — its boundary and every
+  plan (layers, features, goals) — as a portable `.maumbile.json` file, and import that file into
+  another account to recreate it there as an **independent, editable copy** (fresh ids, owned by the
+  importer). Element types are mapped by their stable key and layer roles are preserved; the import
+  is validated as untrusted input. There is no live link between the two copies.
+
 ## [0.5.2] - 2026-10-29
 
 Supersedes the never-released 0.5.1, whose build missed the matching `uv.lock` version bump.
@@ -270,7 +280,8 @@ First public release.
 - Released under AGPL-3.0. All instance configuration and secrets live in the environment, never
   in the repository.
 
-[Unreleased]: https://github.com/PhilippRamjoue/maumbile_permaculture_planner/compare/v0.5.2...HEAD
+[Unreleased]: https://github.com/PhilippRamjoue/maumbile_permaculture_planner/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/PhilippRamjoue/maumbile_permaculture_planner/compare/v0.5.2...v0.6.0
 [0.5.2]: https://github.com/PhilippRamjoue/maumbile_permaculture_planner/compare/v0.5.0...v0.5.2
 [0.5.0]: https://github.com/PhilippRamjoue/maumbile_permaculture_planner/compare/v0.4.1...v0.5.0
 [0.4.1]: https://github.com/PhilippRamjoue/maumbile_permaculture_planner/compare/v0.3.0...v0.4.1

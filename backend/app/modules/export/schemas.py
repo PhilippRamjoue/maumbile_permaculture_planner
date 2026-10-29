@@ -2,9 +2,17 @@
 
 from __future__ import annotations
 
+import uuid
 from datetime import datetime
 
 from pydantic import BaseModel
+
+
+class SiteImported(BaseModel):
+    """The new site an import created; the frontend navigates to it."""
+
+    id: uuid.UUID
+    name: str
 
 
 class ShareCreated(BaseModel):

@@ -1,11 +1,13 @@
-import { Link } from "react-router-dom";
-import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
+import { siteBundleApi } from "../../entities/siteBundle";
 import { siteKeys, sitesApi, useSites } from "../../entities/siteQueries";
 import type { Site } from "../../entities/site";
 import { ApiError } from "../../shared/api/client";
 import { formatArea, formatDate } from "../../shared/format";
+import { saveBlob } from "../export/api";
 
 function SiteCard({ site }: { site: Site }) {
   const queryClient = useQueryClient();
@@ -19,6 +21,10 @@ function SiteCard({ site }: { site: Site }) {
     mutationFn: () => sitesApi.remove(site.id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: siteKeys.all }),
   });
+  const exportBundle = useMutation({
+    mutationFn: () => siteBundleApi.export(site.id),
+    onSuccess: ({ blob, filename }) => saveBlob(blob, filename ?? `${site.name}.maumbile.json`),
+  });
   const error = rename.error ?? remove.error;
   return (
     <li className="card site-card">
@@ -31,6 +37,16 @@ function SiteCard({ site }: { site: Site }) {
       <Link className="btn btn--primary" to={`/sites/${site.id}`} aria-label={`Open ${site.name}`}>
         Open map
       </Link>
+      <button
+        type="button"
+        className="btn"
+        disabled={exportBundle.isPending}
+        onClick={() => exportBundle.mutate()}
+        aria-label={`Export ${site.name}`}
+      >
+        {exportBundle.isPending ? "Exporting…" : "Export"}
+      </button>
+      {exportBundle.error ? <p role="alert">Could not export this site. Try again.</p> : null}
       <details>
         <summary>Site settings</summary>
         <form
@@ -74,6 +90,60 @@ function SiteCard({ site }: { site: Site }) {
   );
 }
 
+function ImportSiteButton() {
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const inputRef = useRef<HTMLInputElement>(null);
+  const importSite = useMutation({
+    mutationFn: async (file: File) => {
+      let bundle: unknown;
+      try {
+        bundle = JSON.parse(await file.text());
+      } catch {
+        throw new Error("That file is not a Maumbile site bundle (it is not valid JSON).");
+      }
+      return siteBundleApi.import(bundle);
+    },
+    onSuccess: (imported) => {
+      void queryClient.invalidateQueries({ queryKey: siteKeys.all });
+      navigate(`/sites/${imported.id}`);
+    },
+  });
+  return (
+    <span className="import-site">
+      <input
+        ref={inputRef}
+        type="file"
+        accept="application/json,.json"
+        className="visually-hidden"
+        aria-label="Site bundle file"
+        onChange={(event) => {
+          const file = event.target.files?.[0];
+          event.target.value = ""; // allow re-selecting the same file
+          if (file) importSite.mutate(file);
+        }}
+      />
+      <button
+        type="button"
+        className="btn"
+        disabled={importSite.isPending}
+        onClick={() => inputRef.current?.click()}
+      >
+        {importSite.isPending ? "Importing…" : "Import site"}
+      </button>
+      {importSite.error ? (
+        <p role="alert">
+          {importSite.error instanceof ApiError
+            ? importSite.error.userMessage
+            : importSite.error instanceof Error
+              ? importSite.error.message
+              : "Could not import that file."}
+        </p>
+      ) : null}
+    </span>
+  );
+}
+
 export function SitesDashboardPage() {
   const {
     data,
@@ -90,6 +160,7 @@ export function SitesDashboardPage() {
     <section>
       <header className="page-header">
         <h1>My sites</h1>
+        <ImportSiteButton />
         <Link className="btn btn--primary" to="/sites/new">
           New site
         </Link>

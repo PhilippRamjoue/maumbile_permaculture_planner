@@ -1,9 +1,9 @@
-import { screen, within } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { screen, waitFor, within } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
 import userEvent from "@testing-library/user-event";
 
 import { site, user } from "../../shared/testing/fixtures";
-import { mockApi, problem } from "../../shared/testing/mockApi";
+import { mockApi, problem, requestedRoutes } from "../../shared/testing/mockApi";
 import { renderApp } from "../../shared/testing/renderApp";
 
 describe("SitesDashboardPage", () => {
@@ -83,6 +83,38 @@ describe("SitesDashboardPage", () => {
     renderApp("/");
 
     expect(await screen.findByText("You have no sites yet.")).toBeInTheDocument();
+  });
+
+  it("exports a site as a downloadable bundle", async () => {
+    URL.createObjectURL = vi.fn(() => "blob:fake");
+    URL.revokeObjectURL = vi.fn();
+    const click = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+    const fetchMock = mockApi({
+      "GET /auth/me": { json: user },
+      "GET /sites": { json: { items: [site], total: 1, limit: 100, offset: 0 } },
+      [`GET /sites/${site.id}/export/bundle`]: {
+        json: { bundle_version: 1, site: { name: site.name }, plans: [] },
+      },
+    });
+    renderApp("/");
+    await userEvent.click(await screen.findByRole("button", { name: `Export ${site.name}` }));
+    await waitFor(() =>
+      expect(requestedRoutes(fetchMock)).toContain(`GET /sites/${site.id}/export/bundle`),
+    );
+    expect(URL.createObjectURL).toHaveBeenCalled(); // a download was handed to the browser
+    click.mockRestore();
+  });
+
+  it("rejects an import file that is not valid JSON, without calling the API", async () => {
+    const fetchMock = mockApi({
+      "GET /auth/me": { json: user },
+      "GET /sites": { json: { items: [site], total: 1, limit: 100, offset: 0 } },
+    });
+    renderApp("/");
+    const input = await screen.findByLabelText("Site bundle file");
+    await userEvent.upload(input, new File(["not json"], "bad.json", { type: "application/json" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(/not valid json/i);
+    expect(requestedRoutes(fetchMock)).not.toContain("POST /sites/import");
   });
 
   it("reports a load failure and allows a retry", async () => {

@@ -29,6 +29,27 @@ class MeasuredFeature:
     area_m2: float
 
 
+@dataclass(frozen=True)
+class ImportLayerRow:
+    """A layer to create when importing a plan from a portable bundle."""
+
+    name: str
+    role: str | None
+    sort_order: int
+    visible: bool
+
+
+@dataclass(frozen=True)
+class ImportFeatureRow:
+    """A feature to create on import: geometry already parsed, element type already resolved."""
+
+    feature_type: str
+    element_type_id: int | None
+    layer_index: int
+    shape: BaseGeometry
+    properties: dict[str, Any]
+
+
 class FeatureWriteConflict(Exception):
     """A batch collided with an id owned by another plan; the entire write was rolled back."""
 
@@ -187,6 +208,56 @@ class PlanningRepository:
         await self._session.commit()
         await self._session.refresh(duplicate)
         return duplicate
+
+    async def import_plan(
+        self,
+        site_id: uuid.UUID,
+        *,
+        name: str,
+        description: str | None,
+        goals: dict[str, Any] | None,
+        layers: Sequence[ImportLayerRow],
+        features: Sequence[ImportFeatureRow],
+    ) -> Plan:
+        """Create a plan with its layers and features from already-validated bundle data.
+
+        Every layer and feature gets a fresh id, and features point at the new layers by index.
+        No id is ever taken from the bundle, so an import can never write across another plan.
+        One transaction, like :meth:`duplicate_plan`.
+        """
+        plan = Plan(site_id=site_id, name=name, description=description, goals=copy.deepcopy(goals))
+        self._session.add(plan)
+        await self._session.flush()
+        layer_ids: list[uuid.UUID] = []
+        for spec in layers:
+            layer_id = uuid.uuid4()
+            layer_ids.append(layer_id)
+            self._session.add(
+                Layer(
+                    id=layer_id,
+                    plan_id=plan.id,
+                    name=spec.name,
+                    role=spec.role,
+                    sort_order=spec.sort_order,
+                    visible=spec.visible,
+                )
+            )
+        await self._session.flush()  # the layers exist before features point at them
+        for feature in features:
+            self._session.add(
+                Feature(
+                    id=uuid.uuid4(),
+                    plan_id=plan.id,
+                    layer_id=layer_ids[feature.layer_index],
+                    geometry=_to_wkb(feature.shape),
+                    feature_type=feature.feature_type,
+                    element_type_id=feature.element_type_id,
+                    properties=copy.deepcopy(feature.properties),
+                )
+            )
+        await self._session.commit()
+        await self._session.refresh(plan)
+        return plan
 
     async def update_plan(self, plan: Plan, **values: Any) -> Plan:
         await self.advance_plan(plan.id, legacy="goals" in values)

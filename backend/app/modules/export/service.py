@@ -17,9 +17,10 @@ import uuid
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Literal, Protocol
+from typing import Any, Literal, Protocol
 
 from app.core.capacity import Capacity
+from app.modules.export.bundle import BUNDLE_VERSION, SiteBundle, build_bundle
 from app.modules.export.document import PlanDocument
 from app.modules.export.geojson import plan_to_geojson
 from app.modules.export.render import render_pdf, render_png
@@ -50,6 +51,10 @@ class ShareNotFoundError(ExportError):
     """Unknown, revoked or no-longer-valid share token."""
 
 
+class InvalidBundleError(ExportError):
+    """A site import bundle is unsupported or fails validation."""
+
+
 class PlanSource(Protocol):
     """Port to the planning and sites modules, acting as ``owner_id``.
 
@@ -59,6 +64,10 @@ class PlanSource(Protocol):
     async def ensure_owner(self, plan_id: uuid.UUID, owner_id: uuid.UUID) -> None: ...
 
     async def load(self, plan_id: uuid.UUID, owner_id: uuid.UUID) -> PlanDocument: ...
+
+    async def load_site(self, site_id: uuid.UUID, owner_id: uuid.UUID) -> SiteContent: ...
+
+    async def import_site(self, owner_id: uuid.UUID, bundle: SiteBundle) -> ImportedSite: ...
 
 
 @dataclass(frozen=True)
@@ -72,6 +81,24 @@ class ExportedFile:
 class ShareLink:
     token: str
     created_at: datetime
+
+
+@dataclass(frozen=True)
+class SiteContent:
+    """A site and its plans, read for an export bundle."""
+
+    name: str
+    country_code: str | None
+    boundary: dict[str, Any]
+    docs: list[PlanDocument]
+
+
+@dataclass(frozen=True)
+class ImportedSite:
+    """The new site an import created."""
+
+    id: uuid.UUID
+    name: str
 
 
 def hash_token(token: str) -> str:
@@ -115,6 +142,27 @@ class ExportService:
         self, plan_id: uuid.UUID, owner_id: uuid.UUID, fmt: ExportFormat
     ) -> ExportedFile:
         return await self._file(await self._plans.load(plan_id, owner_id), fmt)
+
+    # ── whole-site portable bundle ───────────────────────────────────────────────────────────
+    async def export_site_bundle(self, site_id: uuid.UUID, owner_id: uuid.UUID) -> ExportedFile:
+        """A downloadable JSON bundle of a site and all its plans (an editable copy)."""
+        content = await self._plans.load_site(site_id, owner_id)
+        bundle = build_bundle(
+            site_name=content.name,
+            country_code=content.country_code,
+            boundary=content.boundary,
+            docs=content.docs,
+        )
+        body = bundle.model_dump_json(indent=2).encode()
+        return ExportedFile(body, "application/json", filename_for(content.name, "maumbile.json"))
+
+    async def import_site(self, owner_id: uuid.UUID, bundle: SiteBundle) -> ImportedSite:
+        """Create a new site owned by ``owner_id`` from a bundle (fresh ids throughout)."""
+        if bundle.bundle_version != BUNDLE_VERSION:
+            raise InvalidBundleError(
+                f"Unsupported bundle_version {bundle.bundle_version}; expected {BUNDLE_VERSION}."
+            )
+        return await self._plans.import_site(owner_id, bundle)
 
     # ── share links ────────────────────────────────────────────────────────────────────────
     async def create_share(self, plan_id: uuid.UUID, owner_id: uuid.UUID) -> ShareLink:

@@ -17,6 +17,8 @@ from app.core.geo import shape_to_geojson
 from app.modules.planning.models import ElementType, Layer, Plan
 from app.modules.planning.repository import (
     FeatureWriteConflict,
+    ImportFeatureRow,
+    ImportLayerRow,
     MeasuredFeature,
     PlanningRepository,
     StaleDesign,
@@ -30,6 +32,10 @@ from app.modules.planning.validation import (
 DEFAULT_LAYERS = ("Zones", "Sectors", "Elements", "Paths", "Annotations")
 COPY_SUFFIX = " (copy)"
 MAX_PLAN_NAME = 200  # as PlanCreate allows
+# Caps for importing a plan from an untrusted bundle.
+MAX_IMPORT_LAYERS = 24
+MAX_IMPORT_FEATURES = 5000
+LAYER_ROLES = ("zone", "sector", "element", "path", "annotation")
 
 
 class PlanningError(Exception):
@@ -114,6 +120,81 @@ class PlanningService:
             return await self._repo.duplicate_plan(source, title)
         except StaleDesign as exc:
             raise NotFoundError("Plan") from exc
+
+    async def import_plan(
+        self,
+        site_id: uuid.UUID,
+        owner_id: uuid.UUID,
+        *,
+        name: str,
+        description: str | None,
+        goals: dict[str, Any] | None,
+        layers: Sequence[dict[str, Any]],
+        features: Sequence[dict[str, Any]],
+    ) -> Plan:
+        """Create a plan on a site from portable bundle data, validated as untrusted input.
+
+        Geometry and typed properties go through the same checks as a normal write; element types
+        are resolved by stable ``key`` (an unknown key becomes no element type); layer roles must be
+        known and unique per plan. Features reference their layer by index within ``layers``.
+        """
+        await self._sites.ensure_owner(site_id, owner_id)
+        if not 1 <= len(layers) <= MAX_IMPORT_LAYERS:
+            raise InvalidFeatureError(f"A plan must have 1 to {MAX_IMPORT_LAYERS} layers.")
+        if len(features) > MAX_IMPORT_FEATURES:
+            raise InvalidFeatureError(f"A plan may have at most {MAX_IMPORT_FEATURES} features.")
+        prepared_layers: list[ImportLayerRow] = []
+        seen_roles: set[str] = set()
+        for index, layer in enumerate(layers):
+            role = layer.get("role")
+            if role is not None and role not in LAYER_ROLES:
+                raise InvalidFeatureError(f"Unknown layer role {role!r}.")
+            if role is not None and role in seen_roles:
+                raise InvalidFeatureError(f"Two layers claim the role {role!r}.")
+            if role is not None:
+                seen_roles.add(role)
+            prepared_layers.append(
+                ImportLayerRow(
+                    name=str(layer["name"]),
+                    role=role,
+                    sort_order=int(layer.get("sort_order", index)),
+                    visible=bool(layer.get("visible", True)),
+                )
+            )
+        key_to_id = {t.key: t.id for t in await self._repo.list_element_types()}
+        prepared_features: list[ImportFeatureRow] = []
+        for feature in features:
+            layer_index = feature.get("layer_index")
+            if (
+                not isinstance(layer_index, int)
+                or isinstance(layer_index, bool)
+                or not 0 <= layer_index < len(prepared_layers)
+            ):
+                raise InvalidFeatureError("A feature's layer_index is out of range.")
+            properties = feature.get("properties") or {}
+            try:
+                shape = parse_geometry(feature["geometry"])
+                validate_feature(feature["feature_type"], shape, properties)
+            except FeatureValidationError as exc:
+                raise InvalidFeatureError(str(exc)) from exc
+            key = feature.get("element_type_key")
+            prepared_features.append(
+                ImportFeatureRow(
+                    feature_type=feature["feature_type"],
+                    element_type_id=key_to_id.get(key) if key else None,
+                    layer_index=layer_index,
+                    shape=shape,
+                    properties=properties,
+                )
+            )
+        return await self._repo.import_plan(
+            site_id,
+            name=name,
+            description=description,
+            goals=goals,
+            layers=prepared_layers,
+            features=prepared_features,
+        )
 
     async def list_plans(
         self, site_id: uuid.UUID, owner_id: uuid.UUID, limit: int, offset: int
