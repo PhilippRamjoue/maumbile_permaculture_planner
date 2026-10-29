@@ -18,7 +18,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from app.modules.export.schemas import ShareCreated, ShareStatus  # noqa: E402
 from app.modules.imagery.providers import EsriWorldImageryProvider  # noqa: E402
-from app.modules.imagery.schemas import ImageryMeta  # noqa: E402
+from app.modules.imagery.schemas import (  # noqa: E402
+    ImageryMeta,
+    ImageryProviderOption,
+    ImageryProviders,
+)
 from app.modules.planning.icons import GLYPHS  # noqa: E402
 from app.modules.planning.schemas import ElementTypeRead, GoalPriority, PlanGoals  # noqa: E402
 from app.modules.terrain.schemas import (  # noqa: E402
@@ -154,7 +158,14 @@ def icons_declaration() -> str:
 
 
 def outputs() -> dict[Path, str]:
-    declaration = HEADER + ts_interface("ImageryMeta", ImageryMeta.model_json_schema())
+    declaration = (
+        HEADER
+        + ts_interface("ImageryMeta", ImageryMeta.model_json_schema())
+        + "\n"
+        + ts_interface("ImageryProviderOption", ImageryProviderOption.model_json_schema())
+        + "\n"
+        + ts_interface("ImageryProviders", ImageryProviders.model_json_schema())
+    )
     provider = EsriWorldImageryProvider()
     fixture = ImageryMeta(
         covered=True,

@@ -5,9 +5,10 @@ import { describe, expect, it, vi } from "vitest";
 import { MapToolsControl } from "./MapToolsControl";
 import type { Tool } from "./useEditorMap";
 
-const show = (tool: Tool = "select", disabled = false) => {
+const show = (tool: Tool = "select", disabled = false, compass = false) => {
   const choose = vi.fn();
   const onGridChange = vi.fn();
+  const onCompassChange = vi.fn();
   const view = render(
     <MapToolsControl
       tool={tool}
@@ -16,9 +17,11 @@ const show = (tool: Tool = "select", disabled = false) => {
       grid={false}
       gridStep={5}
       onGridChange={onGridChange}
+      compass={compass}
+      onCompassChange={onCompassChange}
     />,
   );
-  return { choose, onGridChange, ...view };
+  return { choose, onGridChange, onCompassChange, ...view };
 };
 
 describe("MapToolsControl", () => {
@@ -46,6 +49,8 @@ describe("MapToolsControl", () => {
         grid={false}
         gridStep={5}
         onGridChange={vi.fn()}
+        compass={false}
+        onCompassChange={vi.fn()}
       />,
     );
     expect(screen.getByRole("button", { name: "Measure area" })).toHaveAttribute(
@@ -76,6 +81,8 @@ describe("MapToolsControl", () => {
         grid
         gridStep={5}
         onGridChange={onGridChange}
+        compass={false}
+        onCompassChange={vi.fn()}
       />,
     );
     await userEvent.click(screen.getByRole("button", { name: "Measure" }));
@@ -84,6 +91,32 @@ describe("MapToolsControl", () => {
 
     await userEvent.click(grid);
     expect(onGridChange).toHaveBeenCalledWith(false);
+  });
+
+  it("offers the compass, off until asked for, and switches it off again", async () => {
+    const { onCompassChange, rerender } = show();
+    expect(screen.queryByRole("button", { name: "Compass" })).not.toBeInTheDocument(); // folded
+    await userEvent.click(screen.getByRole("button", { name: "Measure" }));
+    const compass = screen.getByRole("button", { name: "Compass" });
+    expect(compass).toHaveAttribute("aria-pressed", "false");
+    await userEvent.click(compass);
+    expect(onCompassChange).toHaveBeenLastCalledWith(true);
+
+    rerender(
+      <MapToolsControl
+        tool="select"
+        choose={vi.fn()}
+        disabled={false}
+        grid={false}
+        gridStep={5}
+        onGridChange={vi.fn()}
+        compass
+        onCompassChange={onCompassChange}
+      />,
+    );
+    expect(screen.getByRole("button", { name: "Compass" })).toHaveAttribute("aria-pressed", "true");
+    await userEvent.click(screen.getByRole("button", { name: "Compass" }));
+    expect(onCompassChange).toHaveBeenLastCalledWith(false);
   });
 
   it("shows that a measuring tool is active even when folded", () => {

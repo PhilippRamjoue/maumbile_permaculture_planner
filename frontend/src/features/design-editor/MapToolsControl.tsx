@@ -9,8 +9,9 @@ const MEASURE_TOOLS: { tool: Tool; label: string; text: string }[] = [
 
 /**
  * The map's measuring tools: one small "Measure" button that unfolds, inline, into distance and
- * area, plus a switch for the optional distance grid (off by default). Measuring is a transient
- * drawing and the grid a visual aid, so neither is saved; both work in every focus. Render it
+ * area, plus switches for the optional distance grid and compass rose (both off by default).
+ * Measuring is a transient drawing and the grid and compass are visual aids, so none is saved; all
+ * work in every focus. Render it
  * inside the map's `.map-tools` row.
  */
 export function MapToolsControl({
@@ -20,6 +21,8 @@ export function MapToolsControl({
   grid,
   gridStep,
   onGridChange,
+  compass,
+  onCompassChange,
 }: {
   tool: Tool;
   choose(tool: Tool): void;
@@ -29,6 +32,9 @@ export function MapToolsControl({
   /** The grid's spacing in metres at the current zoom, once known. */
   gridStep: number | null;
   onGridChange(on: boolean): void;
+  /** Whether the N/E/S/W compass rose is shown over the map. */
+  compass: boolean;
+  onCompassChange(on: boolean): void;
 }) {
   const [open, setOpen] = useState(false);
   const measuring = tool.startsWith("measure");
@@ -68,6 +74,17 @@ export function MapToolsControl({
           onClick={() => onGridChange(!grid)}
         >
           {grid && gridStep ? `Grid · ${gridStep} m` : "Grid"}
+        </button>
+      )}
+      {open && (
+        <button
+          type="button"
+          className="btn"
+          aria-pressed={compass}
+          title="A compass rose marked N, E, S and W over the map"
+          onClick={() => onCompassChange(!compass)}
+        >
+          Compass
         </button>
       )}
     </div>

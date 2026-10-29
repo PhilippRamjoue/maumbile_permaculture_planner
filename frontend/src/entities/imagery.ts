@@ -13,5 +13,8 @@ export interface AttributionResponse {
   sources: DataSource[];
 }
 
-/** Backend-generated response contract for `GET /sites/{id}/imagery/meta`. */
-export type { ImageryMeta } from "./generated/imagery";
+/**
+ * Backend-generated response contracts for `GET /sites/{id}/imagery/meta` and
+ * `GET /sites/{id}/imagery/providers` (the satellite sources that cover the site).
+ */
+export type { ImageryMeta, ImageryProviderOption, ImageryProviders } from "./generated/imagery";

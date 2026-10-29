@@ -1,5 +1,6 @@
 import { useState } from "react";
 
+import type { ImageryProviders } from "../../entities/imagery";
 import type { EditorState } from "./store";
 
 const STORAGE_KEY = "permaculture.layersControl.open";
@@ -22,11 +23,19 @@ export function LayersControl({
   disabled,
   activeLayer,
   setActiveLayer,
+  imagery,
 }: {
   state: EditorState;
   disabled: boolean;
   activeLayer: string;
   setActiveLayer(id: string): void;
+  /** The satellite sources covering the site; the choice is offered when there is more than one. */
+  imagery?: {
+    providers: ImageryProviders | undefined;
+    /** The key in use (the default's, when nothing else was chosen). */
+    selected: string | null;
+    onSelect(key: string): void;
+  };
 }) {
   const [open, setOpen] = useState(readOpen);
   const toggle = () =>
@@ -101,6 +110,25 @@ export function LayersControl({
                 </button>
               </div>
             ))}
+            {imagery && (imagery.providers?.providers.length ?? 0) > 1 && (
+              <label className="layers-control__draw">
+                Satellite source
+                <select
+                  value={imagery.selected ?? imagery.providers?.default_key ?? ""}
+                  onChange={(e) => imagery.onSelect(e.target.value)}
+                >
+                  {imagery.providers?.providers.map((p) => (
+                    <option key={p.key} value={p.key}>
+                      {p.label}
+                    </option>
+                  ))}
+                </select>
+                <span className="muted">
+                  Only the picture changes: lines, areas and measurements stay exactly where they
+                  are.
+                </span>
+              </label>
+            )}
             <label className="layers-control__draw">
               New shapes go into
               <select value={activeLayer} onChange={(e) => setActiveLayer(e.target.value)}>

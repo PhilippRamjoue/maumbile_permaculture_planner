@@ -30,6 +30,10 @@ class NoImageryProviderError(ImageryError):
     """No usable imagery provider covers this site."""
 
 
+class UnknownImageryProviderError(ImageryError):
+    """The requested provider does not exist or does not cover this site."""
+
+
 class TileNotFoundError(ImageryError):
     """The tile is outside the provider's zoom/grid range or the provider has no such tile."""
 
@@ -65,8 +69,31 @@ class ImageryService:
         self._cache = cache
         self._ttl = ttl
 
-    def resolve_provider(self, country_code: str | None, bbox: BBox) -> ImageryProvider:
-        """Imagery provider for a site's country/bbox; unknown country -> global fallback."""
+    def covering_providers(self, country_code: str | None, bbox: BBox) -> list[ImageryProvider]:
+        """Every tile source that covers the site, in the order its region profile prefers them.
+
+        The first is what :meth:`resolve_provider` picks without a choice.
+        """
+        chain = self._resolver.chain(country_code or GLOBAL_PROFILE_CODE, "imagery")
+        return [
+            provider
+            for provider in chain
+            if isinstance(provider, ImageryProvider) and provider.covers(bbox)
+        ]
+
+    def resolve_provider(
+        self, country_code: str | None, bbox: BBox, key: str | None = None
+    ) -> ImageryProvider:
+        """Imagery provider for a site's country/bbox; unknown country -> global fallback.
+
+        With ``key``, that provider instead, but only if it covers the site: a source for another
+        part of the world is refused rather than silently swapped for the default.
+        """
+        if key is not None:
+            for candidate in self.covering_providers(country_code, bbox):
+                if candidate.key == key:
+                    return candidate
+            raise UnknownImageryProviderError(f"{key!r} is not an imagery source for this site")
         try:
             provider = self._resolver.resolve(country_code or GLOBAL_PROFILE_CODE, bbox, "imagery")
         except NoProviderAvailableError as exc:
@@ -84,9 +111,10 @@ class ImageryService:
         x: int,
         y: int,
         *,
+        provider_key: str | None = None,
         now: datetime | None = None,
     ) -> TileResult:
-        provider = self.resolve_provider(country_code, bbox)
+        provider = self.resolve_provider(country_code, bbox, provider_key)
         if z > provider.max_zoom or x >= 2**z or y >= 2**z:
             raise TileNotFoundError(f"tile {z}/{x}/{y} is outside {provider.key!r}'s range")
 

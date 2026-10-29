@@ -54,6 +54,8 @@ class HttpTileProvider:
 
     category = IMAGERY_CATEGORY
     key: str
+    #: Short name for the "Satellite source" choice, which also says what the source is good for.
+    label: str
     attribution: str
     license: str
     terms_url: str
@@ -88,6 +90,7 @@ class EsriWorldImageryProvider(HttpTileProvider):
     """Esri World Imagery: keyless XYZ (z/y/x) JPEG tiles. Never stored (Esri ToS)."""
 
     key = "esri_world_imagery"
+    label = "Esri World Imagery (sharpest)"
     attribution = "Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community"
     license = (
         "Esri Terms of Use (grey for commercial; used here for a free/non-commercial "
@@ -111,6 +114,7 @@ class Sentinel2CloudlessProvider(HttpTileProvider):
     """
 
     key = "sentinel2_cloudless"
+    label = "Sentinel-2 cloudless (10 m, 2016)"
     attribution = (
         "Sentinel-2 cloudless — https://s2maps.eu by EOX IT Services GmbH "
         "(contains modified Copernicus Sentinel data)"

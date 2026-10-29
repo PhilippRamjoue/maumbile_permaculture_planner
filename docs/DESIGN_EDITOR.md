@@ -288,6 +288,23 @@ and the line stays true to scale. A selected line is two pixels wider. Features 
 (everything drawn before) keep their pixel `style.stroke_width`; the PNG/PDF export still uses that
 pixel width.
 
+## Compass and satellite source
+
+Both live in the map's floating controls and are view aids, never part of the plan.
+
+- **Compass:** *Measure → Compass* shows a rose marked N, E, S and W (`CompassControl`) under the zoom
+  buttons. It reads `map.getBearing()` and follows the map's `rotate` and `move` events, so N keeps
+  pointing north if the map is ever turned.
+- **Satellite source:** `GET /sites/{id}/imagery/providers` lists the sources that cover the site
+  (`default_key` first; key, label, attribution, max zoom). `?provider=<key>` on the imagery `meta`
+  and tile endpoints picks one of them; a key that is unknown or does not cover the site is a 400,
+  never a quiet fallback. The meta's `tile_url_template` then carries `?provider=<key>`, so the map
+  and the proxy cannot disagree. The *Layers* control shows a *Satellite source* select when more
+  than one source covers the site; the choice is kept per site in `localStorage` (not saved with the
+  plan), `effectiveProvider` drops one that no longer covers the site, and `useImageryMeta` keeps
+  the previous answer while the next loads. Measurements come from the geometry on the server, never
+  from the picture, so switching sources moves nothing.
+
 ## Add, edit, done
 
 The step panels (`focus/common.tsx`) make the flow read as add, edit, done, with autosave unchanged

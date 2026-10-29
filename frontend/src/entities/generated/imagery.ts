@@ -9,3 +9,15 @@ export interface ImageryMeta {
   cacheable: boolean | null;
   tile_url_template: string | null;
 }
+
+export interface ImageryProviderOption {
+  key: string;
+  label: string;
+  attribution: string;
+  max_zoom: number;
+}
+
+export interface ImageryProviders {
+  default_key: string | null;
+  providers: ImageryProviderOption[];
+}

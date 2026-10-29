@@ -124,3 +124,76 @@ async def test_unknown_site_is_404(api: AsyncClient) -> None:
     missing = uuid.uuid4()
     assert (await api.get(f"/api/v1/sites/{missing}/imagery/meta")).status_code == 404
     assert (await api.get(f"/api/v1/sites/{missing}/imagery/5/1/1.png")).status_code == 404
+
+
+# ── choosing between the satellite sources that cover a site ───────────────────────────────
+async def test_providers_lists_every_source_covering_the_site(api: AsyncClient) -> None:
+    ke = await make_site(api, "KE", KENYA)
+    resp = await api.get(f"/api/v1/sites/{ke}/imagery/providers")
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert (
+        body["default_key"] == "esri_world_imagery"
+    )  # what the meta endpoint says without a choice
+    assert [p["key"] for p in body["providers"]] == ["esri_world_imagery", "sentinel2_cloudless"]
+    esri, sentinel = body["providers"]
+    assert esri["max_zoom"] == 19 and sentinel["max_zoom"] == 13
+    assert esri["label"] and sentinel["label"] and esri["label"] != sentinel["label"]
+    assert esri["attribution"].startswith("Source: Esri")
+
+    # No profile for Germany: only the global source covers it, so there is nothing to choose.
+    de = await make_site(api, "DE", BERLIN)
+    only = (await api.get(f"/api/v1/sites/{de}/imagery/providers")).json()
+    assert only["default_key"] == "sentinel2_cloudless"
+    assert [p["key"] for p in only["providers"]] == ["sentinel2_cloudless"]
+
+
+async def test_meta_for_a_chosen_provider_points_the_tiles_at_it(api: AsyncClient) -> None:
+    site = await make_site(api, "KE", KENYA)
+    meta = (await api.get(f"/api/v1/sites/{site}/imagery/meta?provider=sentinel2_cloudless")).json()
+    assert meta["covered"] is True
+    assert meta["provider_key"] == "sentinel2_cloudless"
+    assert meta["max_zoom"] == 13
+    assert meta["license"] == "CC-BY-4.0"
+    assert meta["attribution"].startswith("Sentinel-2 cloudless")
+    assert (
+        meta["tile_url_template"]
+        == f"/api/v1/sites/{site}/imagery/{{z}}/{{x}}/{{y}}.png?provider=sentinel2_cloudless"
+    )
+
+    # Choosing the default is allowed too; without a choice nothing changes.
+    default = (await api.get(f"/api/v1/sites/{site}/imagery/meta")).json()
+    assert default["provider_key"] == "esri_world_imagery"
+    assert "provider=" not in default["tile_url_template"]
+
+
+async def test_tiles_come_from_the_chosen_provider(api: AsyncClient, upstreams: Upstreams) -> None:
+    site = await make_site(api, "KE", KENYA)
+    base = f"/api/v1/sites/{site}/imagery/12/2380/2060.png"
+
+    chosen = await api.get(f"{base}?provider=sentinel2_cloudless")
+    assert chosen.status_code == 200, chosen.text
+    assert chosen.headers["x-imagery-provider"] == "sentinel2_cloudless"
+    assert len(upstreams.eox.requests) == 1 and upstreams.esri.requests == []
+
+    default = await api.get(base)
+    assert default.headers["x-imagery-provider"] == "esri_world_imagery"
+    assert len(upstreams.esri.requests) == 1
+
+
+async def test_a_provider_that_does_not_cover_the_site_is_rejected(
+    api: AsyncClient, upstreams: Upstreams
+) -> None:
+    de = await make_site(api, "DE", BERLIN)  # only sentinel2 covers Germany here
+    tile = f"/api/v1/sites/{de}/imagery/10/550/335.png"
+    for key in ("esri_world_imagery", "no_such_source"):
+        assert (await api.get(f"{tile}?provider={key}")).status_code == 400
+        assert (await api.get(f"/api/v1/sites/{de}/imagery/meta?provider={key}")).status_code == 400
+    # Nothing was fetched from anywhere on the strength of a bad key.
+    assert upstreams.esri.requests == [] and upstreams.eox.requests == []
+    # ...and the covering one still works.
+    assert (await api.get(f"{tile}?provider=sentinel2_cloudless")).status_code == 200
+
+
+async def test_providers_of_an_unknown_site_is_404(api: AsyncClient) -> None:
+    assert (await api.get(f"/api/v1/sites/{uuid.uuid4()}/imagery/providers")).status_code == 404

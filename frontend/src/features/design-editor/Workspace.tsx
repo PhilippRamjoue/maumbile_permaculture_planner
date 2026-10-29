@@ -12,7 +12,7 @@ import type {
 } from "../../entities/planning";
 import type { Site } from "../../entities/site";
 import { SITE_BOUNDARY_LAYER_ID } from "../map/layers/siteBoundaryLayer";
-import { imageryMetaKey } from "../map/imageryMeta";
+import { imageryMetaKey, imageryProvidersKey } from "../map/imageryMeta";
 import { useMapLayerStore } from "../map/store";
 import { siteKeys, sitesApi } from "../../entities/siteQueries";
 import { terrainKeys, useTerrain } from "../../entities/terrainQueries";
@@ -27,7 +27,8 @@ import { GRID_LAYER_ID, gridStepFor } from "../map/layers/gridLayer";
 import { useViewportBounds } from "../map/useViewportBounds";
 import { ZoomToBoundaryButton } from "../map/ZoomToBoundaryButton";
 import { ImageryAttribution } from "../map/ImageryAttribution";
-import { useImageryMeta } from "../map/imageryMeta";
+import { effectiveProvider, useImageryChoice } from "../map/imageryChoice";
+import { useImageryMeta, useImageryProviders } from "../map/imageryMeta";
 import { createDesignWriter, persistDesign, planningApi, planningKeys } from "./api";
 import { saveBlob } from "../export/api";
 import { ModalDialog } from "../../shared/ui/ModalDialog";
@@ -37,6 +38,7 @@ import { formatArea, formatLength } from "../../shared/format";
 import { measureGeometry, type Measurement } from "./measure";
 import { useEditorMap, type Tool } from "./useEditorMap";
 import { useSectorHandles } from "./useSectorHandles";
+import { CompassControl } from "./CompassControl";
 import { MapToolsControl } from "./MapToolsControl";
 import { HistoryButtons } from "./focus/AdvancedTools";
 import { LayersControl } from "./LayersControl";
@@ -172,7 +174,10 @@ export function Workspace({
   const [authoritative, setAuthoritative] = useState<{ key: string; value: Measurement } | null>(
     null,
   );
-  const imagery = useImageryMeta(site.id);
+  const imageryProviders = useImageryProviders(site.id);
+  const [imageryChoice, setImageryChoice] = useImageryChoice(site.id);
+  const imageryProvider = effectiveProvider(imageryChoice, imageryProviders.data);
+  const imagery = useImageryMeta(site.id, imageryProvider);
   const terrain = useTerrain(site.id);
   const sectorsLayer = state.document.layers.find((l) => l.name === "Sectors" && l.visible);
   const queryClient = useQueryClient();
@@ -209,6 +214,8 @@ export function Workspace({
   );
   // The optional distance grid: only tracked and drawn while switched on (and never saved).
   const [gridOn, setGridOn] = useState(false);
+  // The optional compass rose: a view aid like the grid, also never saved.
+  const [compassOn, setCompassOn] = useState(false);
   const viewport = useViewportBounds(map, gridOn);
   const gridStep = viewport ? gridStepFor(viewport, [site.bbox[0], site.bbox[1]]) : null;
   const overlays = useMemo(
@@ -275,6 +282,7 @@ export function Workspace({
       queryClient.setQueryData(siteKeys.detail(site.id), updated);
       void queryClient.invalidateQueries({ queryKey: terrainKeys.site(site.id) });
       void queryClient.invalidateQueries({ queryKey: imageryMetaKey(site.id) });
+      void queryClient.invalidateQueries({ queryKey: imageryProvidersKey(site.id) });
       void queryClient.invalidateQueries({ queryKey: siteKeys.list() });
       draft.getState().reset(updated.boundary);
       setFailedBoundarySignature(null);
@@ -831,6 +839,13 @@ export function Workspace({
               disabled={disabled}
               activeLayer={activeLayer}
               setActiveLayer={setActiveLayer}
+              imagery={{
+                providers: imageryProviders.data,
+                selected: imageryProvider,
+                // Picking the region's own default is "no choice", so the remembered key goes away.
+                onSelect: (key) =>
+                  setImageryChoice(key === imageryProviders.data?.default_key ? null : key),
+              }}
             />
             {/* Terrain lives in the sidebar during the Sectors & terrain step; everywhere else it
                 is reachable here, so slope/contours can be shown or hidden and the land re-measured
@@ -848,8 +863,11 @@ export function Workspace({
               grid={gridOn}
               gridStep={gridStep}
               onGridChange={setGridOn}
+              compass={compassOn}
+              onCompassChange={setCompassOn}
             />
           </div>
+          {compassOn && <CompassControl map={map} />}
           <div className="editor-map-hint" role="status">
             {hint}
           </div>

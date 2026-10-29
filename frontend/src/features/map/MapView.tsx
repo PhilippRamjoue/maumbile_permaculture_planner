@@ -28,7 +28,8 @@ import { isLayerVisible, useMapLayerStore } from "./store";
 setWorkerUrl(mapWorkerUrl);
 addProtocol("maumbile", async (request, controller) => {
   const path = decodeURIComponent(request.url.slice("maumbile://".length));
-  if (!/^\/sites\/[^/]+\/imagery\/\d+\/\d+\/\d+\.png$/.test(path))
+  // `?provider=<key>` picks one of the sources covering the site; the proxy checks the key.
+  if (!/^\/sites\/[^/]+\/imagery\/\d+\/\d+\/\d+\.png(\?provider=[a-z0-9_]+)?$/.test(path))
     throw new Error("Invalid map resource");
   return apiResource(path, controller.signal);
 });
