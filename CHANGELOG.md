@@ -6,9 +6,10 @@ All notable changes to Maumbile are documented here. The format follows
 
 ## [Unreleased]
 
-## [0.4.0] - 2026-10-29
+## [0.4.1] - 2026-10-29
 
 Follow-ups from live testing of 0.3.0: one consistent way to add sectors, and a basemap switcher.
+(Supersedes the never-released 0.4.0, whose build failed its backend verify gate.)
 
 ### Changed
 
@@ -235,8 +236,8 @@ First public release.
 - Released under AGPL-3.0. All instance configuration and secrets live in the environment, never
   in the repository.
 
-[Unreleased]: https://github.com/PhilippRamjoue/maumbile_permaculture_planner/compare/v0.4.0...HEAD
-[0.4.0]: https://github.com/PhilippRamjoue/maumbile_permaculture_planner/compare/v0.3.0...v0.4.0
+[Unreleased]: https://github.com/PhilippRamjoue/maumbile_permaculture_planner/compare/v0.4.1...HEAD
+[0.4.1]: https://github.com/PhilippRamjoue/maumbile_permaculture_planner/compare/v0.3.0...v0.4.1
 [0.3.0]: https://github.com/PhilippRamjoue/maumbile_permaculture_planner/compare/v0.2.4...v0.3.0
 [0.2.4]: https://github.com/PhilippRamjoue/maumbile_permaculture_planner/compare/v0.2.3...v0.2.4
 [0.2.3]: https://github.com/PhilippRamjoue/maumbile_permaculture_planner/compare/v0.2.2...v0.2.3
