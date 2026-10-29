@@ -40,6 +40,7 @@ import { useEditorMap, type Tool } from "./useEditorMap";
 import { useSectorHandles } from "./useSectorHandles";
 import { CompassControl } from "./CompassControl";
 import { MapToolsControl } from "./MapToolsControl";
+import { PlanSwitcher } from "./PlanSwitcher";
 import { HistoryButtons } from "./focus/AdvancedTools";
 import { LayersControl } from "./LayersControl";
 import { BoundaryPanel } from "./focus/BoundaryPanel";
@@ -577,6 +578,12 @@ export function Workspace({
       <header className="editor-header">
         <Link to={`/sites/${site.id}/design`}>← Plans</Link>
         <h1>{plan.name}</h1>
+        <PlanSwitcher
+          siteId={site.id}
+          planId={plan.id}
+          flush={flush}
+          disabled={save.isPending || saveBoundary.isPending || goals.saving}
+        />
         <span>{site.name}</span>
         <ExportMenu
           planId={plan.id}

@@ -35,6 +35,7 @@ from app.modules.planning.schemas import (
     MeasureRequest,
     PlanCreate,
     PlanDetail,
+    PlanDuplicate,
     PlanRead,
     PlanUpdate,
 )
@@ -153,6 +154,28 @@ async def create_plan(
         plan = await service.create_plan(
             site_id, owner_id, name=body.name, description=body.description
         )
+        _, layers = await service.get_plan(plan.id, owner_id)
+    except (PlanningError, StaleDesign) as exc:
+        raise _http_error(exc) from exc
+    return _plan_detail(plan, layers)
+
+
+@router.post(
+    "/plans/{plan_id}/duplicate",
+    response_model=PlanDetail,
+    status_code=status.HTTP_201_CREATED,
+    tags=["plans"],
+)
+async def duplicate_plan(
+    plan_id: uuid.UUID,
+    service: Service,
+    owner_id: OwnerId,
+    body: PlanDuplicate | None = None,
+) -> PlanDetail:
+    """Save this design as a new plan on the same site: its layers, features and goals, copied
+    atomically under fresh ids. The original is not changed."""
+    try:
+        plan = await service.duplicate_plan(plan_id, owner_id, body.name if body else None)
         _, layers = await service.get_plan(plan.id, owner_id)
     except (PlanningError, StaleDesign) as exc:
         raise _http_error(exc) from exc

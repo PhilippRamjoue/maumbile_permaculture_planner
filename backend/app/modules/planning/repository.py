@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import copy
 import uuid
 from collections.abc import Sequence
 from dataclasses import dataclass
@@ -133,6 +134,58 @@ class PlanningRepository:
         await self._session.commit()
         await self._session.refresh(plan)
         return plan
+
+    async def duplicate_plan(self, source: Plan, name: str) -> Plan:
+        """Copy a plan's layers, features and goals into a new plan, in one transaction.
+
+        The source row is locked first, so a save in flight cannot leave the copy with half of an
+        edit. Every layer and feature gets a fresh id (a feature id belongs to one plan for good;
+        reusing one would be a cross-plan write), and features are pointed at the new layers.
+        Timestamps carry over, so lists keep their order.
+        """
+        locked = await self.get_plan(source.id, lock=True)
+        if locked is None:  # deleted while we waited for the lock
+            raise StaleDesign
+        duplicate = Plan(
+            site_id=locked.site_id,
+            name=name,
+            description=locked.description,
+            goals=copy.deepcopy(locked.goals),
+        )
+        self._session.add(duplicate)
+        await self._session.flush()
+        layer_ids: dict[uuid.UUID, uuid.UUID] = {}
+        for layer in await self.list_layers(locked.id):
+            layer_ids[layer.id] = uuid.uuid4()
+            self._session.add(
+                Layer(
+                    id=layer_ids[layer.id],
+                    plan_id=duplicate.id,
+                    name=layer.name,
+                    sort_order=layer.sort_order,
+                    visible=layer.visible,
+                    created_at=layer.created_at,
+                )
+            )
+        await self._session.flush()  # the layers exist before features point at them
+        stored = await self._session.execute(select(Feature).where(Feature.plan_id == locked.id))
+        for feature in stored.scalars():
+            self._session.add(
+                Feature(
+                    id=uuid.uuid4(),
+                    plan_id=duplicate.id,
+                    layer_id=layer_ids[feature.layer_id],
+                    geometry=feature.geometry,
+                    feature_type=feature.feature_type,
+                    element_type_id=feature.element_type_id,
+                    properties=copy.deepcopy(feature.properties),
+                    created_at=feature.created_at,
+                    updated_at=feature.updated_at,
+                )
+            )
+        await self._session.commit()
+        await self._session.refresh(duplicate)
+        return duplicate
 
     async def update_plan(self, plan: Plan, **values: Any) -> Plan:
         await self.advance_plan(plan.id, legacy="goals" in values)

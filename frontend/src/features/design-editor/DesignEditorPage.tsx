@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Site } from "../../entities/site";
 import type { Plan } from "../../entities/planning";
 import { useSite } from "../../entities/siteQueries";
 import { planningApi, planningKeys } from "./api";
 import { errorMessage as message } from "./messages";
+import { usePlans } from "./usePlans";
 import { Workspace } from "./Workspace";
 
 export function DesignEditorPage() {
@@ -23,15 +24,7 @@ export function DesignEditorPage() {
 function PlanPicker({ site }: { site: Site }) {
   const navigate = useNavigate();
   const [name, setName] = useState("My permaculture plan");
-  const plans = useInfiniteQuery({
-    queryKey: planningKeys.plans(site.id),
-    queryFn: ({ pageParam }) => planningApi.list(site.id, pageParam),
-    initialPageParam: 0,
-    getNextPageParam: (last) =>
-      last.items.length && last.offset + last.items.length < last.total
-        ? last.offset + last.items.length
-        : undefined,
-  });
+  const plans = usePlans(site.id);
   const create = useMutation({
     mutationFn: () => planningApi.create(site.id, name.trim()),
     onSuccess: (plan) => navigate(`/sites/${site.id}/design/${plan.id}`),

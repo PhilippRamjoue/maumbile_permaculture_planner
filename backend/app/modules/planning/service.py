@@ -28,6 +28,8 @@ from app.modules.planning.validation import (
 )
 
 DEFAULT_LAYERS = ("Zones", "Sectors", "Elements", "Paths", "Annotations")
+COPY_SUFFIX = " (copy)"
+MAX_PLAN_NAME = 200  # as PlanCreate allows
 
 
 class PlanningError(Exception):
@@ -96,6 +98,18 @@ class PlanningService:
         return await self._repo.add_plan(
             Plan(site_id=site_id, name=name, description=description), layers
         )
+
+    async def duplicate_plan(
+        self, plan_id: uuid.UUID, owner_id: uuid.UUID, name: str | None = None
+    ) -> Plan:
+        """A copy of the plan on the same site: "Save as new plan" (a variant to compare)."""
+        source = await self._plan(plan_id, owner_id)
+        # Room for the suffix inside the name limit.
+        title = name or f"{source.name[: MAX_PLAN_NAME - len(COPY_SUFFIX)]}{COPY_SUFFIX}"
+        try:
+            return await self._repo.duplicate_plan(source, title)
+        except StaleDesign as exc:
+            raise NotFoundError("Plan") from exc
 
     async def list_plans(
         self, site_id: uuid.UUID, owner_id: uuid.UUID, limit: int, offset: int

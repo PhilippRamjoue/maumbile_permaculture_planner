@@ -30,6 +30,12 @@ export const planningApi = {
     apiFetch<DesignRead>(`/plans/${id}/design`, { method: "PUT", body }),
   updateGoals: (id: string, goals: PlanGoals) =>
     apiFetch<Plan>(`/plans/${id}`, { method: "PATCH", body: { goals } }),
+  /** Saves this design as a new plan on the same site (its layers, features and goals). */
+  duplicate: (id: string, name?: string) =>
+    apiFetch<PlanDetail>(`/plans/${id}/duplicate`, {
+      method: "POST",
+      body: name ? { name } : undefined,
+    }),
   rename: (id: string, name: string) =>
     apiFetch<Plan>(`/plans/${id}`, { method: "PATCH", body: { name } }),
   remove: (id: string) => apiFetch<void>(`/plans/${id}`, { method: "DELETE" }),

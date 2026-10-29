@@ -658,3 +658,159 @@ async def test_batch_cannot_delete_and_upsert_the_same_id(api: AsyncClient, plan
         json={"features": [item], "deleted_ids": [item["id"]]},
     )
     assert response.status_code == 422
+
+
+# ── duplicating a plan ("save as new") ─────────────────────────────────────────────────────
+async def test_duplicate_copies_layers_features_and_goals_under_fresh_ids(
+    api: AsyncClient, site: dict[str, Any], plan: dict[str, Any]
+) -> None:
+    lid = layer_id(plan)
+    batch = [
+        feat(lid, "element", POINT, properties={"name": "Tank", "needs": ["water"]}),
+        feat(layer_id(plan, "Zones"), "zone", POLYGON, properties={"zone_number": 1}),
+        feat(layer_id(plan, "Paths"), "path", LINE, properties={"width_m": 4}),
+    ]
+    assert (
+        await api.post(f"{API}/plans/{plan['id']}/features:batch", json={"features": batch})
+    ).status_code == 200
+    goals = {"priorities": ["water", "food"], "vision": "grow food"}
+    patched = await api.patch(
+        f"{API}/plans/{plan['id']}", json={"goals": goals, "description": "first idea"}
+    )
+    assert patched.status_code == 200, patched.text
+    renamed = await api.patch(
+        f"{API}/layers/{lid}", json={"name": "Things", "visible": False, "sort_order": 9}
+    )
+    assert renamed.status_code == 200
+
+    resp = await api.post(f"{API}/plans/{plan['id']}/duplicate")
+    assert resp.status_code == 201, resp.text
+    copy = resp.json()
+    assert copy["id"] != plan["id"]
+    assert copy["site_id"] == plan["site_id"] == site["id"]
+    assert copy["name"] == f"{plan['name']} (copy)"
+    assert copy["description"] == "first idea"
+    assert copy["goals"] == goals == (await api.get(f"{API}/plans/{plan['id']}")).json()["goals"]
+
+    # Same layers (name, order, visibility), none of them the original's.
+    source_layers = (await api.get(f"{API}/plans/{plan['id']}")).json()["layers"]
+
+    def shape(layers: list[dict[str, Any]]) -> list[tuple[Any, ...]]:
+        return [(x["name"], x["sort_order"], x["visible"]) for x in layers]
+
+    assert shape(copy["layers"]) == shape(source_layers)
+    assert {x["id"] for x in copy["layers"]}.isdisjoint({x["id"] for x in source_layers})
+
+    # Same features (geometry, type, properties), on the copy's layers, with new ids.
+    original = (await api.get(f"{API}/plans/{plan['id']}/features")).json()["features"]
+    copied = (await api.get(f"{API}/plans/{copy['id']}/features")).json()["features"]
+    assert len(copied) == len(original) == 3
+    assert {f["id"] for f in copied}.isdisjoint({f["id"] for f in original})
+    new_layers = {x["id"]: x["name"] for x in copy["layers"]}
+    old_layers = {x["id"]: x["name"] for x in source_layers}
+
+    def by_geometry(features: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        return sorted(features, key=lambda f: str(f["geometry"]))
+
+    for before, after in zip(by_geometry(original), by_geometry(copied), strict=True):
+        assert after["plan_id"] == copy["id"]
+        assert after["geometry"] == before["geometry"]
+        assert after["feature_type"] == before["feature_type"]
+        assert after["properties"] == before["properties"]
+        assert after["area_m2"] == before["area_m2"] and after["length_m"] == before["length_m"]
+        assert new_layers[after["layer_id"]] == old_layers[before["layer_id"]]
+
+
+async def test_duplicate_leaves_the_original_alone_and_the_two_are_independent(
+    api: AsyncClient, plan: dict[str, Any]
+) -> None:
+    lid = layer_id(plan)
+    keep = feat(lid, "element", POINT, properties={"name": "Keep"})
+    assert (
+        await api.post(f"{API}/plans/{plan['id']}/features:batch", json={"features": [keep]})
+    ).status_code == 200
+    before = (await api.get(f"{API}/plans/{plan['id']}/design")).json()
+
+    copy = (
+        await api.post(f"{API}/plans/{plan['id']}/duplicate", json={"name": "Variant B"})
+    ).json()
+    assert copy["name"] == "Variant B"
+    after = (await api.get(f"{API}/plans/{plan['id']}/design")).json()
+    assert after == before  # not even its revision moved
+
+    # Editing the copy never reaches the original, and the original's ids stay its own: sending
+    # one of them to the copy is refused, not silently moved.
+    copied = (await api.get(f"{API}/plans/{copy['id']}/features")).json()["features"]
+    changed = {**copied[0], "properties": {"name": "Changed"}}
+    assert (
+        await api.post(f"{API}/plans/{copy['id']}/features:batch", json={"features": [changed]})
+    ).status_code == 200
+    original = (await api.get(f"{API}/plans/{plan['id']}/features")).json()["features"]
+    assert original[0]["properties"] == {"name": "Keep"}
+    stolen = feat(layer_id(copy), "element", POINT, id=keep["id"])
+    assert (
+        await api.post(f"{API}/plans/{copy['id']}/features:batch", json={"features": [stolen]})
+    ).status_code == 409
+
+    # Both are listed for the site.
+    listing = (await api.get(f"{API}/sites/{plan['site_id']}/plans")).json()["items"]
+    assert {plan["name"], "Variant B"} <= {p["name"] for p in listing}
+
+
+async def test_duplicating_twice_makes_two_copies_and_an_empty_plan_copies_empty(
+    api: AsyncClient, plan: dict[str, Any]
+) -> None:
+    first = (await api.post(f"{API}/plans/{plan['id']}/duplicate")).json()
+    second = (await api.post(f"{API}/plans/{plan['id']}/duplicate")).json()
+    assert first["id"] != second["id"]
+    assert first["name"] == second["name"] == f"{plan['name']} (copy)"
+    for copy in (first, second):
+        assert (await api.get(f"{API}/plans/{copy['id']}/features")).json()["features"] == []
+        assert len(copy["layers"]) == len(plan["layers"])
+
+
+async def test_duplicate_name_is_trimmed_to_fit_and_validated(
+    api: AsyncClient, site: dict[str, Any]
+) -> None:
+    long = (await api.post(f"{API}/sites/{site['id']}/plans", json={"name": "x" * 200})).json()
+    copy = await api.post(f"{API}/plans/{long['id']}/duplicate")
+    assert copy.status_code == 201
+    assert len(copy.json()["name"]) == 200 and copy.json()["name"].endswith(" (copy)")
+    blank = await api.post(f"{API}/plans/{long['id']}/duplicate", json={"name": ""})
+    assert blank.status_code == 422
+
+
+async def test_duplicate_is_for_the_owner_of_a_live_plan_only(
+    api: AsyncClient,
+    act_as: Callable[[uuid.UUID], None],
+    owner_id: uuid.UUID,
+    plan: dict[str, Any],
+) -> None:
+    gone = (await api.post(f"{API}/sites/{plan['site_id']}/plans", json={"name": "Gone"})).json()
+    assert (await api.delete(f"{API}/plans/{gone['id']}")).status_code == 204
+    assert (await api.post(f"{API}/plans/{gone['id']}/duplicate")).status_code == 404
+    assert (await api.post(f"{API}/plans/{uuid.uuid4()}/duplicate")).status_code == 404
+
+    act_as(uuid.uuid4())  # someone else
+    assert (await api.post(f"{API}/plans/{plan['id']}/duplicate")).status_code in (403, 404)
+    act_as(owner_id)
+    plans = (await api.get(f"{API}/sites/{plan['site_id']}/plans")).json()["items"]
+    assert len(plans) == 1  # nothing was copied for the intruder
+
+
+async def test_plan_list_returns_every_plan_and_pages_through_them(
+    api: AsyncClient, site: dict[str, Any]
+) -> None:
+    for i in range(5):
+        created = await api.post(f"{API}/sites/{site['id']}/plans", json={"name": f"Plan {i}"})
+        assert created.status_code == 201
+    everything = (await api.get(f"{API}/sites/{site['id']}/plans")).json()
+    assert everything["total"] == len(everything["items"]) == 5
+
+    seen: list[str] = []
+    for offset in (0, 2, 4):
+        page = (await api.get(f"{API}/sites/{site['id']}/plans?limit=2&offset={offset}")).json()
+        assert page["total"] == 5
+        seen += [p["id"] for p in page["items"]]
+    assert sorted(seen) == sorted(p["id"] for p in everything["items"])
+    assert len(set(seen)) == 5

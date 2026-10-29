@@ -288,6 +288,17 @@ and the line stays true to scale. A selected line is two pixels wider. Features 
 (everything drawn before) keep their pixel `style.stroke_width`; the PNG/PDF export still uses that
 pixel width.
 
+## Several plans per site
+
+A site can hold any number of plans (`GET /sites/{id}/plans` is paged, newest first; the picker and
+the editor's switcher read every page). The editor header has a **plan switcher** (`PlanSwitcher`)
+to jump between them, with the leave guard still asking about unsaved work, and **Duplicate plan**,
+which saves what is pending (`flush`) and then calls `POST /plans/{id}/duplicate`: one transaction
+that locks the source plan and copies its layers, features and goals into a new plan on the same
+site as "<name> (copy)" (or the `name` given), under fresh layer and feature ids, so a feature id
+still never belongs to two plans. The original is not touched. The copy opens straight away; the
+Plans page remains the place to rename and delete.
+
 ## Compass and satellite source
 
 Both live in the map's floating controls and are view aids, never part of the plan.

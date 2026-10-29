@@ -75,6 +75,12 @@ class PlanCreate(BaseModel):
     description: str | None = Field(default=None, max_length=5000)
 
 
+class PlanDuplicate(BaseModel):
+    """Optional body of a duplicate request; without a name the copy is "<name> (copy)"."""
+
+    name: str | None = Field(default=None, min_length=1, max_length=200)
+
+
 class PlanUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=200)
     description: str | None = Field(default=None, max_length=5000)

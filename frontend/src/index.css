@@ -521,6 +521,20 @@ h1 {
   align-items: center;
   gap: 0.7rem;
 }
+/* Plan switcher in the editor header: pick another plan, or save this design as a new one. */
+.plan-switcher {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+}
+.plan-switcher select {
+  max-width: 14rem;
+}
+.plan-switcher p {
+  margin: 0;
+  color: var(--danger);
+}
 .editor-header h1 {
   margin: 0;
   font-size: 1.35rem;
