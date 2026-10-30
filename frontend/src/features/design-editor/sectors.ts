@@ -85,7 +85,10 @@ export function sectorProblem(spec: Pick<SectorSpec, "from" | "to" | "radiusM">)
   return null;
 }
 
-export const kindLabel = (kind: SectorKind) => kind[0].toUpperCase() + kind.slice(1);
+// Display names that aren't just the capitalised kind key (the key stays stable for stored data).
+const KIND_LABELS: Partial<Record<SectorKind, string>> = { noise: "Nuisance" };
+export const kindLabel = (kind: SectorKind) =>
+  KIND_LABELS[kind] ?? kind[0].toUpperCase() + kind.slice(1);
 
 const autoName = (kind: SectorKind, from: number, to: number) =>
   `${kindLabel(kind)} ${from}°–${to}°`;

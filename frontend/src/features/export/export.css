@@ -27,6 +27,14 @@
 .export-menu__panel p {
   margin: 0.3rem 0;
 }
+.export-menu__labels {
+  display: block;
+  margin: 0.3rem 0;
+}
+.export-menu__labels select {
+  margin: 0 0.3rem;
+  font: inherit;
+}
 .export-menu__row {
   display: flex;
   flex-wrap: wrap;

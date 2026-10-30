@@ -15,7 +15,7 @@ from collections.abc import Callable, Iterator, Sequence
 from dataclasses import dataclass
 from functools import lru_cache
 from io import BytesIO
-from typing import Any
+from typing import Any, Literal
 
 from PIL import Image, ImageDraw, ImageFont
 from PIL.PngImagePlugin import PngInfo
@@ -545,7 +545,7 @@ def _draw_header(draw: ImageDraw.ImageDraw, doc: PlanDocument, section: str | No
             draw.text((MARGIN, MARGIN + 110 + i * 32), line, font=_font(26), fill=INK)
 
 
-def _draw_footer(draw: ImageDraw.ImageDraw, scale_text: str) -> None:
+def _draw_footer(draw: ImageDraw.ImageDraw, scale_text: str, note: str | None = None) -> None:
     y = PAGE_H - MARGIN - FOOTER_H + 14
     lines = [
         "Created with Maumbile, free and open-source software (AGPL-3.0). "
@@ -553,6 +553,8 @@ def _draw_footer(draw: ImageDraw.ImageDraw, scale_text: str) -> None:
         f"{scale_text}. No aerial imagery is included in this export, so no imagery licence "
         "applies.",
     ]
+    if note:
+        lines.append(note)
     for i, line in enumerate(lines):
         text, size = _fit(draw, line, 24, PAGE_W - 2 * MARGIN, 16)
         draw.text((MARGIN, y + i * 32), text, font=_font(size), fill=MUTED)
@@ -566,6 +568,17 @@ def drawn_features(doc: PlanDocument) -> list[ExportFeature]:
     items = [(layers[f.layer_id].sort_order, f) for f in doc.features if f.layer_id in layers]
     items.sort(key=lambda t: (t[0], rank[_geometry_kind(t[1].geometry)]))
     return [f for _, f in items]
+
+
+def _hidden_layers_note(doc: PlanDocument) -> str | None:
+    """A note naming any hidden layers that hold features, so the reader knows the export leaves
+    them out; None when nothing is hidden or the hidden layers are empty anyway."""
+    used = {f.layer_id for f in doc.features}
+    names = [layer.name for layer in doc.layers if not layer.visible and layer.id in used]
+    unique = list(dict.fromkeys(names))
+    if not unique:
+        return None
+    return "Hidden layers are not shown in this export: " + ", ".join(unique) + "."
 
 
 @dataclass(frozen=True)
@@ -710,6 +723,25 @@ def _draw_slope_legend(
         canvas.text((x + 24, y + h - 36), att, font=_font(size), fill=MUTED)
 
 
+#: How many feature labels to print. "all": every named feature; "tidy": each distinct name once,
+#: so repeated names (ten "Banana", ten "Garden bed") stop piling up; "none": no labels, icons only.
+LabelMode = Literal["all", "tidy", "none"]
+
+
+def _filter_labels(labels: list[_Label], mode: LabelMode) -> list[_Label]:
+    if mode == "none":
+        return []
+    if mode == "all":
+        return labels
+    seen: set[str] = set()
+    kept: list[_Label] = []
+    for label in labels:
+        if label.text not in seen:
+            seen.add(label.text)
+            kept.append(label)
+    return kept
+
+
 def _render_map_page(
     doc: PlanDocument,
     features: Sequence[ExportFeature],
@@ -717,6 +749,8 @@ def _render_map_page(
     *,
     terrain: ExportTerrain | None = None,
     fill_boundary: bool = True,
+    note: str | None = None,
+    labels_mode: LabelMode = "tidy",
 ) -> Image.Image:
     """One A4 page: the boundary, the given features (and/or terrain), legend, scale and chrome.
 
@@ -766,7 +800,7 @@ def _render_map_page(
     page.paste(map_img.resize((fw, fh), Image.Resampling.LANCZOS), (fx, fy))
     canvas = ImageDraw.Draw(page, "RGBA")
     canvas.rectangle((fx, fy, fx + fw, fy + fh), outline=FRAME, width=2)
-    for label in labels:
+    for label in _filter_labels(labels, labels_mode):
         canvas.text(
             (fx + label.xy[0], fy + label.xy[1]),
             label.text,
@@ -783,44 +817,65 @@ def _render_map_page(
         _draw_slope_legend(canvas, terrain, fx + fw + GAP, fy, fh)
     else:
         _draw_legend(canvas, build_legend(doc, features), fx + fw + GAP, fy, fh)
-    _draw_footer(canvas, f"Scale 1:{_scale_denominator(px_per_m):,} when printed at A4 landscape")
+    _draw_footer(
+        canvas, f"Scale 1:{_scale_denominator(px_per_m):,} when printed at A4 landscape", note
+    )
     return page
 
 
-def render_plan_image(doc: PlanDocument) -> Image.Image:
+def render_plan_image(doc: PlanDocument, labels_mode: LabelMode = "tidy") -> Image.Image:
     """The single overview page: the whole plan on one map (used for the PNG and as PDF page 1)."""
-    return _render_map_page(doc, drawn_features(doc))
+    return _render_map_page(doc, drawn_features(doc), labels_mode=labels_mode)
 
 
-def render_pages(doc: PlanDocument) -> list[Image.Image]:
-    """The pages of a rendered plan: an overview, then a page each for the sectors, the elements
-    and the terrain — each view on its own page so its detail is legible. Empty views are left
-    out (no sectors ⇒ no sectors page), and terrain only appears once it has been computed."""
+def render_pages(
+    doc: PlanDocument, labels_mode: LabelMode = "tidy"
+) -> list[tuple[str, Image.Image]]:
+    """The named pages of a rendered plan: an overview, then a page each for the sectors, the zones,
+    the elements and the terrain — each view on its own page so its detail is legible. Empty views
+    are left out (no sectors ⇒ no sectors page), and terrain only appears once it has been computed.
+    Each page's name is used for the on-page label and the PDF's bookmark outline. ``labels_mode``
+    controls how many feature labels are printed (see :data:`LabelMode`)."""
     drawn = drawn_features(doc)
-    pages = [_render_map_page(doc, drawn, "Overview")]
+    note = _hidden_layers_note(doc)
+
+    def page(name: str, features: Sequence[ExportFeature]) -> tuple[str, Image.Image]:
+        return name, _render_map_page(doc, features, name, note=note, labels_mode=labels_mode)
+
+    pages = [page("Overview", drawn)]
     sectors = [f for f in drawn if f.feature_type == "sector"]
     if sectors:
-        pages.append(_render_map_page(doc, sectors, "Sectors"))
+        pages.append(page("Sectors", sectors))
+    zones = [f for f in drawn if f.feature_type == "zone"]
+    if zones:
+        pages.append(page("Zones", zones))
     elements = [f for f in drawn if f.feature_type in ("element", "path", "annotation")]
     if elements:
-        pages.append(_render_map_page(doc, elements, "Elements"))
+        pages.append(page("Elements", elements))
     terrain = doc.terrain
     if terrain is not None and (terrain.grid is not None or terrain.contours):
-        pages.append(_render_map_page(doc, [], "Terrain", terrain=terrain, fill_boundary=False))
+        pages.append(
+            (
+                "Terrain",
+                _render_map_page(
+                    doc, [], "Terrain", terrain=terrain, fill_boundary=False, note=note
+                ),
+            )
+        )
     return pages
 
 
-def render_png(doc: PlanDocument) -> bytes:
+def render_png(doc: PlanDocument, labels_mode: LabelMode = "tidy") -> bytes:
     info = PngInfo()
     info.add_text("Title", doc.name)
     info.add_text("Software", "Maumbile")
     buf = BytesIO()
-    render_plan_image(doc).save(buf, "PNG", dpi=(DPI, DPI), pnginfo=info)
+    render_plan_image(doc, labels_mode).save(buf, "PNG", dpi=(DPI, DPI), pnginfo=info)
     return buf.getvalue()
 
 
-def render_pdf(doc: PlanDocument) -> bytes:
-    return images_to_pdf(render_pages(doc), doc.name)
+def render_pdf(doc: PlanDocument, labels_mode: LabelMode = "tidy") -> bytes:
+    return images_to_pdf(render_pages(doc, labels_mode), doc.name)
 
 
 def _pdf_text(value: str) -> bytes:
@@ -829,22 +884,26 @@ def _pdf_text(value: str) -> bytes:
 
 def image_to_pdf(img: Image.Image, title: str) -> bytes:
     """A one-page PDF, for callers that render a single image."""
-    return images_to_pdf([img], title)
+    return images_to_pdf([(title, img)], title)
 
 
-def images_to_pdf(images: Sequence[Image.Image], title: str) -> bytes:
-    """A PDF with one page per image, each at 200 dpi, Flate-compressed (lossless).
+def images_to_pdf(pages: Sequence[tuple[str, Image.Image]], title: str) -> bytes:
+    """A PDF with one named page per image, each at 200 dpi, Flate-compressed (lossless). Each
+    page's name becomes a bookmark in the document outline, so a reader can jump between the views.
 
-    Object layout: 1 Catalog, 2 Pages, then three objects per page (Page, Image XObject, Contents),
-    then one Info object.
+    Object layout: 1 Catalog, 2 Pages, three objects per page (Page, Image XObject, Contents),
+    one Info object, one Outlines object, then one outline item per page.
     """
-    n = len(images)
+    n = len(pages)
+    outlines = 4 + 3 * n  # the Outlines object number
+    first_item = 5 + 3 * n  # the first outline item's object number
     kids = " ".join(f"{3 + i * 3} 0 R" for i in range(n))
+    catalog = f"<< /Type /Catalog /Pages 2 0 R /Outlines {outlines} 0 R /PageMode /UseOutlines >>"
     bodies: list[bytes] = [
-        b"<< /Type /Catalog /Pages 2 0 R >>",
+        catalog.encode(),
         f"<< /Type /Pages /Kids [{kids}] /Count {n} >>".encode(),
     ]
-    for i, img in enumerate(images):
+    for i, (_name, img) in enumerate(pages):
         w, h = img.size
         pw, ph = w * 72 / DPI, h * 72 / DPI
         pixels = zlib.compress(img.convert("RGB").tobytes(), 6)
@@ -862,6 +921,21 @@ def images_to_pdf(images: Sequence[Image.Image], title: str) -> bytes:
         )
         bodies.append(f"<< /Length {len(content)} >>\nstream\n".encode() + content + b"\nendstream")
     bodies.append(b"<< /Title " + _pdf_text(title) + b" /Producer (Maumbile) >>")
+    bodies.append(
+        f"<< /Type /Outlines /First {first_item} 0 R /Last {first_item + n - 1} 0 R "
+        f"/Count {n} >>".encode()
+    )
+    for i, (name, _img) in enumerate(pages):
+        item = (
+            b"<< /Title "
+            + _pdf_text(name)
+            + f" /Parent {outlines} 0 R /Dest [{3 + i * 3} 0 R /Fit]".encode()
+        )
+        if i > 0:
+            item += f" /Prev {first_item + i - 1} 0 R".encode()
+        if i < n - 1:
+            item += f" /Next {first_item + i + 1} 0 R".encode()
+        bodies.append(item + b" >>")
 
     out = bytearray(b"%PDF-1.4\n%\xe2\xe3\xcf\xd3\n")
     offsets: list[int] = []

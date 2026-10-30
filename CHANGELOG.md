@@ -6,6 +6,23 @@ All notable changes to Maumbile are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.7.1] - 2026-10-30
+
+### Added
+
+- **The plan PDF export has more pages and is easier to navigate.** A dedicated **Zones** page joins
+  the sectors, elements and terrain pages; every page is named as a bookmark in the PDF outline so a
+  reader can jump straight to a view; and a footer note tells the reader when hidden layers have been
+  left out of the export.
+- **Choose how many labels the PNG/PDF export prints.** A new control offers **Tidy** (the default —
+  each distinct name shown once, so a plan with ten "Garden bed"s stops piling labels on top of each
+  other), **All** (every feature labelled, as before) and **Icons only** (no labels).
+
+### Changed
+
+- Renamed the **Noise** sector to **Nuisance**, its standard permaculture name (the stored data key
+  is unchanged, so existing plans keep working).
+
 ## [0.7.0] - 2026-10-30
 
 ### Added
@@ -298,7 +315,8 @@ First public release.
 - Released under AGPL-3.0. All instance configuration and secrets live in the environment, never
   in the repository.
 
-[Unreleased]: https://github.com/PhilippRamjoue/maumbile_permaculture_planner/compare/v0.7.0...HEAD
+[Unreleased]: https://github.com/PhilippRamjoue/maumbile_permaculture_planner/compare/v0.7.1...HEAD
+[0.7.1]: https://github.com/PhilippRamjoue/maumbile_permaculture_planner/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/PhilippRamjoue/maumbile_permaculture_planner/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/PhilippRamjoue/maumbile_permaculture_planner/compare/v0.5.2...v0.6.0
 [0.5.2]: https://github.com/PhilippRamjoue/maumbile_permaculture_planner/compare/v0.5.0...v0.5.2

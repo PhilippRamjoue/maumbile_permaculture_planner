@@ -67,7 +67,8 @@ describe("ExportMenu", () => {
 
     await waitFor(() => expect(saved).toEqual(["master-plan.png"]));
     const exportCall = fetchMock.mock.calls.find(([u]) => String(u).includes("/export"));
-    expect(String(exportCall![0])).toBe(`/api/v1/plans/${PLAN}/export?format=png`);
+    // The label density rides along; "tidy" (one label per name) is the default.
+    expect(String(exportCall![0])).toBe(`/api/v1/plans/${PLAN}/export?format=png&labels=tidy`);
     click.mockRestore();
   });
 

@@ -23,7 +23,7 @@ from app.core.capacity import Capacity
 from app.modules.export.bundle import BUNDLE_VERSION, SiteBundle, build_bundle
 from app.modules.export.document import PlanDocument
 from app.modules.export.geojson import plan_to_geojson
-from app.modules.export.render import render_pdf, render_png
+from app.modules.export.render import LabelMode, render_pdf, render_png
 from app.modules.export.repository import ExportRepository
 
 ExportFormat = Literal["geojson", "png", "pdf"]
@@ -112,11 +112,11 @@ def filename_for(name: str, fmt: str) -> str:
     return f"{slug}.{fmt}"
 
 
-def _render(doc: PlanDocument, fmt: ExportFormat) -> bytes:
+def _render(doc: PlanDocument, fmt: ExportFormat, labels: LabelMode) -> bytes:
     if fmt == "png":
-        return render_png(doc)
+        return render_png(doc, labels)
     if fmt == "pdf":
-        return render_pdf(doc)
+        return render_pdf(doc, labels)
     return json.dumps(plan_to_geojson(doc), ensure_ascii=False, indent=2).encode()
 
 
@@ -131,17 +131,17 @@ class ExportService:
         self._plans = plans
         self._new_token = new_token
 
-    async def _file(self, doc: PlanDocument, fmt: ExportFormat) -> ExportedFile:
+    async def _file(self, doc: PlanDocument, fmt: ExportFormat, labels: LabelMode) -> ExportedFile:
         # Rendering is CPU-bound; keep it off the event loop.
         await self._repo.release_reads()
         async with _render_capacity.acquire():
-            content = await asyncio.to_thread(_render, doc, fmt)
+            content = await asyncio.to_thread(_render, doc, fmt, labels)
         return ExportedFile(content, MEDIA_TYPES[fmt], filename_for(doc.name, fmt))
 
     async def export(
-        self, plan_id: uuid.UUID, owner_id: uuid.UUID, fmt: ExportFormat
+        self, plan_id: uuid.UUID, owner_id: uuid.UUID, fmt: ExportFormat, labels: LabelMode = "tidy"
     ) -> ExportedFile:
-        return await self._file(await self._plans.load(plan_id, owner_id), fmt)
+        return await self._file(await self._plans.load(plan_id, owner_id), fmt, labels)
 
     # ── whole-site portable bundle ───────────────────────────────────────────────────────────
     async def export_site_bundle(self, site_id: uuid.UUID, owner_id: uuid.UUID) -> ExportedFile:
@@ -181,7 +181,9 @@ class ExportService:
         await self._plans.ensure_owner(plan_id, owner_id)
         await self._repo.delete_for_plan(plan_id)
 
-    async def export_shared(self, token: str, fmt: ExportFormat) -> ExportedFile:
+    async def export_shared(
+        self, token: str, fmt: ExportFormat, labels: LabelMode = "tidy"
+    ) -> ExportedFile:
         """Export via a share token, with the grantor's read access (never write access)."""
         share = await self._repo.get_by_hash(hash_token(token))
         if share is None:
@@ -191,4 +193,4 @@ class ExportService:
         except (PlanNotFoundError, PlanForbiddenError):
             # The plan was deleted or the site changed hands: the link silently stops working.
             raise ShareNotFoundError from None
-        return await self._file(doc, fmt)
+        return await self._file(doc, fmt, labels)

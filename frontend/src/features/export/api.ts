@@ -3,14 +3,16 @@ import { apiBlob, apiFetch } from "../../shared/api/client";
 import { API_BASE } from "../../shared/config";
 
 export type ExportFormat = "geojson" | "png" | "pdf";
+/** How many feature labels a PNG/PDF prints (ignored for GeoJSON). */
+export type LabelMode = "all" | "tidy" | "none";
 
 export const exportKeys = {
   share: (planId: string) => ["export", "share", planId] as const,
 };
 
 export const exportApi = {
-  download: (planId: string, format: ExportFormat) =>
-    apiBlob(`/plans/${planId}/export`, { query: { format } }),
+  download: (planId: string, format: ExportFormat, labels: LabelMode = "tidy") =>
+    apiBlob(`/plans/${planId}/export`, { query: { format, labels } }),
   shareStatus: (planId: string) => apiFetch<ShareStatus>(`/plans/${planId}/share`),
   createShare: (planId: string) =>
     apiFetch<ShareCreated>(`/plans/${planId}/share`, { method: "POST" }),

@@ -422,9 +422,9 @@ def with_terrain(doc: PlanDocument, terrain: ExportTerrain | None) -> PlanDocume
     return PlanDocument(**{**doc.__dict__, "terrain": terrain})
 
 
-def test_pages_split_overview_sectors_elements_and_terrain() -> None:
+def test_pages_split_overview_sectors_zones_elements_and_terrain() -> None:
     plain = sample()  # a zone and three elements, no sector, no terrain
-    assert [p.size for p in render.render_pages(plain)] == [(2339, 1654)] * 2  # overview + elements
+    assert [name for name, _ in render.render_pages(plain)] == ["Overview", "Zones", "Elements"]
 
     full = with_terrain(
         PlanDocument(
@@ -439,17 +439,20 @@ def test_pages_split_overview_sectors_elements_and_terrain() -> None:
         slope_terrain(),
     )
     pages = render.render_pages(full)
-    assert len(pages) == 4  # overview, sectors, elements, terrain
-    assert all(p.size == (2339, 1654) for p in pages)
+    assert [name for name, _ in pages] == ["Overview", "Sectors", "Zones", "Elements", "Terrain"]
+    assert all(img.size == (2339, 1654) for _, img in pages)
 
 
-def test_pdf_has_one_page_per_view() -> None:
-    doc = with_terrain(sample(), slope_terrain())  # overview + elements + terrain
+def test_pdf_has_one_named_bookmarked_page_per_view() -> None:
+    doc = with_terrain(sample(), slope_terrain())  # overview, zones, elements, terrain
     pdf = render.render_pdf(doc)
     assert pdf.startswith(b"%PDF-1.4") and pdf.rstrip().endswith(b"%%EOF")
-    assert pdf.count(b"/Type /Page /Parent") == 3
-    assert b"/Count 3" in pdf
-    # Every xref offset still points at its object, with three pages' worth of objects.
+    assert pdf.count(b"/Type /Page /Parent") == 4
+    assert b"/Count 4" in pdf
+    # A bookmark outline names each page: one outline object, one item (with a /Dest) per page.
+    assert b"/Type /Outlines" in pdf and b"/PageMode /UseOutlines" in pdf
+    assert pdf.count(b"/Dest [") == 4
+    # Every xref offset still points at its object, now including the outline objects.
     xref_at = int(re.search(rb"startxref\n(\d+)\n", pdf).group(1))  # type: ignore[union-attr]
     table = pdf[xref_at:].split(b"\n")
     count = int(table[1].split()[1])
@@ -461,9 +464,39 @@ def test_pdf_has_one_page_per_view() -> None:
 def test_terrain_page_shades_the_slope_grid() -> None:
     doc = with_terrain(document([]), slope_terrain())
     pages = render.render_pages(doc)
-    assert len(pages) == 2  # overview + terrain (no sectors, no elements)
-    colors: set[Any] = {c for _, c in pages[-1].getcolors(maxcolors=1 << 20) or []}
+    assert [name for name, _ in pages] == ["Overview", "Terrain"]  # no sectors, zones or elements
+    colors: set[Any] = {c for _, c in pages[-1][1].getcolors(maxcolors=1 << 20) or []}
     assert any(all(abs(c[i] - STEEP_ORANGE[i]) < 24 for i in range(3)) for c in colors)
+
+
+def test_label_mode_controls_how_many_labels_print() -> None:
+    labels = [
+        render._Label((0, 0), "Garden bed", "lm"),
+        render._Label((1, 1), "Garden bed", "lm"),
+        render._Label((2, 2), "Garden bed", "lm"),
+        render._Label((3, 3), "Pond", "lm"),
+    ]
+    assert len(render._filter_labels(labels, "all")) == 4
+    # "tidy" keeps each distinct name once, so ten "Garden bed"s stop piling up.
+    assert [lb.text for lb in render._filter_labels(labels, "tidy")] == ["Garden bed", "Pond"]
+    assert render._filter_labels(labels, "none") == []
+    # The modes flow through to a rendered page without error, and PNG stays A4.
+    assert render.render_png(sample(), "none")
+    assert [name for name, _ in render.render_pages(sample(), "all")] == [
+        "Overview",
+        "Zones",
+        "Elements",
+    ]
+
+
+def test_hidden_layers_get_a_note_on_the_export() -> None:
+    # The sample has a Zone 5 on a hidden layer, so the reader is told it is left out.
+    note = render._hidden_layers_note(sample())
+    assert note is not None and "Hidden" in note
+    # Nothing hidden (or hidden-but-empty) ⇒ no note.
+    assert render._hidden_layers_note(document([])) is None
+    only_visible = document([feature(LAYER_ELEMENTS, "element", square(5, 5, 10))])
+    assert render._hidden_layers_note(only_visible) is None
 
 
 def test_png_stays_a_single_overview_page_even_with_terrain_and_sectors() -> None:

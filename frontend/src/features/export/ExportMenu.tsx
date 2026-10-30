@@ -3,12 +3,25 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import "./export.css";
 import { ApiError } from "../../shared/api/client";
-import { exportApi, exportKeys, saveBlob, sharePageUrl, type ExportFormat } from "./api";
+import {
+  exportApi,
+  exportKeys,
+  saveBlob,
+  sharePageUrl,
+  type ExportFormat,
+  type LabelMode,
+} from "./api";
 
 const FORMATS: { format: ExportFormat; label: string }[] = [
   { format: "png", label: "Image (PNG)" },
   { format: "pdf", label: "Print (PDF)" },
   { format: "geojson", label: "Data (GeoJSON)" },
+];
+
+const LABEL_MODES: { mode: LabelMode; label: string }[] = [
+  { mode: "tidy", label: "Tidy" },
+  { mode: "all", label: "All" },
+  { mode: "none", label: "Icons only" },
 ];
 
 const message = (error: unknown) =>
@@ -36,11 +49,12 @@ export function ExportMenu({
   const queryClient = useQueryClient();
   const [link, setLink] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [labels, setLabels] = useState<LabelMode>("tidy");
 
   const download = useMutation({
     mutationFn: async (format: ExportFormat) => {
       if (beforeDownload) await beforeDownload();
-      const { blob, filename } = await exportApi.download(planId, format);
+      const { blob, filename } = await exportApi.download(planId, format, labels);
       saveBlob(blob, filename ?? `plan.${format}`);
     },
   });
@@ -93,6 +107,21 @@ export function ExportMenu({
           PNG and PDF are printable drawings without aerial imagery. GeoJSON includes geographic
           data and hidden features.
         </p>
+        <label className="export-menu__labels muted">
+          Map labels (PNG/PDF):{" "}
+          <select
+            value={labels}
+            onChange={(event) => setLabels(event.currentTarget.value as LabelMode)}
+          >
+            {LABEL_MODES.map(({ mode, label }) => (
+              <option key={mode} value={mode}>
+                {label}
+              </option>
+            ))}
+          </select>
+          {labels === "tidy" && " — each name shown once, so busy plans stay readable."}
+          {labels === "none" && " — no labels; icons and the legend only."}
+        </label>
         <div className="export-menu__row">
           {FORMATS.map(({ format, label }) => (
             <button
