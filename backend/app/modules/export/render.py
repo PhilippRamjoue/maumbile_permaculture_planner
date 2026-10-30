@@ -131,11 +131,20 @@ def _legend_key(f: ExportFeature, et: ExportElementType | None) -> tuple[Any, ..
     return (f.feature_type,)
 
 
+# Sector display names that aren't just the capitalised kind; mirrors the editor's labels
+# (frontend sectors.ts). The stored sector_kind key stays as-is.
+_SECTOR_LABELS = {"noise": "Nuisance"}
+
+
+def _sector_label(kind: str) -> str:
+    return _SECTOR_LABELS.get(kind, kind.capitalize())
+
+
 def _legend_label(f: ExportFeature, et: ExportElementType | None) -> str:
     if f.feature_type == "zone":
         return f"Zone {f.properties.get('zone_number', '?')}"
     if f.feature_type == "sector":
-        return f"Sector: {str(f.properties.get('sector_kind', 'other')).capitalize()}"
+        return f"Sector: {_sector_label(str(f.properties.get('sector_kind', 'other')))}"
     if et is not None:
         return et.name
     return "Note" if f.feature_type == "annotation" else f.feature_type.capitalize()

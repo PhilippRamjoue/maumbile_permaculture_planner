@@ -499,6 +499,15 @@ def test_hidden_layers_get_a_note_on_the_export() -> None:
     assert render._hidden_layers_note(only_visible) is None
 
 
+def test_noise_sector_shows_as_nuisance_in_the_legend() -> None:
+    noise = feature(LAYER_ZONES, "sector", square(10, 10, 50), properties={"sector_kind": "noise"})
+    water = feature(LAYER_ZONES, "sector", square(60, 60, 50), properties={"sector_kind": "water"})
+    labels = [e.label for e in render.build_legend(document([noise, water]), [noise, water])]
+    assert "Sector: Nuisance" in labels
+    assert "Sector: Water" in labels
+    assert "Sector: Noise" not in labels
+
+
 def test_png_stays_a_single_overview_page_even_with_terrain_and_sectors() -> None:
     doc = with_terrain(
         PlanDocument(
