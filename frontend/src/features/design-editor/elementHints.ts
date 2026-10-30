@@ -15,4 +15,14 @@ export const ELEMENT_HINTS: Record<string, string> = {
   windbreak: "A line of trees or shrubs that slows the wind to shelter the land behind it.",
   hedge: "A living fence of shrubs — a boundary that also gives shelter and habitat.",
   paddock: "A fenced area of grazing for animals.",
+  banana_circle:
+    "A ring of bananas and papaya around a shallow pit that feeds them kitchen water and scraps.",
+  keyhole_garden:
+    "A round raised bed with a notch to reach the middle, where a basket of compost feeds the soil.",
+  orchard: "A block of fruit and nut trees, planted in rows.",
+  fish_pond: "A pond stocked with fish such as tilapia, for food.",
+  borehole: "A narrow drilled well, usually pumped — deeper than a hand-dug well.",
+  dam: "An earth wall across a slope or gully that holds back a pool of water.",
+  grain_store: "A raised store that keeps grain dry and safe from pests after harvest.",
+  biogas: "A sealed digester that turns dung and waste into cooking gas and a rich slurry.",
 };

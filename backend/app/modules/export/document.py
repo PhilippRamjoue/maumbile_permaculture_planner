@@ -42,6 +42,53 @@ class ExportFeature:
 
 
 @dataclass(frozen=True)
+class ExportSlopeClass:
+    """One slope band of the legend: its colour, percentage range and share of the land."""
+
+    label: str
+    min_pct: float
+    max_pct: float | None
+    color: str
+    area_fraction: float
+
+
+@dataclass(frozen=True)
+class ExportSlopeGrid:
+    """Slope class per DEM cell over the site bbox. ``classes[row][col]`` indexes the legend
+    (None = unknown); row 0 is the northern edge. Cell ``(row, col)`` has its north-west corner
+    at lon ``west + col*pixel_width_deg``, lat ``north - row*pixel_height_deg``."""
+
+    west: float
+    north: float
+    pixel_width_deg: float
+    pixel_height_deg: float
+    width: int
+    height: int
+    classes: list[list[int | None]]
+
+
+@dataclass(frozen=True)
+class ExportContour:
+    elevation_m: float
+    index: bool  # an index contour, drawn heavier and labelled
+    geometry: dict[str, Any]  # GeoJSON MultiLineString (WGS84)
+
+
+@dataclass(frozen=True)
+class ExportTerrain:
+    """A site's computed terrain, ready to draw on its own export page. Any part may be missing."""
+
+    contour_interval_m: float
+    attribution: str | None
+    legend: list[ExportSlopeClass]
+    grid: ExportSlopeGrid | None
+    contours: list[ExportContour]
+    elevation_m: dict[str, float] | None  # min / max / mean / relief
+    slope_pct: dict[str, float] | None  # mean / max
+    flags: list[str]
+
+
+@dataclass(frozen=True)
 class PlanDocument:
     """Everything an export needs, frozen at one moment."""
 
@@ -56,3 +103,5 @@ class PlanDocument:
     element_types: dict[int, ExportElementType] = field(default_factory=dict)
     # ``{"priorities": [...], "vision": "..."}`` as stored on the plan, if the owner set any.
     goals: dict[str, Any] | None = None
+    # The site's slope/contour terrain, when it has been computed; drawn on its own page.
+    terrain: ExportTerrain | None = None

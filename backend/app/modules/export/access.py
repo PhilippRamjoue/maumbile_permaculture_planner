@@ -3,16 +3,20 @@
 from __future__ import annotations
 
 import uuid
-from typing import Any
+from typing import Any, Protocol
 
 from geoalchemy2.shape import to_shape
 
-from app.core.geo import shape_to_geojson
+from app.core.geo import BBox, shape_to_geojson
 from app.modules.export.bundle import MAX_PLANS, SiteBundle
 from app.modules.export.document import (
+    ExportContour,
     ExportElementType,
     ExportFeature,
     ExportLayer,
+    ExportSlopeClass,
+    ExportSlopeGrid,
+    ExportTerrain,
     PlanDocument,
 )
 from app.modules.export.service import (
@@ -34,6 +38,13 @@ from app.modules.sites.service import (
     SiteNotFoundError,
     SiteService,
 )
+from app.modules.terrain.service import TerrainView, terrain_input_key
+
+
+class TerrainReader(Protocol):
+    """The slice of the terrain service the export needs: read a site's stored terrain."""
+
+    async def view(self, site_id: uuid.UUID, *, input_key: str) -> TerrainView | None: ...
 
 
 def _boundary_ring(boundary: dict[str, Any]) -> list[tuple[float, float]]:
@@ -50,9 +61,15 @@ def _boundary_ring(boundary: dict[str, Any]) -> list[tuple[float, float]]:
 class PlanReader:
     """Reads a plan, its features and its site as ``owner_id`` (ownership is enforced there)."""
 
-    def __init__(self, planning: PlanningService, sites: SiteService) -> None:
+    def __init__(
+        self,
+        planning: PlanningService,
+        sites: SiteService,
+        terrain: TerrainReader | None = None,
+    ) -> None:
         self._planning = planning
         self._sites = sites
+        self._terrain = terrain
 
     async def ensure_owner(self, plan_id: uuid.UUID, owner_id: uuid.UUID) -> None:
         try:
@@ -71,6 +88,7 @@ class PlanReader:
             raise PlanNotFoundError from None
         except (ForbiddenError, SiteForbiddenError):
             raise PlanForbiddenError from None
+        terrain = await self._load_terrain(site)
         return PlanDocument(
             plan_id=plan.id,
             name=plan.name,
@@ -101,6 +119,58 @@ class PlanReader:
                 )
                 for t in types
             },
+            terrain=terrain,
+        )
+
+    async def _load_terrain(self, site: Any) -> ExportTerrain | None:
+        """The site's stored terrain, converted to plain export data; None when not computed.
+
+        Terrain is a best-effort extra on an export: a site without it simply has no terrain page.
+        """
+        if self._terrain is None:
+            return None
+        key = terrain_input_key(BBox(*site.bbox), site.country_code)
+        view = await self._terrain.view(site.id, input_key=key)
+        if view is None or view.result.status != "ready":
+            return None
+        result = view.result
+        summary = result.slope_summary or {}
+        grid = None
+        if result.slope_grid:
+            g = result.slope_grid
+            grid = ExportSlopeGrid(
+                west=g["west"],
+                north=g["north"],
+                pixel_width_deg=g["pixel_width_deg"],
+                pixel_height_deg=g["pixel_height_deg"],
+                width=g["width"],
+                height=g["height"],
+                classes=g["classes"],
+            )
+        legend = [
+            ExportSlopeClass(
+                c["label"], c["min_pct"], c.get("max_pct"), c["color"], c["area_fraction"]
+            )
+            for c in summary.get("legend", [])
+        ]
+        interval = result.contour_interval_m
+        contours = [
+            ExportContour(
+                elevation_m=c.elevation_m,
+                index=round(c.elevation_m / interval) % 5 == 0 if interval else False,
+                geometry=shape_to_geojson(to_shape(c.geom)),
+            )
+            for c in view.contours
+        ]
+        return ExportTerrain(
+            contour_interval_m=interval,
+            attribution=result.attribution,
+            legend=legend,
+            grid=grid,
+            contours=contours,
+            elevation_m=summary.get("elevation_m"),
+            slope_pct=summary.get("slope_pct"),
+            flags=summary.get("flags", []),
         )
 
     async def load_site(self, site_id: uuid.UUID, owner_id: uuid.UUID) -> SiteContent:

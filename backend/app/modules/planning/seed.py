@@ -104,6 +104,70 @@ _ROWS: tuple[tuple[str, str, str, str, str, str, dict[str, Any]], ...] = (
     ("zone", "Zone", "planning", "zone", "polygon", "target", _fill("#ffa726", 0.25)),
     ("sector", "Sector", "planning", "sector", "polygon", "compass", _fill("#ef5350", 0.25)),
     ("note", "Note", "planning", "annotation", "point", "message-square", _pin("#fdd835")),
+    # more growing
+    (
+        "banana_circle",
+        "Banana circle",
+        "growing",
+        "element",
+        "polygon",
+        "banana_circle",
+        _fill("#9ccc65", 0.5),
+    ),  # noqa: E501
+    (
+        "keyhole_garden",
+        "Keyhole garden",
+        "growing",
+        "element",
+        "polygon",
+        "keyhole_garden",
+        _fill("#c0ca33", 0.5),
+    ),  # noqa: E501
+    ("orchard", "Orchard", "growing", "element", "polygon", "orchard", _fill("#2e7d32", 0.45)),
+    # more animals
+    ("goat_pen", "Goat pen", "animals", "element", "polygon", "goat_pen", _fill("#bcaaa4")),
+    (
+        "cattle_shed",
+        "Cattle shed",
+        "animals",
+        "element",
+        "polygon",
+        "cattle_shed",
+        _fill("#a1887f"),
+    ),
+    ("pig_pen", "Pig pen", "animals", "element", "polygon", "pig_pen", _fill("#f48fb1", 0.55)),
+    (
+        "rabbit_hutch",
+        "Rabbit hutch",
+        "animals",
+        "element",
+        "polygon",
+        "rabbit_hutch",
+        _fill("#d7ccc8", 0.6),
+    ),  # noqa: E501
+    # more water
+    ("fish_pond", "Fish pond", "water", "element", "polygon", "fish_pond", _fill("#0288d1", 0.55)),
+    ("borehole", "Borehole", "water", "element", "polygon", "borehole", _fill("#283593", 0.8)),
+    ("dam", "Dam", "water", "element", "line", "waves", _line("#01579b", 6)),
+    # more structures
+    (
+        "grain_store",
+        "Grain store",
+        "structure",
+        "element",
+        "polygon",
+        "grain_store",
+        _fill("#8d6e63", 0.7),
+    ),  # noqa: E501
+    (
+        "biogas",
+        "Biogas digester",
+        "structure",
+        "element",
+        "polygon",
+        "biogas",
+        _fill("#5d4037", 0.7),
+    ),  # noqa: E501
 )
 
 # What each palette entry typically needs and yields, in the vocabulary of the editor's Functions
@@ -137,6 +201,18 @@ _FUNCTIONS: dict[str, dict[str, list[str]]] = {
     "beehive": {"needs": ["water"], "yields": ["pollination", "food", "income"]},
     "path": {"needs": [], "yields": ["access"]},
     "road": {"needs": [], "yields": ["access"]},
+    "banana_circle": {"needs": ["water", "fertility"], "yields": ["food", "mulch", "shade"]},
+    "keyhole_garden": {"needs": ["water"], "yields": ["food", "fertility"]},
+    "orchard": {"needs": ["water"], "yields": ["food", "shade", "habitat"]},
+    "goat_pen": {"needs": ["water", "fodder"], "yields": ["fertility", "food"]},
+    "cattle_shed": {"needs": ["water", "fodder"], "yields": ["fertility", "food"]},
+    "pig_pen": {"needs": ["water", "fodder"], "yields": ["fertility", "food"]},
+    "rabbit_hutch": {"needs": ["water", "fodder"], "yields": ["food", "fertility"]},
+    "fish_pond": {"needs": [], "yields": ["food", "habitat"]},
+    "borehole": {"needs": [], "yields": ["water"]},
+    "dam": {"needs": [], "yields": ["water", "habitat"]},
+    "grain_store": {"needs": [], "yields": ["shelter", "security"]},
+    "biogas": {"needs": [], "yields": ["fuel", "heat", "fertility"]},
 }
 
 # The real-world footprint of each palette entry. ``round`` and ``rect`` entries are placed as a
@@ -172,6 +248,18 @@ _SHAPES: dict[str, tuple[str, float | None, float | None, float | None]] = {
     "zone": ("area", None, None, None),
     "sector": ("area", None, None, None),
     "note": ("point", None, None, None),
+    "banana_circle": ("round", None, None, 3.0),
+    "keyhole_garden": ("round", None, None, 3.0),
+    "orchard": ("area", None, None, None),
+    "goat_pen": ("rect", 3.0, 4.0, None),
+    "cattle_shed": ("rect", 5.0, 6.0, None),
+    "pig_pen": ("rect", 2.0, 3.0, None),
+    "rabbit_hutch": ("rect", 1.0, 2.0, None),
+    "fish_pond": ("round", None, None, 4.0),
+    "borehole": ("round", None, None, 1.0),
+    "dam": ("line", None, None, None),
+    "grain_store": ("rect", 2.0, 2.0, None),
+    "biogas": ("round", None, None, 2.0),
 }
 
 # The catalog as ``0003_planning`` created it: only the columns that existed then. Frozen in shape

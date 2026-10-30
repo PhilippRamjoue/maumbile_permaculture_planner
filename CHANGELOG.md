@@ -6,6 +6,24 @@ All notable changes to Maumbile are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-10-30
+
+### Added
+
+- **A richer element palette.** Twelve new elements for smallholder plots — banana circle, keyhole
+  garden, orchard, goat pen, cattle shed, pig pen, rabbit hutch, fish pond, borehole, dam, grain
+  store and biogas digester — each with its own map icon, a to-scale footprint and sensible default
+  needs/yields drawn from the existing function vocabulary (additive migration `0016_more_elements`).
+- **The plan export (PDF) is split into readable pages.** Instead of one crowded page, the PDF now
+  has a page each for the overview, the sectors, the elements and — new — the terrain, with slope
+  shading, contour lines and an elevation/slope summary. Each page is framed to its own content so
+  the detail is legible. The PNG stays a single overview image.
+
+### Fixed
+
+- **The terrain toggle (slope and contours) now appears in every editor step**, including the
+  Sectors & terrain step, matching the rest of the map tools.
+
 ## [0.6.0] - 2026-10-29
 
 ### Added
@@ -280,7 +298,8 @@ First public release.
 - Released under AGPL-3.0. All instance configuration and secrets live in the environment, never
   in the repository.
 
-[Unreleased]: https://github.com/PhilippRamjoue/maumbile_permaculture_planner/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/PhilippRamjoue/maumbile_permaculture_planner/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/PhilippRamjoue/maumbile_permaculture_planner/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/PhilippRamjoue/maumbile_permaculture_planner/compare/v0.5.2...v0.6.0
 [0.5.2]: https://github.com/PhilippRamjoue/maumbile_permaculture_planner/compare/v0.5.0...v0.5.2
 [0.5.0]: https://github.com/PhilippRamjoue/maumbile_permaculture_planner/compare/v0.4.1...v0.5.0

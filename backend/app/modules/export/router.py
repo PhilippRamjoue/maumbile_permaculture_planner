@@ -32,6 +32,8 @@ from app.modules.planning.dependencies import get_planning_service
 from app.modules.planning.service import PlanningService
 from app.modules.sites.dependencies import get_site_service
 from app.modules.sites.service import SiteService
+from app.modules.terrain.router import get_terrain_service
+from app.modules.terrain.service import TerrainService
 
 router = APIRouter()
 
@@ -40,8 +42,9 @@ def get_export_service(
     session: Annotated[AsyncSession, Depends(get_session)],
     planning: Annotated[PlanningService, Depends(get_planning_service)],
     sites: Annotated[SiteService, Depends(get_site_service)],
+    terrain: Annotated[TerrainService, Depends(get_terrain_service)],
 ) -> ExportService:
-    return ExportService(ExportRepository(session), PlanReader(planning, sites))
+    return ExportService(ExportRepository(session), PlanReader(planning, sites, terrain))
 
 
 def get_owner_id(user: CurrentUser) -> uuid.UUID:

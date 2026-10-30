@@ -21,7 +21,12 @@ from PIL import Image, ImageDraw, ImageFont
 from PIL.PngImagePlugin import PngInfo
 from shapely.geometry import shape
 
-from app.modules.export.document import ExportElementType, ExportFeature, PlanDocument
+from app.modules.export.document import (
+    ExportElementType,
+    ExportFeature,
+    ExportTerrain,
+    PlanDocument,
+)
 from app.modules.export.rows import row_points
 from app.modules.planning.icons import GLYPHS
 
@@ -44,6 +49,7 @@ LAND = (247, 245, 238)
 FRAME = (170, 170, 170)
 DEFAULT_COLORS = {"zone": "#f59e0b", "sector": "#ef5350", "annotation": "#fdd835"}
 DEFAULT_COLOR = "#2f855a"
+CONTOUR_INK = (120, 85, 55)  # brown contour lines, legible over the slope shading
 
 Color = tuple[int, int, int]
 XY = tuple[float, float]
@@ -522,10 +528,12 @@ def goals_line(goals: dict[str, Any] | None) -> str | None:
     return "Goals: " + "  |  ".join(parts) if parts else None
 
 
-def _draw_header(draw: ImageDraw.ImageDraw, doc: PlanDocument) -> None:
-    width = PAGE_W - 2 * MARGIN
+def _draw_header(draw: ImageDraw.ImageDraw, doc: PlanDocument, section: str | None = None) -> None:
+    width = PAGE_W - 2 * MARGIN - (380 if section else 0)
     title, size = _fit(draw, doc.name, 60, width, 32)
     draw.text((MARGIN, MARGIN), title, font=_font(size), fill=INK)
+    if section:
+        draw.text((PAGE_W - MARGIN, MARGIN + 6), section, font=_font(46), fill=MUTED, anchor="ra")
     sub = f"{doc.site_name}  ·  last saved {doc.updated_at:%Y-%m-%d}"
     if doc.description:
         sub += "  ·  " + " ".join(doc.description.split())
@@ -611,9 +619,119 @@ def plan_frame(doc: PlanDocument) -> MapFrame:
     return fit_map(pts)
 
 
-def render_plan_image(doc: PlanDocument) -> Image.Image:
-    drawn = drawn_features(doc)
-    frame = plan_frame(doc)
+def _multilines(geometry: dict[str, Any]) -> list[Any]:
+    """A GeoJSON Multi/LineString as a list of coordinate lists."""
+    kind = geometry.get("type")
+    if kind == "MultiLineString":
+        return list(geometry.get("coordinates", []))
+    if kind == "LineString":
+        return [geometry.get("coordinates", [])]
+    return []
+
+
+def _draw_terrain(draw: ImageDraw.ImageDraw, terrain: ExportTerrain, project: Project) -> None:
+    """Slope-class cells shaded over the site bbox, with the contour lines on top."""
+    ss = SUPERSAMPLE
+    grid = terrain.grid
+    if grid is not None and terrain.legend:
+        colors = [_hex(c.color, "#cccccc") for c in terrain.legend]
+        pw, ph = grid.pixel_width_deg, grid.pixel_height_deg
+        for r in range(min(grid.height, len(grid.classes))):
+            lat0, lat1 = grid.north - r * ph, grid.north - (r + 1) * ph
+            row = grid.classes[r]
+            for c in range(min(grid.width, len(row))):
+                k = row[c]
+                if k is None or not 0 <= k < len(colors):
+                    continue
+                lon0, lon1 = grid.west + c * pw, grid.west + (c + 1) * pw
+                draw.polygon(
+                    [
+                        project(lon0, lat0),
+                        project(lon1, lat0),
+                        project(lon1, lat1),
+                        project(lon0, lat1),
+                    ],
+                    fill=colors[k],
+                )
+    for contour in terrain.contours:
+        width = (2 if contour.index else 1) * ss
+        for line in _multilines(contour.geometry):
+            pts = [project(p[0], p[1]) for p in line if len(p) >= 2]
+            if len(pts) >= 2:
+                draw.line(pts, fill=CONTOUR_INK, width=width, joint="curve")
+
+
+def _terrain_summary_lines(terrain: ExportTerrain) -> list[str]:
+    lines: list[str] = []
+    e = terrain.elevation_m
+    if e and "min" in e and "max" in e:
+        relief = e.get("relief", e["max"] - e["min"])
+        lines.append(f"Elevation {round(e['min'])}-{round(e['max'])} m ({round(relief)} m relief)")
+    s = terrain.slope_pct
+    if s and "mean" in s:
+        extra = f"  ·  max {s['max']:.0f}%" if "max" in s else ""
+        lines.append(f"Mean slope {s['mean']:.1f}%{extra}")
+    if terrain.contour_interval_m:
+        lines.append(f"Contours every {terrain.contour_interval_m:g} m")
+    return lines or ["Terrain computed for this site."]
+
+
+def _draw_slope_legend(
+    canvas: ImageDraw.ImageDraw, terrain: ExportTerrain, x: int, y: int, h: int
+) -> None:
+    canvas.rectangle((x, y, x + LEGEND_W, y + h), outline=FRAME, width=2)
+    canvas.text((x + 24, y + 18), "Slope & terrain", font=_font(34), fill=INK)
+    ty = y + 82
+    for line in _terrain_summary_lines(terrain):
+        text, size = _fit(canvas, line, 26, LEGEND_W - 48, 18)
+        canvas.text((x + 24, ty), text, font=_font(size), fill=INK)
+        ty += 40
+    if terrain.legend:
+        ty += 14
+        canvas.text((x + 24, ty), "Slope", font=_font(28), fill=MUTED)
+        ty += 48
+        for c in terrain.legend:
+            canvas.rectangle(
+                (x + 24, ty, x + 70, ty + 28), fill=_hex(c.color, "#cccccc"), outline=INK, width=1
+            )
+            rng = f"over {c.min_pct:g}%" if c.max_pct is None else f"{c.min_pct:g}-{c.max_pct:g}%"
+            label, size = _fit(canvas, f"{c.label}  {rng}", 26, LEGEND_W - 180, 16)
+            canvas.text((x + 86, ty + 14), label, font=_font(size), fill=INK, anchor="lm")
+            canvas.text(
+                (x + LEGEND_W - 24, ty + 14),
+                f"{round(c.area_fraction * 100)}%",
+                font=_font(24),
+                fill=MUTED,
+                anchor="rm",
+            )
+            ty += 44
+    if terrain.attribution:
+        att, size = _fit(canvas, terrain.attribution, 22, LEGEND_W - 48, 14)
+        canvas.text((x + 24, y + h - 36), att, font=_font(size), fill=MUTED)
+
+
+def _render_map_page(
+    doc: PlanDocument,
+    features: Sequence[ExportFeature],
+    section: str | None = None,
+    *,
+    terrain: ExportTerrain | None = None,
+    fill_boundary: bool = True,
+) -> Image.Image:
+    """One A4 page: the boundary, the given features (and/or terrain), legend, scale and chrome.
+
+    Each page frames its own content, so a view of just the sectors or just the elements zooms to
+    fit them rather than inheriting the whole plan's extent.
+    """
+    pts = list(_all_points(doc.boundary))
+    pts += [p for f in features for p in _all_points(f.geometry)]
+    if terrain is not None and terrain.grid is not None:
+        g = terrain.grid
+        pts += [
+            (g.west, g.north),
+            (g.west + g.width * g.pixel_width_deg, g.north - g.height * g.pixel_height_deg),
+        ]
+    frame = fit_map(pts)
     fx, fy, fw, fh, px_per_m, project = (
         frame.x,
         frame.y,
@@ -630,10 +748,13 @@ def render_plan_image(doc: PlanDocument) -> Image.Image:
     icons: list[_Icon] = []
 
     ring = [project(*p) for p in _rings(doc.boundary)[0]]
-    _fill_polygon(map_img, [ring], (255, 255, 255), 1.0)
+    if fill_boundary:
+        _fill_polygon(map_img, [ring], (255, 255, 255), 1.0)
+    if terrain is not None:
+        _draw_terrain(draw, terrain, project)
     for seg in _dashes(ring, 24 * ss, 12 * ss):
         draw.line(seg, fill=(51, 51, 51), width=3 * ss, joint="curve")
-    for f in drawn:
+    for f in features:
         et = doc.element_types.get(f.element_type_id) if f.element_type_id is not None else None
         _draw_feature(
             draw, map_img, f, style_for(f, et), project, labels, icons, icon_for(et), px_per_m
@@ -657,10 +778,36 @@ def render_plan_image(doc: PlanDocument) -> Image.Image:
         )
     _draw_scale_bar(canvas, fx + 30, fy + fh - 50, px_per_m, fw * 0.22)
     _draw_north_arrow(canvas, fx + fw - 50, fy + 50)
-    _draw_header(canvas, doc)
-    _draw_legend(canvas, build_legend(doc, drawn), fx + fw + GAP, fy, fh)
+    _draw_header(canvas, doc, section)
+    if terrain is not None:
+        _draw_slope_legend(canvas, terrain, fx + fw + GAP, fy, fh)
+    else:
+        _draw_legend(canvas, build_legend(doc, features), fx + fw + GAP, fy, fh)
     _draw_footer(canvas, f"Scale 1:{_scale_denominator(px_per_m):,} when printed at A4 landscape")
     return page
+
+
+def render_plan_image(doc: PlanDocument) -> Image.Image:
+    """The single overview page: the whole plan on one map (used for the PNG and as PDF page 1)."""
+    return _render_map_page(doc, drawn_features(doc))
+
+
+def render_pages(doc: PlanDocument) -> list[Image.Image]:
+    """The pages of a rendered plan: an overview, then a page each for the sectors, the elements
+    and the terrain — each view on its own page so its detail is legible. Empty views are left
+    out (no sectors ⇒ no sectors page), and terrain only appears once it has been computed."""
+    drawn = drawn_features(doc)
+    pages = [_render_map_page(doc, drawn, "Overview")]
+    sectors = [f for f in drawn if f.feature_type == "sector"]
+    if sectors:
+        pages.append(_render_map_page(doc, sectors, "Sectors"))
+    elements = [f for f in drawn if f.feature_type in ("element", "path", "annotation")]
+    if elements:
+        pages.append(_render_map_page(doc, elements, "Elements"))
+    terrain = doc.terrain
+    if terrain is not None and (terrain.grid is not None or terrain.contours):
+        pages.append(_render_map_page(doc, [], "Terrain", terrain=terrain, fill_boundary=False))
+    return pages
 
 
 def render_png(doc: PlanDocument) -> bytes:
@@ -673,7 +820,7 @@ def render_png(doc: PlanDocument) -> bytes:
 
 
 def render_pdf(doc: PlanDocument) -> bytes:
-    return image_to_pdf(render_plan_image(doc), doc.name)
+    return images_to_pdf(render_pages(doc), doc.name)
 
 
 def _pdf_text(value: str) -> bytes:
@@ -681,23 +828,41 @@ def _pdf_text(value: str) -> bytes:
 
 
 def image_to_pdf(img: Image.Image, title: str) -> bytes:
-    """A one-page PDF whose page is the image at 200 dpi, Flate-compressed (lossless)."""
-    w, h = img.size
-    pw, ph = w * 72 / DPI, h * 72 / DPI
-    pixels = zlib.compress(img.convert("RGB").tobytes(), 6)
-    content = f"q {pw:.2f} 0 0 {ph:.2f} 0 0 cm /Im0 Do Q".encode()
+    """A one-page PDF, for callers that render a single image."""
+    return images_to_pdf([img], title)
+
+
+def images_to_pdf(images: Sequence[Image.Image], title: str) -> bytes:
+    """A PDF with one page per image, each at 200 dpi, Flate-compressed (lossless).
+
+    Object layout: 1 Catalog, 2 Pages, then three objects per page (Page, Image XObject, Contents),
+    then one Info object.
+    """
+    n = len(images)
+    kids = " ".join(f"{3 + i * 3} 0 R" for i in range(n))
     bodies: list[bytes] = [
         b"<< /Type /Catalog /Pages 2 0 R >>",
-        b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
-        f"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 {pw:.2f} {ph:.2f}] "
-        f"/Resources << /XObject << /Im0 4 0 R >> >> /Contents 5 0 R >>".encode(),
-        f"<< /Type /XObject /Subtype /Image /Width {w} /Height {h} /ColorSpace /DeviceRGB "
-        f"/BitsPerComponent 8 /Filter /FlateDecode /Length {len(pixels)} >>\nstream\n".encode()
-        + pixels
-        + b"\nendstream",
-        f"<< /Length {len(content)} >>\nstream\n".encode() + content + b"\nendstream",
-        b"<< /Title " + _pdf_text(title) + b" /Producer (Maumbile) >>",
+        f"<< /Type /Pages /Kids [{kids}] /Count {n} >>".encode(),
     ]
+    for i, img in enumerate(images):
+        w, h = img.size
+        pw, ph = w * 72 / DPI, h * 72 / DPI
+        pixels = zlib.compress(img.convert("RGB").tobytes(), 6)
+        content = f"q {pw:.2f} 0 0 {ph:.2f} 0 0 cm /Im0 Do Q".encode()
+        bodies.append(
+            f"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 {pw:.2f} {ph:.2f}] "
+            f"/Resources << /XObject << /Im0 {4 + i * 3} 0 R >> >> "
+            f"/Contents {5 + i * 3} 0 R >>".encode()
+        )
+        bodies.append(
+            f"<< /Type /XObject /Subtype /Image /Width {w} /Height {h} /ColorSpace /DeviceRGB "
+            f"/BitsPerComponent 8 /Filter /FlateDecode /Length {len(pixels)} >>\nstream\n".encode()
+            + pixels
+            + b"\nendstream"
+        )
+        bodies.append(f"<< /Length {len(content)} >>\nstream\n".encode() + content + b"\nendstream")
+    bodies.append(b"<< /Title " + _pdf_text(title) + b" /Producer (Maumbile) >>")
+
     out = bytearray(b"%PDF-1.4\n%\xe2\xe3\xcf\xd3\n")
     offsets: list[int] = []
     for number, body in enumerate(bodies, start=1):
@@ -708,7 +873,7 @@ def image_to_pdf(img: Image.Image, title: str) -> bytes:
     for offset in offsets:
         out += f"{offset:010d} 00000 n \n".encode()
     out += (
-        f"trailer\n<< /Size {len(bodies) + 1} /Root 1 0 R /Info 6 0 R >>\n"
+        f"trailer\n<< /Size {len(bodies) + 1} /Root 1 0 R /Info {3 + n * 3} 0 R >>\n"
         f"startxref\n{xref}\n%%EOF\n"
     ).encode()
     return bytes(out)

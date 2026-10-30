@@ -78,6 +78,18 @@ def _spiral() -> list[tuple[float, float]]:
     )
 
 
+def _arc(
+    cx: float, cy: float, r: float, a0: float, a1: float, n: int = 12
+) -> list[tuple[float, float]]:
+    # Degrees, clockwise with y pointing down: 0° is east, 90° south, 180° west, 270° north.
+    return _round(
+        [
+            (cx + r * math.cos(math.radians(a)), cy + r * math.sin(math.radians(a)))
+            for a in (a0 + (a1 - a0) * i / n for i in range(n + 1))
+        ]
+    )
+
+
 GLYPHS: dict[str, Glyph] = {
     "tree": [_dot(12, 9, 6.5), _line((12, 15), (12, 21))],
     "trees": [
@@ -144,6 +156,95 @@ GLYPHS: dict[str, Glyph] = {
         _line((8, 9), (16, 9)),
         _line((8, 12), (14, 12)),
     ],
+    # A bold banana crescent with a short stalk.
+    "banana_circle": [
+        _shape(
+            (8, 4), (13, 6), (16, 12), (14, 18), (9, 20), (11, 16), (12, 11), (10, 7), fill=True
+        ),
+        _line((8, 4), (6, 2)),
+    ],
+    # A round bed with a central compost basket and the wedge path that reaches it.
+    "keyhole_garden": [
+        _dot(12, 12, 8, fill=False),
+        _dot(12, 12, 2.4, fill=False),
+        _line((9.5, 19.5), (12, 12)),
+        _line((14.5, 19.5), (12, 12)),
+    ],
+    # Three young fruit trees, a small grove.
+    "orchard": [
+        _dot(7, 9, 3, fill=False),
+        _line((7, 12), (7, 17)),
+        _dot(17, 9, 3, fill=False),
+        _line((17, 12), (17, 17)),
+        _dot(12, 13, 3, fill=False),
+        _line((12, 16), (12, 20)),
+    ],
+    # A goat's head: horns swept back, a wispy beard.
+    "goat_pen": [
+        _shape((9, 10), (15, 10), (14, 17), (12, 19), (10, 17), fill=False),
+        _line((9, 10), (6, 5)),
+        _line((15, 10), (18, 5)),
+        _line((12, 19), (12, 22)),
+        _dot(10.6, 13, 0.7, fill=True),
+        _dot(13.4, 13, 0.7, fill=True),
+    ],
+    # A cow's head: wide horns and a broad muzzle.
+    "cattle_shed": [
+        _shape((8, 9), (16, 9), (16, 15), (12, 19), (8, 15), fill=False),
+        _line((8, 9), (3, 6)),
+        _line((16, 9), (21, 6)),
+        _shape((10, 15), (14, 15), (14, 18), (10, 18), fill=False),
+        _dot(11, 16.6, 0.7, fill=True),
+        _dot(13, 16.6, 0.7, fill=True),
+        _dot(9.9, 12, 0.7, fill=True),
+        _dot(14.1, 12, 0.7, fill=True),
+    ],
+    # A pig's head: round, with pricked ears and a snout.
+    "pig_pen": [
+        _dot(12, 13, 6, fill=False),
+        _shape((8.5, 5), (11, 9), (8, 9.5), fill=True),
+        _shape((15.5, 5), (16, 9.5), (13, 9), fill=True),
+        _dot(12, 15, 2.6, fill=False),
+        _dot(11, 15, 0.6, fill=True),
+        _dot(13, 15, 0.6, fill=True),
+        _dot(9.9, 11.5, 0.7, fill=True),
+        _dot(14.1, 11.5, 0.7, fill=True),
+    ],
+    # A rabbit: round head with two tall ears.
+    "rabbit_hutch": [
+        _dot(12, 14, 4, fill=False),
+        _shape((10, 11), (8.5, 3), (11.4, 10.4), fill=True),
+        _shape((14, 11), (15.5, 3), (12.6, 10.4), fill=True),
+        _dot(10.6, 14, 0.7, fill=True),
+        _dot(13.4, 14, 0.7, fill=True),
+        _dot(12, 16, 0.8, fill=True),
+    ],
+    # A fish, side on, with a fanned tail.
+    "fish_pond": [
+        _shape((4, 12), (11, 7), (18, 12), (11, 17), fill=False),
+        _shape((18, 12), (22, 8), (22, 16), fill=True),
+        _dot(8, 11, 0.9, fill=True),
+    ],
+    # A cased borehole into the ground, water at the head.
+    "borehole": [
+        _line((7, 21), (17, 21)),
+        _shape((10.5, 21), (10.5, 6), (13.5, 6), (13.5, 21), fill=False),
+        _dot(12, 3.2, 1.6, fill=True),
+    ],
+    # A granary basket on stilts under a conical roof.
+    "grain_store": [
+        _shape((5, 9), (12, 4), (19, 9), fill=True),
+        _shape((7, 9), (17, 9), (16, 17), (8, 17), fill=False),
+        _line((9, 17), (9, 21)),
+        _line((15, 17), (15, 21)),
+    ],
+    # A biogas digester: a buried dome with its gas outlet.
+    "biogas": [
+        _line((4, 18), (20, 18)),
+        _line(*_arc(12, 18, 7, 180, 360)),
+        _shape((11, 11), (13, 11), (13, 6), (11, 6), fill=False),
+        _dot(12, 4, 1.4, fill=True),
+    ],
 }
 
 # Which glyph each palette entry (by key) is drawn with. Lines (swale, fence, path, ...) and the
@@ -176,4 +277,16 @@ ICON_BY_TYPE: dict[str, str | None] = {
     "zone": None,
     "sector": None,
     "note": "note",
+    "banana_circle": "banana_circle",
+    "keyhole_garden": "keyhole_garden",
+    "orchard": "orchard",
+    "goat_pen": "goat_pen",
+    "cattle_shed": "cattle_shed",
+    "pig_pen": "pig_pen",
+    "rabbit_hutch": "rabbit_hutch",
+    "fish_pond": "fish_pond",
+    "borehole": "borehole",
+    "dam": None,
+    "grain_store": "grain_store",
+    "biogas": "biogas",
 }

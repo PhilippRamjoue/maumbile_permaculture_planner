@@ -16,9 +16,13 @@ from PIL import Image, ImageDraw
 
 from app.modules.export import render
 from app.modules.export.document import (
+    ExportContour,
     ExportElementType,
     ExportFeature,
     ExportLayer,
+    ExportSlopeClass,
+    ExportSlopeGrid,
+    ExportTerrain,
     PlanDocument,
 )
 from app.modules.export.geojson import plan_to_geojson
@@ -382,3 +386,97 @@ def test_filename_is_ascii_and_never_empty() -> None:
     assert filename_for("Mpango wa Shamba #1", "png") == "mpango-wa-shamba-1.png"
     assert filename_for("日本語", "pdf") == "plan.pdf"
     assert filename_for("../../etc/passwd", "png") == "etc-passwd.png"
+
+
+STEEP_ORANGE = (0xF4, 0x51, 0x1E)
+
+
+def slope_terrain() -> ExportTerrain:
+    """A small, ready terrain: a 4×4 slope grid over the 400 m plan bbox, plus one contour."""
+    north = LAT0 + 400 / M_PER_DEG_LAT
+    pw, ph = (400 / M_PER_DEG_LNG) / 4, (400 / M_PER_DEG_LAT) / 4
+    classes: list[list[int | None]] = [[(r + c) % 3 for c in range(4)] for r in range(4)]
+    return ExportTerrain(
+        contour_interval_m=5.0,
+        attribution="Copernicus DEM © ESA",
+        legend=[
+            ExportSlopeClass("Flat", 0, 2, "#4caf50", 0.5),
+            ExportSlopeClass("Gentle", 2, 5, "#cddc39", 0.3),
+            ExportSlopeClass("Steep", 5, None, "#f4511e", 0.2),  # STEEP_ORANGE
+        ],
+        grid=ExportSlopeGrid(LNG0, north, pw, ph, 4, 4, classes),
+        contours=[
+            ExportContour(
+                1500.0,
+                True,
+                {"type": "MultiLineString", "coordinates": [square(0, 200, 0)["coordinates"][0]]},
+            )
+        ],
+        elevation_m={"min": 1498, "max": 1540, "mean": 1515, "relief": 42},
+        slope_pct={"mean": 4.2, "max": 11.0},
+        flags=[],
+    )
+
+
+def with_terrain(doc: PlanDocument, terrain: ExportTerrain | None) -> PlanDocument:
+    return PlanDocument(**{**doc.__dict__, "terrain": terrain})
+
+
+def test_pages_split_overview_sectors_elements_and_terrain() -> None:
+    plain = sample()  # a zone and three elements, no sector, no terrain
+    assert [p.size for p in render.render_pages(plain)] == [(2339, 1654)] * 2  # overview + elements
+
+    full = with_terrain(
+        PlanDocument(
+            **{
+                **plain.__dict__,
+                "features": [
+                    *plain.features,
+                    feature(LAYER_ZONES, "sector", square(30, 30, 90), properties={"name": "Sun"}),
+                ],
+            }
+        ),
+        slope_terrain(),
+    )
+    pages = render.render_pages(full)
+    assert len(pages) == 4  # overview, sectors, elements, terrain
+    assert all(p.size == (2339, 1654) for p in pages)
+
+
+def test_pdf_has_one_page_per_view() -> None:
+    doc = with_terrain(sample(), slope_terrain())  # overview + elements + terrain
+    pdf = render.render_pdf(doc)
+    assert pdf.startswith(b"%PDF-1.4") and pdf.rstrip().endswith(b"%%EOF")
+    assert pdf.count(b"/Type /Page /Parent") == 3
+    assert b"/Count 3" in pdf
+    # Every xref offset still points at its object, with three pages' worth of objects.
+    xref_at = int(re.search(rb"startxref\n(\d+)\n", pdf).group(1))  # type: ignore[union-attr]
+    table = pdf[xref_at:].split(b"\n")
+    count = int(table[1].split()[1])
+    for number in range(1, count):
+        offset = int(table[2 + number][:10])
+        assert pdf[offset : offset + len(f"{number} 0 obj".encode())] == f"{number} 0 obj".encode()
+
+
+def test_terrain_page_shades_the_slope_grid() -> None:
+    doc = with_terrain(document([]), slope_terrain())
+    pages = render.render_pages(doc)
+    assert len(pages) == 2  # overview + terrain (no sectors, no elements)
+    colors: set[Any] = {c for _, c in pages[-1].getcolors(maxcolors=1 << 20) or []}
+    assert any(all(abs(c[i] - STEEP_ORANGE[i]) < 24 for i in range(3)) for c in colors)
+
+
+def test_png_stays_a_single_overview_page_even_with_terrain_and_sectors() -> None:
+    doc = with_terrain(
+        PlanDocument(
+            **{
+                **sample().__dict__,
+                "features": [
+                    *sample().features,
+                    feature(LAYER_ZONES, "sector", square(30, 30, 90), properties={"name": "Sun"}),
+                ],
+            }
+        ),
+        slope_terrain(),
+    )
+    assert Image.open(BytesIO(render.render_png(doc))).size == (2339, 1654)

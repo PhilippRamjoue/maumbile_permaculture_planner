@@ -543,14 +543,10 @@ export function Workspace({
               selected: imageryProvider,
               onSelect: basemap.select,
             }}
-            terrain={
-              focus === "sectors"
-                ? undefined
-                : {
-                    siteId: site.id,
-                    onEditBoundary: focus === "boundary" ? undefined : editBoundary,
-                  }
-            }
+            terrain={{
+              siteId: site.id,
+              onEditBoundary: focus === "boundary" ? undefined : editBoundary,
+            }}
             tools={{
               tool,
               choose,
