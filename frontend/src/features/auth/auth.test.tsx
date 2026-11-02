@@ -176,6 +176,23 @@ describe("register", () => {
 
     expect(await screen.findByRole("alert")).toHaveTextContent("Email already registered");
   });
+
+  it("links to the terms and privacy notice at sign-up", async () => {
+    mockApi({
+      "GET /auth/me": problem(401, "Not authenticated"),
+      "POST /auth/refresh": problem(401, "no refresh cookie"),
+    });
+    renderApp("/register");
+
+    expect(await screen.findByRole("link", { name: "Terms of use" })).toHaveAttribute(
+      "href",
+      "/terms",
+    );
+    expect(screen.getByRole("link", { name: "Privacy notice" })).toHaveAttribute(
+      "href",
+      "/privacy",
+    );
+  });
 });
 
 describe("logout", () => {

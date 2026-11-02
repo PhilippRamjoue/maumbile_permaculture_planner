@@ -83,6 +83,11 @@ export function RegisterPage() {
         </button>
       </form>
       <p className="muted">
+        By creating an account you agree to our <Link to="/terms">Terms of use</Link> and
+        acknowledge our <Link to="/privacy">Privacy notice</Link>, which explains the limited data
+        we store and how to export or delete it.
+      </p>
+      <p className="muted">
         Already registered? <Link to="/login">Sign in</Link>
       </p>
     </section>
