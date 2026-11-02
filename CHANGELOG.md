@@ -6,6 +6,19 @@ All notable changes to Maumbile are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.7.3] - 2026-11-02
+
+### Added
+
+- A `NOTICE` file recording ownership and copyright (Ecosoul Limited, AGPL-3.0), completing the
+  Digital Public Goods "clear ownership" criterion.
+
+### Changed
+
+- The in-app **Terms** and **Privacy** pages now name the operator (Ecosoul Limited) and give a
+  working contact address (support@ecosoul.tech) for data, security and conduct requests, instead of
+  pointing to the project's GitHub page.
+
 ## [0.7.2] - 2026-10-30
 
 ### Fixed
@@ -322,7 +335,8 @@ First public release.
 - Released under AGPL-3.0. All instance configuration and secrets live in the environment, never
   in the repository.
 
-[Unreleased]: https://github.com/PhilippRamjoue/maumbile_permaculture_planner/compare/v0.7.2...HEAD
+[Unreleased]: https://github.com/PhilippRamjoue/maumbile_permaculture_planner/compare/v0.7.3...HEAD
+[0.7.3]: https://github.com/PhilippRamjoue/maumbile_permaculture_planner/compare/v0.7.2...v0.7.3
 [0.7.2]: https://github.com/PhilippRamjoue/maumbile_permaculture_planner/compare/v0.7.1...v0.7.2
 [0.7.1]: https://github.com/PhilippRamjoue/maumbile_permaculture_planner/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/PhilippRamjoue/maumbile_permaculture_planner/compare/v0.6.0...v0.7.0
