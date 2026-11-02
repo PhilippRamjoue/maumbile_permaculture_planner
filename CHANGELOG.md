@@ -6,6 +6,13 @@ All notable changes to Maumbile are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.7.4] - 2026-11-02
+
+### Added
+
+- The sign-up form now links the Terms of use and Privacy notice at the point of account creation,
+  stating what limited data is stored and that it can be exported or deleted.
+
 ## [0.7.3] - 2026-11-02
 
 ### Added
@@ -335,7 +342,8 @@ First public release.
 - Released under AGPL-3.0. All instance configuration and secrets live in the environment, never
   in the repository.
 
-[Unreleased]: https://github.com/PhilippRamjoue/maumbile_permaculture_planner/compare/v0.7.3...HEAD
+[Unreleased]: https://github.com/PhilippRamjoue/maumbile_permaculture_planner/compare/v0.7.4...HEAD
+[0.7.4]: https://github.com/PhilippRamjoue/maumbile_permaculture_planner/compare/v0.7.3...v0.7.4
 [0.7.3]: https://github.com/PhilippRamjoue/maumbile_permaculture_planner/compare/v0.7.2...v0.7.3
 [0.7.2]: https://github.com/PhilippRamjoue/maumbile_permaculture_planner/compare/v0.7.1...v0.7.2
 [0.7.1]: https://github.com/PhilippRamjoue/maumbile_permaculture_planner/compare/v0.7.0...v0.7.1
