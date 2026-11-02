@@ -83,6 +83,9 @@ licenses, and anyone using Maumbile commercially must obtain those licenses them
 [Terms of use](docs/TERMS.md) and the [Privacy notice](docs/PRIVACY.md) (also in the app footer),
 and [`docs/DATA_SOURCES.md`](docs/DATA_SOURCES.md).
 
+Maumbile is owned and maintained by **Ecosoul Limited** (© 2026 Ecosoul Limited); see the
+[`NOTICE`](NOTICE) file.
+
 ## Community and project docs
 
 [Contributing](CONTRIBUTING.md) · [Code of conduct](CODE_OF_CONDUCT.md) ·

@@ -15,9 +15,8 @@ Operators should run the latest tagged release; older releases are not patched.
 1. Preferred: use GitHub's private reporting. On the repository, open **Security → Report a
    vulnerability**
    (<https://github.com/PhilippRamjoue/maumbile_permaculture_planner/security/advisories/new>).
-2. If that is unavailable, contact the maintainer through the contact published on their
-   [GitHub profile](https://github.com/PhilippRamjoue) and ask for a private channel, without
-   including technical details in the first message.
+2. If that is unavailable, email **support@ecosoul.tech** (Ecosoul Limited) and ask for a private
+   channel, without including technical details in the first message.
 
 Please include what you found, how to reproduce it, the affected version or commit, and the impact
 you see. You can expect an acknowledgement within **5 working days** and a first assessment within

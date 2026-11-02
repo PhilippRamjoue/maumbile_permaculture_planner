@@ -8,8 +8,7 @@ your own copy, you are the operator of that copy and should adapt (or replace) t
 ## 1. What Maumbile is
 
 Maumbile is a **free, non-commercial public-good tool** for planning permaculture sites on a map.
-It is open-source software under the [GNU AGPL-3.0](../LICENSE). The hosted instance is run by an
-individual as a free service for everyone, especially in lower-income regions. It has no ads, no paid
+It is open-source software under the [GNU AGPL-3.0](../LICENSE). The hosted instance is run by **Ecosoul Limited** as a free service for everyone, especially in lower-income regions. It has no ads, no paid
 tier and no sale of data.
 
 ## 2. No warranty, no professional advice
@@ -61,10 +60,7 @@ license. See [`LICENSE`](../LICENSE).
 ## 7. Changes and contact
 
 These terms may be updated; the date above changes when they do, and material changes are announced
-in the [changelog](../CHANGELOG.md). Questions, abuse reports and data requests: use the contact
-published on the project's GitHub page, or open an issue at
+in the [changelog](../CHANGELOG.md). Maumbile is operated by **Ecosoul Limited**. Questions, abuse
+reports and data requests: email **support@ecosoul.tech**, or open an issue at
 <https://github.com/PhilippRamjoue/maumbile_permaculture_planner/issues> (public; do not post personal data
 there). Security problems: see [`SECURITY.md`](../SECURITY.md).
-
-<!-- Operator note: add a direct contact email for data requests here and in PRIVACY.md before
-     announcing the hosted instance. -->

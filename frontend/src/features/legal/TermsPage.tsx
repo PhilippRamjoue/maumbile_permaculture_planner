@@ -93,7 +93,8 @@ const sections: LegalSection[] = [
       <p>
         If you offer a modified version of Maumbile to others over a network, the AGPL-3.0 requires
         you to make your source available. Terms may be updated; the date above changes when they
-        are. Questions, abuse reports and data requests: use the contact published on the{" "}
+        are. Maumbile is operated by Ecosoul Limited. Questions, abuse reports and data requests:
+        email <a href="mailto:support@ecosoul.tech">support@ecosoul.tech</a>, or open an issue on the{" "}
         <a href={REPOSITORY_URL} target="_blank" rel="noopener noreferrer">
           project&apos;s GitHub page
         </a>

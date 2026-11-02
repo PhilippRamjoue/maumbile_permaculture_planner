@@ -91,7 +91,9 @@ const sections: LegalSection[] = [
     heading: "Contact",
     body: (
       <p>
-        Use the contact published on the{" "}
+        The hosted instance is operated by Ecosoul Limited, the data controller. Requests about your
+        data: email <a href="mailto:support@ecosoul.tech">support@ecosoul.tech</a>, or open an issue
+        on the{" "}
         <a href={REPOSITORY_URL} target="_blank" rel="noopener noreferrer">
           project&apos;s GitHub page
         </a>

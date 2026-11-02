@@ -51,9 +51,8 @@ an appointed representative at an online or offline event.
 ## Enforcement
 
 Instances of abusive, harassing, or otherwise unacceptable behavior may be reported to the community
-leaders responsible for enforcement through the contact published on the maintainer's
-[GitHub profile](https://github.com/PhilippRamjoue) (ask for a private channel; do not post details
-publicly). All complaints will be reviewed and investigated promptly and fairly.
+leaders responsible for enforcement by email at **support@ecosoul.tech** (ask for a private channel;
+do not post details publicly). All complaints will be reviewed and investigated promptly and fairly.
 
 All community leaders are obligated to respect the privacy and security of the reporter of any
 incident.

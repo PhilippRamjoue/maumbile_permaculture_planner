@@ -53,9 +53,8 @@ Maumbile is not directed at children under 16.
 
 ## Changes and contact
 
-Changes are announced in the [changelog](../CHANGELOG.md). Requests about your data: use the contact
-published on the project's GitHub page, or open an issue at
+Changes are announced in the [changelog](../CHANGELOG.md). The hosted instance is operated by
+**Ecosoul Limited**, the data controller. Requests about your data: email **support@ecosoul.tech**,
+or open an issue at
 <https://github.com/PhilippRamjoue/maumbile_permaculture_planner/issues> (public, so do not include personal
 data; ask for a private channel instead). See also the [Terms](TERMS.md).
-
-<!-- Operator note: add a direct contact email here before announcing the hosted instance. -->
